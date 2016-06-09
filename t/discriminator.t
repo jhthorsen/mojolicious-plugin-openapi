@@ -3,14 +3,17 @@ use Test::Mojo;
 use Test::More;
 
 use Mojolicious::Lite;
-post '/whatever/pets' => sub {
-  my $c     = shift;
-  my $input = $c->openapi->input;
+
+post '/pets' => sub {
+  my $c = shift;
+  my $input = $c->openapi->input or return;
   $c->reply->openapi($input, 200);
   },
   'addPet';
+
 plugin OpenAPI => {url => 'data://main/discriminator.json'};
-exit app->start(@ARGV);
+
+exit app->start(@ARGV) if $ARGV[0] eq 'routes';
 
 my $t = Test::Mojo->new;
 
@@ -23,7 +26,6 @@ my %dog = (name => 'dog-e-dog', petType => 'Dog', packSize     => 4);
 
 $t->post_ok('/api/pets' => json => {%cat, petType => 'Dog'})->status_is(400)
   ->json_like('/errors/0/message', qr{Missing property});
-exit;
 $t->post_ok('/api/pets' => json => {%cat})->status_is(200);
 $t->post_ok('/api/pets' => json => {%dog, petType => 'Cat'})->status_is(400)
   ->json_like('/errors/0/message', qr{Missing property});

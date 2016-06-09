@@ -15,7 +15,7 @@ sub register {
   my $swagger = $self->_load_spec($app, $config);
   my $route = $self->_base_route($app, $config, $swagger);
 
-  $app->helper('openapi.input'    => sub { shift->stash('openapi.input') });
+  $app->helper('openapi.input'    => \&_input);
   $app->helper('openapi.spec'     => sub { shift->stash('openapi.operation_spec') });
   $app->helper('openapi.validate' => sub { $self->_validate(@_) });
   $app->helper('reply.openapi'    => \&_reply);
@@ -34,14 +34,16 @@ sub _add_routes {
 
   for my $path (sort { length $a <=> length $b } keys %$paths) {
     next if $path =~ $X_RE;
+
     for my $http_method (keys %{$paths->{$path}}) {
       next if $http_method =~ $X_RE;
       my $route_path = $path;
       my $spec       = $paths->{$path}{$http_method};
       my $name       = $spec->{'x-mojo-name'} || $spec->{operationId};
       my $to         = $spec->{'x-mojo-to'};
+      my $parameters = $spec->{parameters} || [];
       my %parameters = map { ($_->{name}, $_) } @{$spec->{parameters} || []};
-      my ($endpoint, $under);
+      my $endpoint;
 
       $route_path =~ s/{([^}]+)}/{
         my $name = $1;
@@ -49,17 +51,14 @@ sub _add_routes {
         "($type$name)";
       }/ge;
 
-      $under = $route->$http_method($route_path)->under($self->_under($spec));
       $endpoint = $route->root->find($name) if $name;
-      $endpoint ? $under->add_child($endpoint->remove) : ($endpoint = $under->any);
+      $endpoint ? $route->add_child($endpoint) : ($endpoint = $route->any($route_path));
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $endpoint->to($_ => $parameters{$_}{default})
-        for grep { $parameters{$_}{in} eq 'path' and exists $parameters{$_}{default} }
-        keys %parameters;
-      $endpoint->pattern->parse('/');
-      warn $endpoint->pattern->render;
+      $endpoint->to($_ => $_->{default})
+        for grep { $_->{in} eq 'path' and exists $_->{default} } @$parameters;
+      $endpoint->to({'openapi.operation_spec' => $spec});
       $endpoint->name($name) if $name;
-      warn "[OpenAPI] Add route $http_method $base_path$route_path\n" if DEBUG;
+      warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
     }
   }
 }
@@ -77,6 +76,20 @@ sub _base_route {
   }
 
   return $r;
+}
+
+sub _input {
+  my $c = shift;
+
+  if ($c->stash('openapi.input')) {
+    return $c->stash('openapi.input');
+  }
+  if (my @errors = $c->openapi->validate) {
+    $c->render(json => {errors => \@errors}, status => 400);
+    return undef;
+  }
+
+  return $c->stash('openapi.input');
 }
 
 sub _load_spec {
@@ -101,28 +114,15 @@ sub _validate {
   if (defined $output) {
     $status //= 200;
     @errors = $self->_validator->validate_response($c, $spec, $status, $output);
-    warn "[OpenAPI] >>> @{[$c->req->url]} == (@errors)\n" if DEBUG and @errors;
+    warn "[OpenAPI] >>> @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
   else {
     @errors = $self->_validator->validate_request($c, $spec, \my %input);
     $c->stash('openapi.input' => \%input) unless @errors;
-    warn "[OpenAPI] <<< @{[$c->req->url]} == (@errors)\n" if DEBUG and @errors;
+    warn "[OpenAPI] <<< @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
 
   return @errors;
-}
-
-sub _under {
-  my ($self, $spec) = @_;
-
-  my $cb = sub {
-    my $c      = shift;
-    my @errors = $c->openapi->validate;
-    return $c->reply->openapi({errors => \@errors}, 400) if @errors;
-    return $c->continue;
-  };
-
-  return $cb, {'openapi.operation_spec' => $spec};
 }
 
 1;
@@ -197,8 +197,8 @@ addition to "url".
       return $c->reply->openapi([], 498);
     }
 
-    # $input has been validated by the OpenAPI spec
-    my $input = $c->openapi->input;
+    # $input will be a hash ref if validated and undef on invalid input
+    my $input = $c->openapi->input or return;
 
     # $output will be validated by the OpenAPI spec before rendered
     my $output = {pets => [{name => "kit-e-cat"}]};
@@ -249,15 +249,17 @@ Note: This might return a JSON pointer in the future.
   # validate response
   @errors = $c->openapi->validate($output, $http_status);
 
-Used to validate input or output data. This is done automatically by default,
-but can be useful if you need to override L</reply.openapi>.
+Used to validate input or output data. Request validation is always done by
+L</openapi.input>.
 
 =head2 reply.openapi
 
   $c->reply->openapi($output, $http_status);
+  $c->reply->openapi;
 
 Will L<validate|/openapi.validate> C<$output> before passing it on to
-L<Mojolicious::Controller/render>.
+L<Mojolicious::Controller/render>. Calling this helper without any arguments
+will cause auto-rendering of input errors. See L</SYNOPSIS> for example.
 
 =head1 METHODS
 
