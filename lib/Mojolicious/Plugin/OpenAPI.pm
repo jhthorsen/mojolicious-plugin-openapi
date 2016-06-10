@@ -6,6 +6,8 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '0.01';
 
+my $EXCEPTION = {errors => [{message => 'Internal server error.', path => '/'}], status => 500};
+my $NOT_IMPLEMENTED = {errors => [{message => 'Not implemented.', path => '/'}], status => 501};
 my $X_RE = qr{^x-};
 
 has _validator => sub { JSON::Validator::OpenAPI->new; };
@@ -18,7 +20,7 @@ sub register {
   $app->helper('openapi.spec'     => sub { shift->stash('openapi.op_spec') });
   $app->helper('openapi.validate' => sub { $self->_validate(@_) });
   $app->helper('reply.openapi'    => \&_reply);
-  $app->hook(before_render => \&_auto_reply);
+  $app->hook(before_render => \&_before_render);
 
   $self->{log_level} = $config->{log_level} || 'warn';    # TODO: Is warn a nice default?
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
@@ -69,15 +71,14 @@ sub _add_routes {
   }
 }
 
-sub _auto_reply {
+sub _before_render {
   my ($c, $args) = @_;
-  return if grep {/^\w+$/} keys %$args;    # TODO: Is this robust?
+  return if !$args->{exception} and grep {/^\w+$/} keys %$args;    # TODO: Is this robust?
   return unless $c->stash('openapi.op_spec');
   my $format = $c->stash('format') || 'json';
-  my $io = $c->stash('openapi.io')
-    || {errors => [{message => 'Not implemented.', path => '/'}], status => 501};
+  my $io = $args->{exception} ? $EXCEPTION : $c->stash('openapi.io') || $NOT_IMPLEMENTED;
   $args->{status}  = delete $io->{status};
-  $args->{$format} = $io;                  # TODO: Is $format good enough?
+  $args->{$format} = $io;                                          # TODO: Is $format good enough?
 }
 
 sub _input {
@@ -323,8 +324,6 @@ accepted. Note that relative paths will be relative to L<Mojo/home>.
 =item * Add WebSockets support.
 
 =item * Add support for /api.html (human readable format)
-
-=item * Ensure structured response on exception.
 
 =item * Never add support for "x-mojo-around-action", but possibly "before action".
 
