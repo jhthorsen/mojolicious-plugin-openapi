@@ -35,6 +35,9 @@ sub _add_routes {
   $base_path = $api_spec->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
+  $route->to('openapi.api_spec' => $api_spec);
+  $route->get->to(cb => \&_reply_spec);
+
   for my $path (sort { length $a <=> length $b } keys %$paths) {
     next if $path =~ $X_RE;
 
@@ -112,6 +115,16 @@ sub _reply {
   $status ||= 200;
   return $c->render if $c->openapi->validate($output, $status);
   return $c->render($format => $output, status => $status);
+}
+
+sub _reply_spec {
+  my $c    = shift;
+  my $spec = $c->stash('openapi.api_spec')->data;
+
+  local $spec->{id};
+  delete $spec->{id};
+  local $spec->{host} = $c->req->url->to_abs->host_port;
+  $c->render(json => $spec);
 }
 
 sub _validate {
@@ -306,6 +319,8 @@ accepted. Note that relative paths will be relative to L<Mojo/home>.
 =over 2
 
 =item * Add WebSockets support.
+
+=item * Add support for /api.html (human readable format)
 
 =item * Ensure structured response on exception.
 
