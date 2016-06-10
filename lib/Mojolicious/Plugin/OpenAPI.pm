@@ -20,6 +20,7 @@ sub register {
   $app->helper('reply.openapi'    => \&_reply);
   $app->hook(before_render => \&_auto_reply);
 
+  $self->{log_level} = $config->{log_level} || 'warn';    # TODO: Is warn a nice default?
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config->{route});
 }
@@ -82,8 +83,6 @@ sub _input {
   return $stash->{'openapi.input'};
 }
 
-use Carp::Always;
-
 sub _load_spec {
   my ($self, $app, $config) = @_;
   my $jv       = JSON::Validator->new;
@@ -93,6 +92,18 @@ sub _load_spec {
   die join "\n", "Invalid Open API spec:", @errors if @errors;
   warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
   return $api_spec;
+}
+
+sub _log {
+  my ($self, $c, $dir) = (shift, shift, shift);
+  my $log_level = $self->{log_level};
+
+  $c->app->log->$log_level(
+    sprintf 'OpenAPI %s %s %s %s',
+    $dir, $c->req->method,
+    $c->req->url->path,
+    Mojo::JSON::encode_json(@_)
+  );
 }
 
 sub _reply {
@@ -110,14 +121,21 @@ sub _validate {
 
   if (@_ > 2) {
     $status ||= 200;
-    @errors = $self->_validator->validate_response($c, $op_spec, $status, $output);
-    $c->stash('openapi.io' => {errors => \@errors, status => 500}) if @errors;
+    if (@errors = $self->_validator->validate_response($c, $op_spec, $status, $output)) {
+      $c->stash('openapi.io' => {errors => \@errors, status => 500});
+      $self->_log($c, '>>>', \@errors);
+    }
     warn "[OpenAPI] >>> @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
   else {
     @errors = $self->_validator->validate_request($c, $op_spec, \my %input);
-    $c->stash('openapi.input' => \%input) unless @errors;
-    $c->stash('openapi.io' => {errors => \@errors, status => 400}) if @errors;
+    if (@errors) {
+      $c->stash('openapi.io' => {errors => \@errors, status => 400});
+      $self->_log($c, '<<<', \@errors);
+    }
+    else {
+      $c->stash('openapi.input' => \%input);
+    }
     warn "[OpenAPI] <<< @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
 
@@ -270,9 +288,10 @@ Loads the OpenAPI specification, validates it and add routes to L<$app>.
 It will also set up L</HELPERS>. C<%config> can have:
 
   {
-    coerce => 0,                           # default: 1
-    route  => $app->routes->under(...)     # not required
-    url    => "path/to/specification.json" # required
+    coerce    => 0,                           # default: 1
+    log_level => "debug",                     # default: warn
+    route     => $app->routes->under(...)     # not required
+    url       => "path/to/specification.json" # required
   }
 
 C<route> can be specified in case you want to have a protected API.
