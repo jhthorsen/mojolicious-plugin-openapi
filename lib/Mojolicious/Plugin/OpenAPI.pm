@@ -1,16 +1,14 @@
 package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
 
-use JSON::Validator;
-use Swagger2::SchemaValidator;
+use JSON::Validator::OpenAPI;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
-sub OPENAPI_SPEC () {'http://swagger.io/v2/schema.json'}    # should be changed lightly
 
 our $VERSION = '0.01';
 
 my $X_RE = qr{^x-};
 
-has _validator => sub { Swagger2::SchemaValidator->new; };
+has _validator => sub { JSON::Validator::OpenAPI->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
@@ -22,8 +20,7 @@ sub register {
   $app->helper('reply.openapi'    => \&_reply);
   $app->hook(before_render => \&_auto_reply);
 
-  $self->_validator->coerce($config->{coerce} // 1);
-  $self->_validator->_api_spec($api_spec);
+  $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config->{route});
 }
 
@@ -85,14 +82,17 @@ sub _input {
   return $stash->{'openapi.input'};
 }
 
+use Carp::Always;
+
 sub _load_spec {
   my ($self, $app, $config) = @_;
-  my $jv     = JSON::Validator->new;
-  my $schema = $jv->schema($config->{url})->schema;
-  my @errors = $jv->schema(OPENAPI_SPEC())->validate($schema->data);
+  my $jv       = JSON::Validator->new;
+  my $api_spec = $jv->schema($config->{url})->schema;
+  my @errors
+    = $jv->schema(JSON::Validator::OpenAPI::SPECIFICATION_URL())->validate($api_spec->data);
   die join "\n", "Invalid Open API spec:", @errors if @errors;
   warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
-  return $schema;
+  return $api_spec;
 }
 
 sub _reply {
