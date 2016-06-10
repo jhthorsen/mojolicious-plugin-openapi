@@ -72,8 +72,10 @@ sub _add_routes {
 sub _auto_reply {
   my ($c, $args) = @_;
   return if grep {/^\w+$/} keys %$args;    # TODO: Is this robust?
-  return unless my $io = $c->stash('openapi.io');
+  return unless $c->stash('openapi.op_spec');
   my $format = $c->stash('format') || 'json';
+  my $io = $c->stash('openapi.io')
+    || {errors => [{message => 'Not implemented.', path => '/'}], status => 501};
   $args->{status}  = delete $io->{status};
   $args->{$format} = $io;                  # TODO: Is $format good enough?
 }
@@ -323,8 +325,6 @@ accepted. Note that relative paths will be relative to L<Mojo/home>.
 =item * Add support for /api.html (human readable format)
 
 =item * Ensure structured response on exception.
-
-=item * Figure out if/how to respond "501 Not Implemented".
 
 =item * Never add support for "x-mojo-around-action", but possibly "before action".
 

@@ -1,6 +1,7 @@
 use Mojo::Base -strict;
 use Test::More;
 use Mojolicious::Lite;
+
 eval { plugin OpenAPI => {url => 'data://main/invalid.json'} };
 like $@, qr{Invalid Open API spec}, 'invalid';
 done_testing;
