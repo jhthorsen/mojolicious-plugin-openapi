@@ -13,7 +13,7 @@ post '/pets' => sub {
 
 plugin OpenAPI => {url => 'data://main/discriminator.json'};
 
-exit app->start(@ARGV) if $ARGV[0] eq 'routes';
+exit app->start(@ARGV) if @ARGV and $ARGV[0] eq 'routes';
 
 my $t = Test::Mojo->new;
 
@@ -41,7 +41,7 @@ __DATA__
 @@ discriminator.json
 {
   "swagger" : "2.0",
-  "info" : { "version": "0.8", "title" : "Test API for body parameters" },
+  "info" : { "version": "0.8", "title" : "Test discriminator" },
   "consumes" : [ "application/json" ],
   "produces" : [ "application/json" ],
   "schemes" : [ "http" ],

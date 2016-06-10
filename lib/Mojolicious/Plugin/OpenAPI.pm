@@ -19,6 +19,7 @@ sub register {
   $app->helper('openapi.spec'     => sub { shift->stash('openapi.operation_spec') });
   $app->helper('openapi.validate' => sub { $self->_validate(@_) });
   $app->helper('reply.openapi'    => \&_reply);
+  $app->hook(before_render => \&_auto_reply);
 
   $self->_validator->coerce($config->{coerce} // 1);
   $self->_validator->_api_spec($swagger->api_spec);
@@ -63,6 +64,15 @@ sub _add_routes {
   }
 }
 
+sub _auto_reply {
+  my ($c, $args) = @_;
+  return if grep {/^\w+$/} keys %$args;    # TODO: Is this robust?
+  return unless my $io = $c->stash('openapi.io');
+  my $format = $c->stash('format') || 'json';
+  $args->{status}  = delete $io->{status};
+  $args->{$format} = $io;                  # TODO: Is $format good enough?
+}
+
 sub _base_route {
   my ($self, $app, $config, $swagger) = @_;
   my $r = $config->{route};
@@ -79,17 +89,11 @@ sub _base_route {
 }
 
 sub _input {
-  my $c = shift;
-
-  if ($c->stash('openapi.input')) {
-    return $c->stash('openapi.input');
-  }
-  if (my @errors = $c->openapi->validate) {
-    $c->render(json => {errors => \@errors}, status => 400);
-    return undef;
-  }
-
-  return $c->stash('openapi.input');
+  my $c     = shift;
+  my $stash = $c->stash;
+  return $stash->{'openapi.input'} if $stash->{'openapi.input'};
+  return undef if $c->openapi->validate;
+  return $stash->{'openapi.input'};
 }
 
 sub _load_spec {
@@ -103,7 +107,10 @@ sub _load_spec {
 
 sub _reply {
   my ($c, $output, $status) = @_;
-  $c->render(json => $output, status => $status || 200);
+  my $format = $c->stash('format') || 'json';
+  $status ||= 200;
+  return $c->render if $c->openapi->validate($output, $status);
+  return $c->render($format => $output, status => $status);
 }
 
 sub _validate {
@@ -111,14 +118,16 @@ sub _validate {
   my $spec = $c->openapi->spec;
   my @errors;
 
-  if (defined $output) {
-    $status //= 200;
+  if (@_ > 2) {
+    $status ||= 200;
     @errors = $self->_validator->validate_response($c, $spec, $status, $output);
+    $c->stash('openapi.io' => {errors => \@errors, status => 500}) if @errors;
     warn "[OpenAPI] >>> @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
   else {
     @errors = $self->_validator->validate_request($c, $spec, \my %input);
     $c->stash('openapi.input' => \%input) unless @errors;
+    $c->stash('openapi.io' => {errors => \@errors, status => 400}) if @errors;
     warn "[OpenAPI] <<< @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
 
