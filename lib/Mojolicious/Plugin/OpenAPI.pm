@@ -1,8 +1,10 @@
 package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
-use Swagger2;
+
+use JSON::Validator;
 use Swagger2::SchemaValidator;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
+sub OPENAPI_SPEC () {'http://swagger.io/v2/schema.json'}    # should be changed lightly
 
 our $VERSION = '0.01';
 
@@ -12,25 +14,27 @@ has _validator => sub { Swagger2::SchemaValidator->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
-  my $swagger = $self->_load_spec($app, $config);
-  my $route = $self->_base_route($app, $config, $swagger);
+  my $api_spec = $self->_load_spec($app, $config);
 
   $app->helper('openapi.input'    => \&_input);
-  $app->helper('openapi.spec'     => sub { shift->stash('openapi.operation_spec') });
+  $app->helper('openapi.spec'     => sub { shift->stash('openapi.op_spec') });
   $app->helper('openapi.validate' => sub { $self->_validate(@_) });
   $app->helper('reply.openapi'    => \&_reply);
   $app->hook(before_render => \&_auto_reply);
 
   $self->_validator->coerce($config->{coerce} // 1);
-  $self->_validator->_api_spec($swagger->api_spec);
-  $self->_add_routes($swagger, $route);
+  $self->_validator->_api_spec($api_spec);
+  $self->_add_routes($app, $api_spec, $config->{route});
 }
 
 sub _add_routes {
-  my ($self, $swagger, $route) = @_;
-  my $paths = $swagger->api_spec->get('/paths');
-  my $base_path = $swagger->api_spec->data->{basePath} = $route->to_string;
+  my ($self, $app, $api_spec, $route) = @_;
+  my $base_path = $api_spec->get('/basePath') || '/';
+  my $paths = $api_spec->get('/paths');
 
+  $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
+  $route = $app->routes->any($base_path) unless $route;
+  $base_path = $api_spec->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
   for my $path (sort { length $a <=> length $b } keys %$paths) {
@@ -39,11 +43,11 @@ sub _add_routes {
     for my $http_method (keys %{$paths->{$path}}) {
       next if $http_method =~ $X_RE;
       my $route_path = $path;
-      my $spec       = $paths->{$path}{$http_method};
-      my $name       = $spec->{'x-mojo-name'} || $spec->{operationId};
-      my $to         = $spec->{'x-mojo-to'};
-      my $parameters = $spec->{parameters} || [];
-      my %parameters = map { ($_->{name}, $_) } @{$spec->{parameters} || []};
+      my $op_spec    = $paths->{$path}{$http_method};
+      my $name       = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+      my $to         = $op_spec->{'x-mojo-to'};
+      my $parameters = $op_spec->{parameters} || [];
+      my %parameters = map { ($_->{name}, $_) } @{$op_spec->{parameters} || []};
       my $endpoint;
 
       $route_path =~ s/{([^}]+)}/{
@@ -57,7 +61,7 @@ sub _add_routes {
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $endpoint->to($_ => $_->{default})
         for grep { $_->{in} eq 'path' and exists $_->{default} } @$parameters;
-      $endpoint->to({'openapi.operation_spec' => $spec});
+      $endpoint->to({'openapi.op_spec' => $op_spec});
       $endpoint->name($name) if $name;
       warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
     }
@@ -73,21 +77,6 @@ sub _auto_reply {
   $args->{$format} = $io;                  # TODO: Is $format good enough?
 }
 
-sub _base_route {
-  my ($self, $app, $config, $swagger) = @_;
-  my $r = $config->{route};
-
-  if ($r and !$r->pattern->unparsed) {
-    $r = $r->any($swagger->base_url->path->to_string);
-  }
-  if (!$r) {
-    $r = $app->routes->any($swagger->base_url->path->to_string);
-    $r->to(swagger => $swagger);
-  }
-
-  return $r;
-}
-
 sub _input {
   my $c     = shift;
   my $stash = $c->stash;
@@ -98,11 +87,12 @@ sub _input {
 
 sub _load_spec {
   my ($self, $app, $config) = @_;
-  my $swagger = Swagger2->new->load($config->{url})->expand;
-  my @errors  = $swagger->validate;
+  my $jv     = JSON::Validator->new;
+  my $schema = $jv->schema($config->{url})->schema;
+  my @errors = $jv->schema(OPENAPI_SPEC())->validate($schema->data);
   die join "\n", "Invalid Open API spec:", @errors if @errors;
   warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
-  return $swagger;
+  return $schema;
 }
 
 sub _reply {
@@ -115,17 +105,17 @@ sub _reply {
 
 sub _validate {
   my ($self, $c, $output, $status) = @_;
-  my $spec = $c->openapi->spec;
+  my $op_spec = $c->openapi->spec;
   my @errors;
 
   if (@_ > 2) {
     $status ||= 200;
-    @errors = $self->_validator->validate_response($c, $spec, $status, $output);
+    @errors = $self->_validator->validate_response($c, $op_spec, $status, $output);
     $c->stash('openapi.io' => {errors => \@errors, status => 500}) if @errors;
     warn "[OpenAPI] >>> @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
   else {
-    @errors = $self->_validator->validate_request($c, $spec, \my %input);
+    @errors = $self->_validator->validate_request($c, $op_spec, \my %input);
     $c->stash('openapi.input' => \%input) unless @errors;
     $c->stash('openapi.io' => {errors => \@errors, status => 400}) if @errors;
     warn "[OpenAPI] <<< @{[$c->req->url]} == (@errors)\n" if DEBUG;
