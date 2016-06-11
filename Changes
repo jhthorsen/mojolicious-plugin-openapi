@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+0.02 2016-06-11T07:32:51-0700
+ - Improved documentation
+ - Add support for MOJO_OPENAPI_LOG_LEVEL=error
+
 0.01 2016-06-10T19:34:35-0700
  - Add logging of request/response errors
  - Add rendering of API spec from base URL

@@ -3,30 +3,38 @@ NAME
 
 SYNOPSIS
   Specification
+    This plugin reads an OpenAPI specification
+    <https://openapis.org/specification> and generate routes and
+    input/output rules from it. See JSON::Validator for supported schema
+    formats.
+
       {
+        "basePath": "/api",
         "paths": {
           "/pets": {
             "get": {
               "x-mojo-to": "pet#list",
               "summary": "Finds pets in the system",
+              "parameters": [],
               "responses": {
-              "200": {
-                "description": "Pet response",
-                "schema": { "type": "array", "items": { "$ref": "#/definitions/Pet" } }
-              },
-              "default": {
-                "description": "Unexpected error",
-                "schema": { "$ref": "http://git.io/vcKD4#" }
+                "200": {
+                  "description": "Pet response",
+                  "schema": { "type": "array", "items": { "type": "object" } }
+                },
+                "default": {
+                  "description": "Unexpected error",
+                  "schema": { "$ref": "http://git.io/vcKD4#" }
+                }
               }
             }
           }
         }
       }
 
-    The important part in the spec above is "x-mojo-to". The "x-mojo-to" key
-    can either a plain string, object (hash) or an array. The string and
+    The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to"
+    key can either a plain string, object (hash) or an array. The string and
     hash will be passed directly to "to" in Mojolicious::Routes::Route,
-    while the array ref, will be flattened first.
+    while the array ref, will be flattened first. Examples:
 
       "x-mojo-to": "pet#list"
       $route->to("pet#list");
@@ -37,17 +45,26 @@ SYNOPSIS
       "x-mojo-to": ["pet#list", {"foo": 123}]
       $route->to("pet#list", {foo => 123});
 
+    The complete HTTP request for getting the "pet list" will be "GET
+    /api/pets" The first part of the path ("/api") comes from "basePath",
+    the second part comes from the key under "paths", and the HTTP method
+    comes from the key under "/pets".
+
+    "parameters" and "responses" will be used to define rules for input and
+    output.
+
   Application
       package Myapp;
       use Mojolicious;
 
-      sub register {
+      sub startup {
         my $app = shift;
-        $app->plugin("OpenAPI" => {url => "myapi.json"});
+        $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
       }
 
-    See "register" for information about what the plugin config can be, in
-    addition to "url".
+    The first thing in your code that you need to do is to load this plugin
+    and the "Specification". See "register" for information about what the
+    plugin config can be, in addition to "url".
 
   Controller
       package Myapp::Controller::Pet;
@@ -69,8 +86,11 @@ SYNOPSIS
         $c->reply->openapi($output, 200);
       }
 
-    The controller input and output will only be validated if the
+    The input and output to the action will only be validated if the
     "openapi.input" and "reply.openapi" methods are used.
+
+    All OpenAPI powered actions will have auto-rendering enabled, which
+    means that the "return;" above will render an error document.
 
 DESCRIPTION
     Mojolicious::Plugin::OpenAPI will replace Mojolicious::Plugin::Swagger2.
@@ -81,25 +101,23 @@ HELPERS
   openapi.input
       $hash = $c->openapi->input;
 
-    Returns the data which has been validated by the in OpenAPI
-    specification.
+    Returns the request parameters if they are valid, and "undef" on invalid
+    input.
 
   openapi.spec
       $hash = $c->openapi->spec;
 
-    Returns the OpenAPI specification for the current route:
+    Returns the OpenAPI specification for the current route. Example:
 
       {
         "paths": {
           "/pets": {
             "get": {
-              // This datastructure
+              // This datastructure is returned
             }
           }
         }
       }
-
-    Note: This might return a JSON pointer in the future.
 
   openapi.validate
       # validate request
@@ -112,39 +130,64 @@ HELPERS
     by "openapi.input".
 
   reply.openapi
-      $c->reply->openapi($output, $http_status);
-      $c->reply->openapi;
+      $c->reply->openapi(\%output, $http_status);
 
-    Will validate $output before passing it on to "render" in
-    Mojolicious::Controller. Calling this helper without any arguments will
-    cause auto-rendering of input errors. See "SYNOPSIS" for example.
+    Will validate %output before passing it on to "render" in
+    Mojolicious::Controller. Note that %output will be passed on using the
+    format key in stash, which defaults to "json". This also goes for
+    auto-rendering. Example:
+
+      my $format = $c->stash("format") || "json";
+      $c->render($format => \%output);
 
 METHODS
   register
       $self->register($app, \%config);
 
     Loads the OpenAPI specification, validates it and add routes to $app. It
-    will also set up "HELPERS". %config can have:
+    will also set up "HELPERS" and adds a before_render hook for
+    auto-rendering of error documents.
 
-      {
-        coerce    => 0,                           # default: 1
-        log_level => "debug",                     # default: warn
-        route     => $app->routes->under(...)     # not required
-        url       => "path/to/specification.json" # required
-      }
+    %config can have:
 
-    "route" can be specified in case you want to have a protected API.
+    * coerce
 
-    See "coerce" in JSON::Validator for possible values that "coerce" can
-    take.
+      See "coerce" in JSON::Validator for possible values that "coerce" can
+      take.
 
-    See "schema" in JSON::Validator for the different "url" formats that is
-    accepted. Note that relative paths will be relative to "home" in Mojo.
+      Default: 1
+
+    * log_level
+
+      "log_level" is used when logging invalid request/response error
+      messages.
+
+      Default: "warn".
+
+    * route
+
+      "route" can be specified in case you want to have a protected API.
+      Example:
+
+        $app->plugin(OpenAPI => {
+          route => $app->routes->under("/api")->to("user#auth"),
+          url   => $app->home->rel_file("cool.api"),
+        });
+
+    * url
+
+      See "schema" in JSON::Validator for the different "url" formats that
+      is accepted.
 
 TODO
-    * Add WebSockets support.
+    This plugin is still a big rough on the edges, but I decided to release
+    it on CPAN so people can start playing around with it.
 
-    * Add support for /api.html (human readable format)
+    * Add WebSockets support
+      <https://github.com/jhthorsen/mojolicious-plugin-openapi/compare/webso
+      cket>.
+
+    * Add support for /api.html (human readable documentation)
 
     * Never add support for "x-mojo-around-action", but possibly "before
       action".
