@@ -22,7 +22,7 @@ sub register {
   $app->helper('reply.openapi'    => \&_reply);
   $app->hook(before_render => \&_before_render);
 
-  $self->{log_level} = $config->{log_level} || 'warn';    # TODO: Is warn a nice default?
+  $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config->{route});
 }
@@ -141,7 +141,6 @@ sub _validate {
       $c->stash('openapi.io' => {errors => \@errors, status => 500});
       $self->_log($c, '>>>', \@errors);
     }
-    warn "[OpenAPI] >>> @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
   else {
     @errors = $self->_validator->validate_request($c, $op_spec, \my %input);
@@ -152,7 +151,6 @@ sub _validate {
     else {
       $c->stash('openapi.input' => \%input);
     }
-    warn "[OpenAPI] <<< @{[$c->req->url]} == (@errors)\n" if DEBUG;
   }
 
   return @errors;
@@ -329,6 +327,8 @@ C<route> can be specified in case you want to have a protected API. Example:
 
 See L<JSON::Validator/schema> for the different C<url> formats that is
 accepted.
+
+=back
 
 =head1 TODO
 
