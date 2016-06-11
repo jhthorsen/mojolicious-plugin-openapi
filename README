@@ -1,0 +1,163 @@
+NAME
+    Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
+
+SYNOPSIS
+  Specification
+      {
+        "paths": {
+          "/pets": {
+            "get": {
+              "x-mojo-to": "pet#list",
+              "summary": "Finds pets in the system",
+              "responses": {
+              "200": {
+                "description": "Pet response",
+                "schema": { "type": "array", "items": { "$ref": "#/definitions/Pet" } }
+              },
+              "default": {
+                "description": "Unexpected error",
+                "schema": { "$ref": "http://git.io/vcKD4#" }
+              }
+            }
+          }
+        }
+      }
+
+    The important part in the spec above is "x-mojo-to". The "x-mojo-to" key
+    can either a plain string, object (hash) or an array. The string and
+    hash will be passed directly to "to" in Mojolicious::Routes::Route,
+    while the array ref, will be flattened first.
+
+      "x-mojo-to": "pet#list"
+      $route->to("pet#list");
+
+      "x-mojo-to": {"controller": "pet", "action": "list", "foo": 123}
+      $route->to({controller => "pet", action => "list", foo => 123);
+
+      "x-mojo-to": ["pet#list", {"foo": 123}]
+      $route->to("pet#list", {foo => 123});
+
+  Application
+      package Myapp;
+      use Mojolicious;
+
+      sub register {
+        my $app = shift;
+        $app->plugin("OpenAPI" => {url => "myapi.json"});
+      }
+
+    See "register" for information about what the plugin config can be, in
+    addition to "url".
+
+  Controller
+      package Myapp::Controller::Pet;
+
+      sub list {
+        my $c = shift;
+
+        # You might want to introspect the specification for the current route
+        my $spec = $c->openapi->spec;
+        unless ($spec->{'x-opening-hour'} == (localtime)[2]) {
+          return $c->reply->openapi([], 498);
+        }
+
+        # $input will be a hash ref if validated and undef on invalid input
+        my $input = $c->openapi->input or return;
+
+        # $output will be validated by the OpenAPI spec before rendered
+        my $output = {pets => [{name => "kit-e-cat"}]};
+        $c->reply->openapi($output, 200);
+      }
+
+    The controller input and output will only be validated if the
+    "openapi.input" and "reply.openapi" methods are used.
+
+DESCRIPTION
+    Mojolicious::Plugin::OpenAPI will replace Mojolicious::Plugin::Swagger2.
+
+    This plugin is currently EXPERIMENTAL.
+
+HELPERS
+  openapi.input
+      $hash = $c->openapi->input;
+
+    Returns the data which has been validated by the in OpenAPI
+    specification.
+
+  openapi.spec
+      $hash = $c->openapi->spec;
+
+    Returns the OpenAPI specification for the current route:
+
+      {
+        "paths": {
+          "/pets": {
+            "get": {
+              // This datastructure
+            }
+          }
+        }
+      }
+
+    Note: This might return a JSON pointer in the future.
+
+  openapi.validate
+      # validate request
+      @errors = $c->openapi->validate;
+
+      # validate response
+      @errors = $c->openapi->validate($output, $http_status);
+
+    Used to validate input or output data. Request validation is always done
+    by "openapi.input".
+
+  reply.openapi
+      $c->reply->openapi($output, $http_status);
+      $c->reply->openapi;
+
+    Will validate $output before passing it on to "render" in
+    Mojolicious::Controller. Calling this helper without any arguments will
+    cause auto-rendering of input errors. See "SYNOPSIS" for example.
+
+METHODS
+  register
+      $self->register($app, \%config);
+
+    Loads the OpenAPI specification, validates it and add routes to $app. It
+    will also set up "HELPERS". %config can have:
+
+      {
+        coerce    => 0,                           # default: 1
+        log_level => "debug",                     # default: warn
+        route     => $app->routes->under(...)     # not required
+        url       => "path/to/specification.json" # required
+      }
+
+    "route" can be specified in case you want to have a protected API.
+
+    See "coerce" in JSON::Validator for possible values that "coerce" can
+    take.
+
+    See "schema" in JSON::Validator for the different "url" formats that is
+    accepted. Note that relative paths will be relative to "home" in Mojo.
+
+TODO
+    * Add WebSockets support.
+
+    * Add support for /api.html (human readable format)
+
+    * Never add support for "x-mojo-around-action", but possibly "before
+      action".
+
+AUTHOR
+    Jan Henning Thorsen
+
+COPYRIGHT AND LICENSE
+    Copyright (C) 2016, Jan Henning Thorsen
+
+    This program is free software, you can redistribute it and/or modify it
+    under the terms of the Artistic License version 2.0.
+
+SEE ALSO
+    Mojolicious::Plugin::Swagger2.
+

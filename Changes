@@ -1,4 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-0.01 Not Released
+0.01 2016-06-10T19:34:35-0700
+ - Add logging of request/response errors
+ - Add rendering of API spec from base URL
+ - Exceptions returns structured JSON data instead of HTML
+ - Making an improved version of Mojolicious::Plugin::Swagger2
  - Started project
