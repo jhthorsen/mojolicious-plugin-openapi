@@ -16,12 +16,14 @@ sub register {
   my ($self, $app, $config) = @_;
   my $api_spec = $self->_load_spec($app, $config);
 
-  $app->helper('openapi.input'    => \&_input);
-  $app->helper('openapi.spec'     => sub { shift->stash('openapi.op_spec') });
-  $app->helper('openapi.validate' => sub { $self->_validate(@_) });
-  $app->helper('reply.openapi'    => \&_reply);
+  $app->helper('openapi.input'     => \&_input);
+  $app->helper('openapi.spec'      => sub { shift->stash('openapi.op_spec') });
+  $app->helper('openapi.validate'  => sub { $self->_validate(@_) });
+  $app->helper('openapi.websocket' => \&_ws);
+  $app->helper('reply.openapi'     => \&_reply);
   $app->hook(before_render => \&_before_render);
 
+  $config->{ws}->to('openapi.plugin' => $self) if $config->{ws};
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config->{route});
@@ -54,9 +56,9 @@ sub _add_routes {
       my $endpoint;
 
       $route_path =~ s/{([^}]+)}/{
-        my $name = $1;
-        my $type = $parameters{$name}{'x-mojo-placeholder'} || ':';
-        "($type$name)";
+        my $phn = $1;
+        my $type = $parameters{$phn}{'x-mojo-placeholder'} || ':';
+        "($type$phn)";
       }/ge;
 
       $endpoint = $route->root->find($name) if $name;
@@ -65,7 +67,11 @@ sub _add_routes {
       $endpoint->to($_ => $_->{default})
         for grep { $_->{in} eq 'path' and exists $_->{default} } @$parameters;
       $endpoint->to({'openapi.op_spec' => $op_spec});
-      $endpoint->name($name) if $name;
+      $name ||= do { local $_ = $_[0]; s!\W+!-!g; $_ };
+      $endpoint->name($name);
+      $op_spec->{'operationId'} ||= $name;
+      $op_spec->{'x-mojo-name'} = $name;
+      $self->{op_spec}{$op_spec->{operationId}} = $op_spec;
       warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
     }
   }
@@ -160,6 +166,35 @@ sub _validate {
   }
 
   return @errors;
+}
+
+sub _ws {
+  my ($c, $json) = @_;
+  my $self    = $c->stash('openapi.plugin');
+  my $id      = $json->{id} or return undef;
+  my $op_spec = $self->{op_spec}{$json->{op}} or return undef;
+  my $params  = $json->{params} || {};
+  my $tx2     = Mojo::Transaction::WebSocket->new;
+  my $c2      = $c->app->build_controller($tx2);
+  my $req2    = $c2->req;
+  my ($input, @errors, %path);
+
+  for my $p (@{$op_spec->{parameters} || []}) {
+    my $in    = $p->{in};
+    my $name  = $p->{name};
+    my $value = exists $params->{$name} ? $params->{$name} : $p->{default};
+    $path{$name} = $value if $in eq 'path';
+    $req2->url->query->append($name => $value) if $in eq 'query';
+    $req2->body_params->append($name => $value) if $in eq 'formData';
+    $req2->headers->header($name => $value) if $in eq 'header';
+    $req2->body(ref $value ? Mojo::JSON::encode_json($value) : $value) if $in eq 'body';
+  }
+
+  $tx2->$_($c->tx->$_) for qw(compressed established handshake masked max_websocket_size);
+  $tx2->req->url->path($c2->url_for($op_spec->{'x-mojo-name'}, \%path));
+  $c2->app->routes->dispatch($c2);
+
+  # TODO: Keep $c2 around
 }
 
 1;
@@ -358,6 +393,8 @@ C<route> can be specified in case you want to have a protected API. Example:
 
 See L<JSON::Validator/schema> for the different C<url> formats that is
 accepted.
+
+=back
 
 =back
 
