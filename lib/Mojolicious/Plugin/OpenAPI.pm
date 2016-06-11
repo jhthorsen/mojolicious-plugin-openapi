@@ -73,12 +73,18 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
-  return if !$args->{exception} and grep {/^\w+$/} keys %$args;    # TODO: Is this robust?
+
+  # TODO: Is this robust enough?
+  # Want to disable this hook if the user does $c->render(template => "foo.html");
+  return if !$args->{exception} and grep {/^\w+$/} keys %$args;
   return unless $c->stash('openapi.op_spec');
   my $format = $c->stash('format') || 'json';
   my $io = $args->{exception} ? $EXCEPTION : $c->stash('openapi.io') || $NOT_IMPLEMENTED;
-  $args->{status}  = delete $io->{status};
-  $args->{$format} = $io;                                          # TODO: Is $format good enough?
+  $args->{status} = delete $io->{status};
+
+  # TODO: Is $format a good idea? Was thinking someone might want to set
+  # $c->stash(format => "xml") and it "should just work"
+  $args->{$format} = $io;
 }
 
 sub _input {
@@ -168,27 +174,34 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
 =head2 Specification
 
+This plugin reads an L<OpenAPI specification|https://openapis.org/specification>
+and generate routes and input/output rules from it. See L<JSON::Validator> for
+L<supported schema formats|JSON::Validator/Supported schema formats>.
+
   {
+    "basePath": "/api",
     "paths": {
       "/pets": {
         "get": {
           "x-mojo-to": "pet#list",
           "summary": "Finds pets in the system",
+          "parameters": [],
           "responses": {
-          "200": {
-            "description": "Pet response",
-            "schema": { "type": "array", "items": { "$ref": "#/definitions/Pet" } }
-          },
-          "default": {
-            "description": "Unexpected error",
-            "schema": { "$ref": "http://git.io/vcKD4#" }
+            "200": {
+              "description": "Pet response",
+              "schema": { "type": "array", "items": { "type": "object" } }
+            },
+            "default": {
+              "description": "Unexpected error",
+              "schema": { "$ref": "http://git.io/vcKD4#" }
+            }
           }
         }
       }
     }
   }
 
-The important part in the spec above is "x-mojo-to". The "x-mojo-to" key can
+The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key can
 either a plain string, object (hash) or an array. The string and hash will be
 passed directly to L<Mojolicious::Routes::Route/to>, while the array ref, will
 be flattened first. Examples:
@@ -202,18 +215,27 @@ be flattened first. Examples:
   "x-mojo-to": ["pet#list", {"foo": 123}]
   $route->to("pet#list", {foo => 123});
 
+The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
+The first part of the path ("/api") comes from C<basePath>, the second part
+comes from the key under C<paths>, and the HTTP method comes from the key under
+C</pets>.
+
+C<parameters> and C<responses> will be used to define rules for
+L<input|/openapi.input> and L<output|reply.openapi>.
+
 =head2 Application
 
   package Myapp;
   use Mojolicious;
 
-  sub register {
+  sub startup {
     my $app = shift;
     $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
   }
 
-See L</register> for information about what the plugin config can be, in
-addition to "url".
+The first thing in your code that you need to do is to load this plugin and the
+L</Specification>. See L</register> for information about what the plugin
+config can be, in addition to "url".
 
 =head2 Controller
 
@@ -239,8 +261,8 @@ addition to "url".
 The input and output to the action will only be validated if the
 L</openapi.input> and L</reply.openapi> methods are used.
 
-All OpenAPI powered actions will have auto-rendering enabled, which means that
-the C<return;> above will render an error document.
+All OpenAPI powered actions will have L<auto-rendering|/reply.openapi> enabled,
+which means that the C<return;> above will render an error document.
 
 =head1 DESCRIPTION
 
@@ -254,20 +276,20 @@ This plugin is currently EXPERIMENTAL.
 
   $hash = $c->openapi->input;
 
-Returns the data which has been L<validated|/openapi.validate> by the in
-OpenAPI specification or returns C<undef> on invalid data.
+Returns the request parameters if they are L<valid|/openapi.validate>, and
+C<undef> on invalid input.
 
 =head2 openapi.spec
 
   $hash = $c->openapi->spec;
 
-Returns the OpenAPI specification for the current route:
+Returns the OpenAPI specification for the current route. Example:
 
   {
     "paths": {
       "/pets": {
         "get": {
-          // This datastructure
+          // This datastructure is returned
         }
       }
     }
@@ -289,7 +311,12 @@ L</openapi.input>.
   $c->reply->openapi(\%output, $http_status);
 
 Will L<validate|/openapi.validate> C<%output> before passing it on to
-L<Mojolicious::Controller/render>.
+L<Mojolicious::Controller/render>. Note that C<%output> will be passed on using
+the L<format|Mojolicious::Guides::Rendering/Content type> key in stash, which
+defaults to "json". This also goes for L<auto-rendering|/Controller>. Example:
+
+  my $format = $c->stash("format") || "json";
+  $c->render($format => \%output);
 
 =head1 METHODS
 
@@ -297,8 +324,12 @@ L<Mojolicious::Controller/render>.
 
   $self->register($app, \%config);
 
-Loads the OpenAPI specification, validates it and add routes to L<$app>.
-It will also set up L</HELPERS>. C<%config> can have:
+Loads the OpenAPI specification, validates it and add routes to
+L<$app|Mojolicious>. It will also set up L</HELPERS> and adds a
+L<before_render|Mojolicious/before_render> hook for auto-rendering of error
+documents.
+
+C<%config> can have:
 
 =over 2
 
@@ -332,11 +363,14 @@ accepted.
 
 =head1 TODO
 
+This plugin is still a big rough on the edges, but I decided to release it on
+CPAN so people can start playing around with it.
+
 =over 2
 
-=item * Add WebSockets support.
+=item * Add L<WebSockets support|https://github.com/jhthorsen/mojolicious-plugin-openapi/compare/websocket>.
 
-=item * Add support for /api.html (human readable format)
+=item * Add support for /api.html (human readable documentation)
 
 =item * Never add support for "x-mojo-around-action", but possibly "before action".
 
