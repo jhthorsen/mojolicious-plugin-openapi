@@ -193,7 +193,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 The important part in the spec above is "x-mojo-to". The "x-mojo-to" key can
 either a plain string, object (hash) or an array. The string and hash will be
 passed directly to L<Mojolicious::Routes::Route/to>, while the array ref, will
-be flattened first.
+be flattened first. Examples:
 
   "x-mojo-to": "pet#list"
   $route->to("pet#list");
@@ -211,7 +211,7 @@ be flattened first.
 
   sub register {
     my $app = shift;
-    $app->plugin("OpenAPI" => {url => "myapi.json"});
+    $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
   }
 
 See L</register> for information about what the plugin config can be, in
@@ -238,8 +238,11 @@ addition to "url".
     $c->reply->openapi($output, 200);
   }
 
-The controller input and output will only be validated if the L</openapi.input>
-and L</reply.openapi> methods are used.
+The input and output to the action will only be validated if the
+L</openapi.input> and L</reply.openapi> methods are used.
+
+All OpenAPI powered actions will have auto-rendering enabled, which means that
+the C<return;> above will render an error document.
 
 =head1 DESCRIPTION
 
@@ -254,7 +257,7 @@ This plugin is currently EXPERIMENTAL.
   $hash = $c->openapi->input;
 
 Returns the data which has been L<validated|/openapi.validate> by the in
-OpenAPI specification.
+OpenAPI specification or returns C<undef> on invalid data.
 
 =head2 openapi.spec
 
@@ -272,8 +275,6 @@ Returns the OpenAPI specification for the current route:
     }
   }
 
-Note: This might return a JSON pointer in the future.
-
 =head2 openapi.validate
 
   # validate request
@@ -287,12 +288,10 @@ L</openapi.input>.
 
 =head2 reply.openapi
 
-  $c->reply->openapi($output, $http_status);
-  $c->reply->openapi;
+  $c->reply->openapi(\%output, $http_status);
 
-Will L<validate|/openapi.validate> C<$output> before passing it on to
-L<Mojolicious::Controller/render>. Calling this helper without any arguments
-will cause auto-rendering of input errors. See L</SYNOPSIS> for example.
+Will L<validate|/openapi.validate> C<%output> before passing it on to
+L<Mojolicious::Controller/render>.
 
 =head1 METHODS
 
@@ -303,19 +302,33 @@ will cause auto-rendering of input errors. See L</SYNOPSIS> for example.
 Loads the OpenAPI specification, validates it and add routes to L<$app>.
 It will also set up L</HELPERS>. C<%config> can have:
 
-  {
-    coerce    => 0,                           # default: 1
-    log_level => "debug",                     # default: warn
-    route     => $app->routes->under(...)     # not required
-    url       => "path/to/specification.json" # required
-  }
+=over 2
 
-C<route> can be specified in case you want to have a protected API.
+=item * coerce
 
 See L<JSON::Validator/coerce> for possible values that C<coerce> can take.
 
+Default: 1
+
+=item * log_level
+
+C<log_level> is used when logging invalid request/response error messages.
+
+Default: "warn".
+
+=item * route
+
+C<route> can be specified in case you want to have a protected API. Example:
+
+  $app->plugin(OpenAPI => {
+    route => $app->routes->under("/api")->to("user#auth"),
+    url   => $app->home->rel_file("cool.api"),
+  });
+
+=item * url
+
 See L<JSON::Validator/schema> for the different C<url> formats that is
-accepted. Note that relative paths will be relative to L<Mojo/home>.
+accepted.
 
 =head1 TODO
 
