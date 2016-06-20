@@ -45,27 +45,23 @@ sub _add_routes {
 
     for my $http_method (keys %{$paths->{$path}}) {
       next if $http_method =~ $X_RE;
-      my $route_path = $path;
-      my $op_spec    = $paths->{$path}{$http_method};
-      my $name       = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-      my $to         = $op_spec->{'x-mojo-to'};
-      my $parameters = $op_spec->{parameters} || [];
-      my %parameters = map { ($_->{name}, $_) } @{$op_spec->{parameters} || []};
+      my $op_spec = $paths->{$path}{$http_method};
+      my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+      my $to      = $op_spec->{'x-mojo-to'};
       my $endpoint;
 
-      $route_path =~ s/{([^}]+)}/{
-        my $name = $1;
-        my $type = $parameters{$name}{'x-mojo-placeholder'} || ':';
-        "($type$name)";
-      }/ge;
+      if ($name and $endpoint = $route->root->find($name)) {
+        $route->add_child($endpoint);
+      }
+      if (!$endpoint) {
+        $endpoint = $route->any(_route_path($path, $op_spec));
+        $endpoint->name($name) if $name;
+      }
 
-      $endpoint = $route->root->find($name) if $name;
-      $endpoint ? $route->add_child($endpoint) : ($endpoint = $route->any($route_path));
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $endpoint->to($_ => $_->{default})
-        for grep { $_->{in} eq 'path' and exists $_->{default} } @$parameters;
+        for grep { $_->{in} eq 'path' and exists $_->{default} } @{$op_spec->{parameters} || []};
       $endpoint->to({'openapi.op_spec' => $op_spec});
-      $endpoint->name($name) if $name;
       warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
     }
   }
@@ -134,6 +130,17 @@ sub _reply_spec {
   delete $spec->{id};
   local $spec->{host} = $c->req->url->to_abs->host_port;
   $c->render(json => $spec);
+}
+
+sub _route_path {
+  my ($path, $op_spec) = @_;
+  my %parameters = map { ($_->{name}, $_) } @{$op_spec->{parameters} || []};
+  $path =~ s/{([^}]+)}/{
+    my $pname = $1;
+    my $type = $parameters{$pname}{'x-mojo-placeholder'} || ':';
+    "($type$pname)";
+  }/ge;
+  return $path;
 }
 
 sub _validate {
