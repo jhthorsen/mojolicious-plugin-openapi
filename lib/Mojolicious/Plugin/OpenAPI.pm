@@ -179,28 +179,37 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
 =head1 SYNOPSIS
 
-=head2 Specification
+  use Mojolicious::Lite;
 
-This plugin reads an L<OpenAPI specification|https://openapis.org/specification>
-and generate routes and input/output rules from it. See L<JSON::Validator> for
-L<supported schema formats|JSON::Validator/Supported schema formats>.
+  # Will be moved under "basePath": /api/echo
+  post "/echo" => sub {
+    my $c = shift;
+    my $input = $c->openapi->input or return;
+    $c->reply->openapi($input->{body}, 200);
+  }, "echo";
 
+  # Load specification and start web server
+  plugin OpenAPI => {url => "data://main/api.json"};
+  app->start;
+
+  __DATA__
+  @@ api.json
   {
-    "basePath": "/api",
-    "paths": {
-      "/pets": {
-        "get": {
-          "x-mojo-to": "pet#list",
-          "summary": "Finds pets in the system",
-          "parameters": [],
-          "responses": {
+    "swagger" : "2.0",
+    "info" : { "version": "0.8", "title" : "Pets" },
+    "schemes" : [ "http" ],
+    "basePath" : "/api",
+    "paths" : {
+      "/echo" : {
+        "post" : {
+          "x-mojo-name" : "echo",
+          "parameters" : [
+            { "in": "body", "name": "body", "schema": { "type" : "object" } }
+          ],
+          "responses" : {
             "200": {
-              "description": "Pet response",
-              "schema": { "type": "array", "items": { "type": "object" } }
-            },
-            "default": {
-              "description": "Unexpected error",
-              "schema": { "$ref": "http://git.io/vcKD4#" }
+              "description": "Echo response",
+              "schema": { "type": "object" }
             }
           }
         }
@@ -208,70 +217,14 @@ L<supported schema formats|JSON::Validator/Supported schema formats>.
     }
   }
 
-The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key can
-either a plain string, object (hash) or an array. The string and hash will be
-passed directly to L<Mojolicious::Routes::Route/to>, while the array ref, will
-be flattened first. Examples:
-
-  "x-mojo-to": "pet#list"
-  $route->to("pet#list");
-
-  "x-mojo-to": {"controller": "pet", "action": "list", "foo": 123}
-  $route->to({controller => "pet", action => "list", foo => 123);
-
-  "x-mojo-to": ["pet#list", {"foo": 123}]
-  $route->to("pet#list", {foo => 123});
-
-The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
-The first part of the path ("/api") comes from C<basePath>, the second part
-comes from the key under C<paths>, and the HTTP method comes from the key under
-C</pets>.
-
-C<parameters> and C<responses> will be used to define rules for
-L<input|/openapi.input> and L<output|reply.openapi>.
-
-=head2 Application
-
-  package Myapp;
-  use Mojolicious;
-
-  sub startup {
-    my $app = shift;
-    $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
-  }
-
-The first thing in your code that you need to do is to load this plugin and the
-L</Specification>. See L</register> for information about what the plugin
-config can be, in addition to "url".
-
-=head2 Controller
-
-  package Myapp::Controller::Pet;
-
-  sub list {
-    my $c = shift;
-
-    # You might want to introspect the specification for the current route
-    my $spec = $c->openapi->spec;
-    unless ($spec->{'x-opening-hour'} == (localtime)[2]) {
-      return $c->reply->openapi([], 498);
-    }
-
-    # $input will be a hash ref if validated and undef on invalid input
-    my $input = $c->openapi->input or return;
-
-    # $output will be validated by the OpenAPI spec before rendered
-    my $output = {pets => [{name => "kit-e-cat"}]};
-    $c->reply->openapi($output, 200);
-  }
-
-The input and output to the action will only be validated if the
-L</openapi.input> and L</reply.openapi> methods are used.
-
-All OpenAPI powered actions will have L<auto-rendering|/reply.openapi> enabled,
-which means that the C<return;> above will render an error document.
-
 =head1 DESCRIPTION
+
+L<Mojolicious::Plugin::OpenAPI> is L<Mojolicious::Plugin> that add routes and
+input/output validation to your L<Mojolicious> application based on a OpenAPI
+(Swagger) specification.
+
+Have a look at the L</SEE ALSO> for references to more documentation, or jump
+right to the L<tutorial|Mojolicious::Plugin::OpenAPI::Guides::Tutorial>.
 
 L<Mojolicious::Plugin::OpenAPI> will replace L<Mojolicious::Plugin::Swagger2>.
 
@@ -396,6 +349,16 @@ the terms of the Artistic License version 2.0.
 
 =head1 SEE ALSO
 
-L<Mojolicious::Plugin::Swagger2>.
+=over 2
+
+=item * L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial>
+
+=item * L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>.
+
+=item * L<OpenAPI specification|https://openapis.org/specification>
+
+=item * L<Mojolicious::Plugin::Swagger2>.
+
+=back
 
 =cut

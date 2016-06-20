@@ -1,0 +1,113 @@
+=head1 NAME
+
+Mojolicious::Plugin::OpenAPI::Guides::Tutorial - Mojolicious <3 Open API (Swagger)
+
+=head1 OVERVIEW
+
+This guide will give you an introduction to how to use
+L<Mojolicious::Plugin::OpenAPI>.
+
+You can also have a look at
+L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>,
+which includes reasons for why you want to use Open API - also known as
+L<Swagger2>.
+
+=head1 TUTORIAL
+
+=head2 Specification
+
+This plugin reads an L<OpenAPI specification|https://openapis.org/specification>
+and generate routes and input/output rules from it. See L<JSON::Validator> for
+L<supported schema file formats|JSON::Validator/Supported schema formats>.
+
+  {
+    "basePath": "/api",
+    "paths": {
+      "/pets": {
+        "get": {
+          "x-mojo-to": "pet#list",
+          "summary": "Finds pets in the system",
+          "parameters": [],
+          "responses": {
+            "200": {
+              "description": "Pet response",
+              "schema": { "type": "array", "items": { "type": "object" } }
+            },
+            "default": {
+              "description": "Unexpected error",
+              "schema": { "$ref": "http://git.io/vcKD4#" }
+            }
+          }
+        }
+      }
+    }
+  }
+
+The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key can
+either a plain string, object (hash) or an array. The string and hash will be
+passed directly to L<Mojolicious::Routes::Route/to>, while the array ref, will
+be flattened first. Examples:
+
+  "x-mojo-to": "pet#list"
+  $route->to("pet#list");
+
+  "x-mojo-to": {"controller": "pet", "action": "list", "foo": 123}
+  $route->to({controller => "pet", action => "list", foo => 123);
+
+  "x-mojo-to": ["pet#list", {"foo": 123}]
+  $route->to("pet#list", {foo => 123});
+
+The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
+The first part of the path ("/api") comes from C<basePath>, the second part
+comes from the key under C<paths>, and the HTTP method comes from the key under
+C</pets>.
+
+C<parameters> and C<responses> will be used to define rules for
+L<input|/openapi.input> and L<output|reply.openapi>.
+
+=head2 Application
+
+  package Myapp;
+  use Mojolicious;
+
+  sub startup {
+    my $app = shift;
+    $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
+  }
+
+The first thing in your code that you need to do is to load this plugin and the
+L</Specification>. See L</register> for information about what the plugin
+config can be, in addition to "url".
+
+=head2 Controller
+
+  package Myapp::Controller::Pet;
+
+  sub list {
+    my $c = shift;
+
+    # You might want to introspect the specification for the current route
+    my $spec = $c->openapi->spec;
+    unless ($spec->{'x-opening-hour'} == (localtime)[2]) {
+      return $c->reply->openapi([], 498);
+    }
+
+    # $input will be a hash ref if validated and undef on invalid input
+    my $input = $c->openapi->input or return;
+
+    # $output will be validated by the OpenAPI spec before rendered
+    my $output = {pets => [{name => "kit-e-cat"}]};
+    $c->reply->openapi($output, 200);
+  }
+
+The input and output to the action will only be validated if the
+L</openapi.input> and L</reply.openapi> methods are used.
+
+All OpenAPI powered actions will have L<auto-rendering|/reply.openapi> enabled,
+which means that the C<return;> above will render an error document.
+
+=head1 SEE ALSO
+
+L<Mojolicious::Plugin::OpenAPI>.
+
+=cut
