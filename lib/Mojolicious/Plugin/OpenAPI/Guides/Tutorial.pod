@@ -52,15 +52,16 @@ comes from the key under C<paths>, and the HTTP method comes from the key under
 C</pets>.
 
 C<parameters> and C<responses> will be used to define rules for
-L<input|/openapi.input> and L<output|reply.openapi>. Continue reading for
+L<input|Mojolicious::Plugin::OpenAPI/openapi.input> and
+L<output|Mojolicious::Plugin::OpenAPI/reply.openapi>. Continue reading for
 explanation about L</x-mojo-to>.
 
 =head3 x-mojo-to
 
-The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key can
-either a plain string, object (hash) or an array. The string and hash will be
-passed directly to L<Mojolicious::Routes::Route/to>, while the array ref will
-be flatten. Examples:
+The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key
+can be either a plain string, object (hash) or an array. The string and hash
+will be passed directly to L<Mojolicious::Routes::Route/to>, while the array
+ref will be flatten. Examples:
 
   "x-mojo-to": "pet#list"
   $route->to("pet#list");
@@ -75,8 +76,8 @@ be flatten. Examples:
 
 "x-mojo-name" is also a non-standard key, which will either find an existing
 route (useful for L<Mojolicious::Lite> apps) or name the route which is
-generated. The default value used is "operationId", unless "x-mojo-name" is
-specified.
+generated. The default value used is "operationId" (see the specification),
+unless "x-mojo-name" is specified.
 
 =head2 Application
 
@@ -148,6 +149,7 @@ The HTTP status code on invalid input is 400, and 500 for invalid output
 
 =head1 SEE ALSO
 
-L<Mojolicious::Plugin::OpenAPI>.
+L<Mojolicious::Plugin::OpenAPI>,
+L<https://openapis.org/specification>.
 
 =cut
