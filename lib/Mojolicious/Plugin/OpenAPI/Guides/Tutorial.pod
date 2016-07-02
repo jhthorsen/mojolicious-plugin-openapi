@@ -10,7 +10,7 @@ L<Mojolicious::Plugin::OpenAPI>.
 You can also have a look at
 L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>,
 which includes reasons for why you want to use Open API - also known as
-L<Swagger2>.
+L<Swagger|Swagger2>.
 
 =head1 TUTORIAL
 
@@ -46,12 +46,21 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
     }
   }
 
+The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
+The first part of the path ("/api") comes from C<basePath>, the second part
+comes from the key under C<paths>, and the HTTP method comes from the key under
+C</pets>.
+
+C<parameters> and C<responses> will be used to define rules for
+L<input|/openapi.input> and L<output|reply.openapi>. Continue reading for
+explanation about L</x-mojo-to>.
+
 =head3 x-mojo-to
 
 The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key can
 either a plain string, object (hash) or an array. The string and hash will be
-passed directly to L<Mojolicious::Routes::Route/to>, while the array ref, will
-be flattened first. Examples:
+passed directly to L<Mojolicious::Routes::Route/to>, while the array ref will
+be flatten. Examples:
 
   "x-mojo-to": "pet#list"
   $route->to("pet#list");
@@ -61,14 +70,6 @@ be flattened first. Examples:
 
   "x-mojo-to": ["pet#list", {"foo": 123}]
   $route->to("pet#list", {foo => 123});
-
-The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
-The first part of the path ("/api") comes from C<basePath>, the second part
-comes from the key under C<paths>, and the HTTP method comes from the key under
-C</pets>.
-
-C<parameters> and C<responses> will be used to define rules for
-L<input|/openapi.input> and L<output|reply.openapi>.
 
 =head3 x-mojo-name
 
@@ -88,11 +89,11 @@ specified.
   }
 
 The first thing in your code that you need to do is to load this plugin and the
-L</Specification>. See L</register> for information about what the plugin
-config can be, in addition to "url".
+L</Specification>. See L<Mojolicious::Plugin::OpenAPI/register> for information
+about what the plugin config can be.
 
-See L<Mojolicious::Plugin::OpenAPI/SYNOPSIS> for example L<Mojolicious::Lite>
-application.
+See also L<Mojolicious::Plugin::OpenAPI/SYNOPSIS> for example
+L<Mojolicious::Lite> application.
 
 =head2 Controller
 
@@ -122,11 +123,9 @@ application.
     $c->reply->openapi(200 => $output);
   }
 
-The input and output to the action will only be validated if the
-L</openapi.input> and L</reply.openapi> methods are used.
-
-All OpenAPI powered actions will have L<auto-rendering|/reply.openapi> enabled,
-which means that the C<return;> above will render an error document.
+The input will be validated using
+L<Mojolicious::Plugin::OpenAPI/openapi.invalid_input> while the output is
+validated through L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
 
 =head2 Default error document
 
