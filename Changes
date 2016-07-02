@@ -1,5 +1,11 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+0.03 Not Released
+ - Need to use standard Mojolicious methods to extract input data
+ - Add openapi.invalid_input helper
+ - Remove openapi.validate helper
+ - Remove openapi.input helper
+
 0.02 2016-06-11T07:32:51-0700
  - Improved documentation
  - Add support for MOJO_OPENAPI_LOG_LEVEL=error

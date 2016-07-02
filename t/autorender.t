@@ -6,9 +6,8 @@ use Mojolicious::Lite;
 
 post '/auto' => sub {
   my $c = shift;
-  my $input = $c->openapi->input or return;
-  $c->stash('openapi.io' => {errors => ['ignore'], status => 499});    # ignore this
-  return $c->reply->openapi([42]) if $c->openapi->input->{body}{invalid_output};
+  return if $c->openapi->invalid_input;
+  return $c->reply->openapi(200 => [42]) if $c->req->json->{invalid_output};
   return $c->render(text => 'make sure openapi.errors is part of output');
   },
   'Auto';

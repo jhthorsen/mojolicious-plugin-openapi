@@ -16,10 +16,9 @@ sub register {
   my ($self, $app, $config) = @_;
   my $api_spec = $self->_load_spec($app, $config);
 
-  $app->helper('openapi.input'    => \&_input);
-  $app->helper('openapi.spec'     => sub { shift->stash('openapi.op_spec') });
-  $app->helper('openapi.validate' => sub { $self->_validate(@_) });
-  $app->helper('reply.openapi'    => \&_reply);
+  $app->helper('openapi.invalid_input' => sub { $self->_validate_request(@_) });
+  $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
+  $app->helper('reply.openapi'         => sub { $self->_reply(@_) });
   $app->hook(before_render => \&_before_render);
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
@@ -75,20 +74,12 @@ sub _before_render {
   return if !$args->{exception} and grep {/^\w+$/} keys %$args;
   return unless $c->stash('openapi.op_spec');
   my $format = $c->stash('format') || 'json';
-  my $io = $args->{exception} ? $EXCEPTION : $c->stash('openapi.io') || $NOT_IMPLEMENTED;
+  my $io = $args->{exception} ? $EXCEPTION : $NOT_IMPLEMENTED;
   $args->{status} = delete $io->{status};
 
   # TODO: Is $format a good idea? Was thinking someone might want to set
   # $c->stash(format => "xml") and it "should just work"
   $args->{$format} = $io;
-}
-
-sub _input {
-  my $c     = shift;
-  my $stash = $c->stash;
-  return $stash->{'openapi.input'} if $stash->{'openapi.input'};
-  return undef if $c->openapi->validate;
-  return $stash->{'openapi.input'};
 }
 
 sub _load_spec {
@@ -115,11 +106,13 @@ sub _log {
 }
 
 sub _reply {
-  my ($c, $output, $status) = @_;
+  my ($self, $c, $status, $output) = @_;
   my $format = $c->stash('format') || 'json';
-  $status ||= 200;
-  return $c->render if $c->openapi->validate($output, $status);
-  return $c->render($format => $output, status => $status);
+  return $c->render($format => $output, status => $status)
+    unless my @errors
+    = $self->_validator->validate_response($c, $c->openapi->spec, $status, $output);
+  $self->_log($c, '>>>', \@errors);
+  $c->render(json => {errors => \@errors, status => 500}, status => 500);
 }
 
 sub _reply_spec {
@@ -143,27 +136,15 @@ sub _route_path {
   return $path;
 }
 
-sub _validate {
-  my ($self, $c, $output, $status) = @_;
+sub _validate_request {
+  my ($self, $c, $args) = @_;
   my $op_spec = $c->openapi->spec;
-  my @errors;
+  my @errors = $self->_validator->validate_request($c, $op_spec, {});
 
-  if (@_ > 2) {
-    $status ||= 200;
-    if (@errors = $self->_validator->validate_response($c, $op_spec, $status, $output)) {
-      $c->stash('openapi.io' => {errors => \@errors, status => 500});
-      $self->_log($c, '>>>', \@errors);
-    }
-  }
-  else {
-    @errors = $self->_validator->validate_request($c, $op_spec, \my %input);
-    if (@errors) {
-      $c->stash('openapi.io' => {errors => \@errors, status => 400});
-      $self->_log($c, '<<<', \@errors);
-    }
-    else {
-      $c->stash('openapi.input' => \%input);
-    }
+  if (@errors) {
+    $self->_log($c, '<<<', \@errors);
+    $c->render(json => {errors => \@errors, status => 400}, status => 400)
+      if $args->{auto_render} // 1;
   }
 
   return @errors;
@@ -181,11 +162,11 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
   use Mojolicious::Lite;
 
-  # Will be moved under "basePath": /api/echo
+  # Will be moved under "basePath", resulting in "POST /api/echo"
   post "/echo" => sub {
     my $c = shift;
-    my $input = $c->openapi->input or return;
-    $c->reply->openapi($input->{body}, 200);
+    $c->openapi->invalid_input and return;
+    $c->reply->openapi(200 => $c->req->json);
   }, "echo";
 
   # Load specification and start web server
@@ -232,12 +213,15 @@ This plugin is currently EXPERIMENTAL.
 
 =head1 HELPERS
 
-=head2 openapi.input
+=head2 openapi.invalid_input
 
-  $hash = $c->openapi->input;
+  @errors = $c->openapi->invalid_input;
+  @errors = $c->openapi->invalid_input({auto_render => 0});
 
-Returns the request parameters if they are L<valid|/openapi.validate>, and
-C<undef> on invalid input.
+Used to validate a request. C<@errors> holds a list of
+L<JSON::Validator::Error> objects or empty list on valid input. Setting
+C<auto_render> to a false value will disable the internal auto rendering. This
+is useful if you want to craft a custom resonse.
 
 =head2 openapi.spec
 
@@ -255,20 +239,9 @@ Returns the OpenAPI specification for the current route. Example:
     }
   }
 
-=head2 openapi.validate
-
-  # validate request
-  @errors = $c->openapi->validate;
-
-  # validate response
-  @errors = $c->openapi->validate($output, $http_status);
-
-Used to validate input or output data. Request validation is always done by
-L</openapi.input>.
-
 =head2 reply.openapi
 
-  $c->reply->openapi(\%output, $http_status);
+  $c->reply->openapi($status => $output);
 
 Will L<validate|/openapi.validate> C<%output> before passing it on to
 L<Mojolicious::Controller/render>. Note that C<%output> will be passed on using
@@ -277,6 +250,8 @@ defaults to "json". This also goes for L<auto-rendering|/Controller>. Example:
 
   my $format = $c->stash("format") || "json";
   $c->render($format => \%output);
+
+C<$status> is a HTTP status code and C<$output> is the data structure to render.
 
 =head1 METHODS
 
