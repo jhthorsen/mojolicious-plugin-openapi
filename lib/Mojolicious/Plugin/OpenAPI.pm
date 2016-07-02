@@ -139,7 +139,7 @@ sub _route_path {
 sub _validate_request {
   my ($self, $c, $args) = @_;
   my $op_spec = $c->openapi->spec;
-  my @errors = $self->_validator->validate_request($c, $op_spec, {});
+  my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
 
   if (@errors) {
     $self->_log($c, '<<<', \@errors);
@@ -165,8 +165,8 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
   # Will be moved under "basePath", resulting in "POST /api/echo"
   post "/echo" => sub {
     my $c = shift;
-    $c->openapi->invalid_input and return;
-    $c->reply->openapi(200 => $c->req->json);
+    return if $c->openapi->invalid_input;
+    return $c->reply->openapi(200 => $c->validation->param("body"));
   }, "echo";
 
   # Load specification and start web server
@@ -222,6 +222,16 @@ Used to validate a request. C<@errors> holds a list of
 L<JSON::Validator::Error> objects or empty list on valid input. Setting
 C<auto_render> to a false value will disable the internal auto rendering. This
 is useful if you want to craft a custom resonse.
+
+Validated input parameters will be copied to
+C<Mojolicious::Controller/validation>, which again can be extracted by the
+"name" in the parameters list from the spec. Example:
+
+  # specification:
+  "parameters": [{"in": "body", "name": "whatever", "schema": {"type": "object"}}],
+
+  # controller
+  my $body = $c->validation->param("whatever");
 
 =head2 openapi.spec
 
