@@ -27,7 +27,10 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
         "get": {
           "x-mojo-to": "pet#list",
           "summary": "Finds pets in the system",
-          "parameters": [],
+          "parameters": [
+            {"in": "body", "name": "body", "schema": {"type": "object"}},
+            {"in": "query", "name": "age", "type": "integer"}}
+          ],
           "responses": {
             "200": {
               "description": "Pet response",
@@ -42,6 +45,8 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
       }
     }
   }
+
+=head3 x-mojo-to
 
 The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key can
 either a plain string, object (hash) or an array. The string and hash will be
@@ -65,6 +70,13 @@ C</pets>.
 C<parameters> and C<responses> will be used to define rules for
 L<input|/openapi.input> and L<output|reply.openapi>.
 
+=head3 x-mojo-name
+
+"x-mojo-name" is also a non-standard key, which will either find an existing
+route (useful for L<Mojolicious::Lite> apps) or name the route which is
+generated. The default value used is "operationId", unless "x-mojo-name" is
+specified.
+
 =head2 Application
 
   package Myapp;
@@ -79,6 +91,9 @@ The first thing in your code that you need to do is to load this plugin and the
 L</Specification>. See L</register> for information about what the plugin
 config can be, in addition to "url".
 
+See L<Mojolicious::Plugin::OpenAPI/SYNOPSIS> for example L<Mojolicious::Lite>
+application.
+
 =head2 Controller
 
   package Myapp::Controller::Pet;
@@ -86,18 +101,25 @@ config can be, in addition to "url".
   sub list {
     my $c = shift;
 
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    return if $c->openapi->invalid_input;
+
     # You might want to introspect the specification for the current route
     my $spec = $c->openapi->spec;
     unless ($spec->{'x-opening-hour'} == (localtime)[2]) {
       return $c->reply->openapi([], 498);
     }
 
-    # $input will be a hash ref if validated and undef on invalid input
-    my $input = $c->openapi->input or return;
+    # $c->openapi->invalid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
+    my $input = $c->validation->output;
+    my $age   = $c->param("age"); # same as $input->{age}
+    my $body  = $c->req->json;    # same as $input->{body}
 
     # $output will be validated by the OpenAPI spec before rendered
     my $output = {pets => [{name => "kit-e-cat"}]};
-    $c->reply->openapi($output, 200);
+    $c->reply->openapi(200 => $output);
   }
 
 The input and output to the action will only be validated if the
@@ -105,6 +127,25 @@ L</openapi.input> and L</reply.openapi> methods are used.
 
 All OpenAPI powered actions will have L<auto-rendering|/reply.openapi> enabled,
 which means that the C<return;> above will render an error document.
+
+=head2 Default error document
+
+The default error document rendered on invalid input and output looks like
+this:
+
+  {
+    "errors": [
+      {"path": "/some/json/path", "message": "Some error message"},
+      {"path": "/age", "message": "Expected integer - got string."}
+    ]
+  }
+
+The "errors" key will contain one element for all the invalid data, and not
+just the first one. The useful part for a client is mostly the "path", while
+the "message" is just to add some human readable debug information for why this
+request/response failed.
+
+The HTTP status code on invalid input is 400, and 500 for invalid output
 
 =head1 SEE ALSO
 
