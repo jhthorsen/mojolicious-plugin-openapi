@@ -253,15 +253,15 @@ Returns the OpenAPI specification for the current route. Example:
 
   $c->reply->openapi($status => $output);
 
-Will L<validate|/openapi.validate> C<%output> before passing it on to
-L<Mojolicious::Controller/render>. Note that C<%output> will be passed on using
+Will L<validate|/openapi.validate> C<$output> before passing it on to
+L<Mojolicious::Controller/render>. Note that C<$output> will be passed on using
 the L<format|Mojolicious::Guides::Rendering/Content type> key in stash, which
 defaults to "json". This also goes for L<auto-rendering|/Controller>. Example:
 
   my $format = $c->stash("format") || "json";
   $c->render($format => \%output);
 
-C<$status> is a HTTP status code and C<$output> is the data structure to render.
+C<$status> is a HTTP status code.
 
 =head1 METHODS
 
