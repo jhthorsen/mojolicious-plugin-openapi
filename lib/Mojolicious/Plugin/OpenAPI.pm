@@ -53,7 +53,7 @@ sub _add_routes {
         $route->add_child($endpoint);
       }
       if (!$endpoint) {
-        $endpoint = $route->any(_route_path($path, $op_spec));
+        $endpoint = $route->$http_method(_route_path($path, $op_spec));
         $endpoint->name($name) if $name;
       }
 
