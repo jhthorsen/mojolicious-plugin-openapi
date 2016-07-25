@@ -4,7 +4,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 use JSON::Validator::OpenAPI;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 my $EXCEPTION = {errors => [{message => 'Internal server error.', path => '/'}], status => 500};
 my $NOT_IMPLEMENTED = {errors => [{message => 'Not implemented.', path => '/'}], status => 501};
