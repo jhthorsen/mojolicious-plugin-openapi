@@ -2,28 +2,37 @@ NAME
     Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
 SYNOPSIS
-  Specification
-    This plugin reads an OpenAPI specification
-    <https://openapis.org/specification> and generate routes and
-    input/output rules from it. See JSON::Validator for supported schema
-    formats.
+      use Mojolicious::Lite;
 
+      # Will be moved under "basePath", resulting in "POST /api/echo"
+      post "/echo" => sub {
+        my $c = shift;
+        return if $c->openapi->invalid_input;
+        return $c->reply->openapi(200 => $c->validation->param("body"));
+      }, "echo";
+
+      # Load specification and start web server
+      plugin OpenAPI => {url => "data://main/api.json"};
+      app->start;
+
+      __DATA__
+      @@ api.json
       {
-        "basePath": "/api",
-        "paths": {
-          "/pets": {
-            "get": {
-              "x-mojo-to": "pet#list",
-              "summary": "Finds pets in the system",
-              "parameters": [],
-              "responses": {
+        "swagger" : "2.0",
+        "info" : { "version": "0.8", "title" : "Pets" },
+        "schemes" : [ "http" ],
+        "basePath" : "/api",
+        "paths" : {
+          "/echo" : {
+            "post" : {
+              "x-mojo-name" : "echo",
+              "parameters" : [
+                { "in": "body", "name": "body", "schema": { "type" : "object" } }
+              ],
+              "responses" : {
                 "200": {
-                  "description": "Pet response",
-                  "schema": { "type": "array", "items": { "type": "object" } }
-                },
-                "default": {
-                  "description": "Unexpected error",
-                  "schema": { "$ref": "http://git.io/vcKD4#" }
+                  "description": "Echo response",
+                  "schema": { "type": "object" }
                 }
               }
             }
@@ -31,78 +40,37 @@ SYNOPSIS
         }
       }
 
-    The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to"
-    key can either a plain string, object (hash) or an array. The string and
-    hash will be passed directly to "to" in Mojolicious::Routes::Route,
-    while the array ref, will be flattened first. Examples:
-
-      "x-mojo-to": "pet#list"
-      $route->to("pet#list");
-
-      "x-mojo-to": {"controller": "pet", "action": "list", "foo": 123}
-      $route->to({controller => "pet", action => "list", foo => 123);
-
-      "x-mojo-to": ["pet#list", {"foo": 123}]
-      $route->to("pet#list", {foo => 123});
-
-    The complete HTTP request for getting the "pet list" will be "GET
-    /api/pets" The first part of the path ("/api") comes from "basePath",
-    the second part comes from the key under "paths", and the HTTP method
-    comes from the key under "/pets".
-
-    "parameters" and "responses" will be used to define rules for input and
-    output.
-
-  Application
-      package Myapp;
-      use Mojolicious;
-
-      sub startup {
-        my $app = shift;
-        $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
-      }
-
-    The first thing in your code that you need to do is to load this plugin
-    and the "Specification". See "register" for information about what the
-    plugin config can be, in addition to "url".
-
-  Controller
-      package Myapp::Controller::Pet;
-
-      sub list {
-        my $c = shift;
-
-        # You might want to introspect the specification for the current route
-        my $spec = $c->openapi->spec;
-        unless ($spec->{'x-opening-hour'} == (localtime)[2]) {
-          return $c->reply->openapi([], 498);
-        }
-
-        # $input will be a hash ref if validated and undef on invalid input
-        my $input = $c->openapi->input or return;
-
-        # $output will be validated by the OpenAPI spec before rendered
-        my $output = {pets => [{name => "kit-e-cat"}]};
-        $c->reply->openapi($output, 200);
-      }
-
-    The input and output to the action will only be validated if the
-    "openapi.input" and "reply.openapi" methods are used.
-
-    All OpenAPI powered actions will have auto-rendering enabled, which
-    means that the "return;" above will render an error document.
-
 DESCRIPTION
+    Mojolicious::Plugin::OpenAPI is Mojolicious::Plugin that add routes and
+    input/output validation to your Mojolicious application based on a
+    OpenAPI (Swagger) specification.
+
+    Have a look at the "SEE ALSO" for references to more documentation, or
+    jump right to the tutorial.
+
     Mojolicious::Plugin::OpenAPI will replace Mojolicious::Plugin::Swagger2.
 
     This plugin is currently EXPERIMENTAL.
 
 HELPERS
-  openapi.input
-      $hash = $c->openapi->input;
+  openapi.invalid_input
+      @errors = $c->openapi->invalid_input;
+      @errors = $c->openapi->invalid_input({auto_render => 0});
 
-    Returns the request parameters if they are valid, and "undef" on invalid
-    input.
+    Used to validate a request. @errors holds a list of
+    JSON::Validator::Error objects or empty list on valid input. Setting
+    "auto_render" to a false value will disable the internal auto rendering.
+    This is useful if you want to craft a custom resonse.
+
+    Validated input parameters will be copied to
+    "Mojolicious::Controller/validation", which again can be extracted by
+    the "name" in the parameters list from the spec. Example:
+
+      # specification:
+      "parameters": [{"in": "body", "name": "whatever", "schema": {"type": "object"}}],
+
+      # controller
+      my $body = $c->validation->param("whatever");
 
   openapi.spec
       $hash = $c->openapi->spec;
@@ -119,26 +87,18 @@ HELPERS
         }
       }
 
-  openapi.validate
-      # validate request
-      @errors = $c->openapi->validate;
-
-      # validate response
-      @errors = $c->openapi->validate($output, $http_status);
-
-    Used to validate input or output data. Request validation is always done
-    by "openapi.input".
-
   reply.openapi
-      $c->reply->openapi(\%output, $http_status);
+      $c->reply->openapi($status => $output);
 
-    Will validate %output before passing it on to "render" in
-    Mojolicious::Controller. Note that %output will be passed on using the
+    Will validate $output before passing it on to "render" in
+    Mojolicious::Controller. Note that $output will be passed on using the
     format key in stash, which defaults to "json". This also goes for
     auto-rendering. Example:
 
       my $format = $c->stash("format") || "json";
       $c->render($format => \%output);
+
+    $status is a HTTP status code.
 
 METHODS
   register
@@ -202,5 +162,12 @@ COPYRIGHT AND LICENSE
     under the terms of the Artistic License version 2.0.
 
 SEE ALSO
-    Mojolicious::Plugin::Swagger2.
+    * Mojolicious::Plugin::OpenAPI::Guides::Tutorial
+
+    * <http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.ht
+      ml>.
+
+    * OpenAPI specification <https://openapis.org/specification>
+
+    * Mojolicious::Plugin::Swagger2.
 
