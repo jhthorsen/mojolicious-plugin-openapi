@@ -25,13 +25,14 @@ sub register {
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
-  $self->_add_routes($app, $api_spec, $config->{route});
+  $self->_add_routes($app, $api_spec, $config);
 }
 
 sub _add_routes {
-  my ($self, $app, $api_spec, $route) = @_;
+  my ($self, $app, $api_spec, $config) = @_;
   my $base_path = $api_spec->get('/basePath') || '/';
-  my $paths = $api_spec->get('/paths');
+  my $paths     = $api_spec->get('/paths');
+  my $route     = $config->{route};
 
   $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route = $app->routes->any($base_path) unless $route;
@@ -41,7 +42,11 @@ sub _add_routes {
   push @{$app->defaults->{'openapi.base_paths'}}, $base_path;
 
   $route->to('openapi.api_spec' => $api_spec);
-  $route->get->to(cb => \&_reply_spec);
+  my $spec_route = $route->get->to(cb => \&_reply_spec);
+
+  if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
+    $spec_route->name($spec_route_name);
+  }
 
   for my $path (sort { length $a <=> length $b } keys %$paths) {
     next if $path =~ $X_RE;
@@ -301,6 +306,12 @@ C<route> can be specified in case you want to have a protected API. Example:
     route => $app->routes->under("/api")->to("user#auth"),
     url   => $app->home->rel_file("cool.api"),
   });
+
+=item * spec_route_name
+
+Name of the route that handles the "basePath" part of the specification and
+serves the specification. Defaults to "x-mojo-name" in the specification at
+the top level.
 
 =item * url
 
