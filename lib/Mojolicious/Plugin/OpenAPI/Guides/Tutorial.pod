@@ -147,6 +147,31 @@ request/response failed.
 
 The HTTP status code on invalid input is 400, and 500 for invalid output
 
+=head2 Rendering binary data
+
+Rendering binary data such as images can be accomplished by creating a
+L<Mojo::Asset> object and pass it on to
+L<Mojolicious::Plugin::OpenAPI/reply.openapi>, like this:
+
+  sub get_image {
+    my $c = shift->openapi->valid_input or return;
+    my $asset = Mojo::Asset::File->new(path => "image.jpeg");
+    $c->reply->openapi(200 => $asset);
+  }
+
+The example above will try to guess the "Content-Type" by looking at the
+extension of L<Mojo::Asset::File/path> and default to
+"application/octet-stream" if the extension is unknown. If you want to specify
+another content type, then simple define it up front:
+
+  sub get_text {
+    my $c = shift->openapi->valid_input or return;
+    my $asset = Mojo::Asset::Memory->new;
+    $asset->add_chunk("some data");
+    $c->res->headers->content_type("text/plain");
+    $c->reply->openapi(200 => $asset);
+  }
+
 =head1 SEE ALSO
 
 L<Mojolicious::Plugin::OpenAPI>,

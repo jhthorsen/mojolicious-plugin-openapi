@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+0.07 Not Released
+ - Add support for serving binary data
+
 0.06 2016-07-26T18:56:50+0200
  - Add support for naming baseUrl (specification) route
  - Add openapi.valid_input helper

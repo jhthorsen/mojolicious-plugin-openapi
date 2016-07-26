@@ -132,11 +132,22 @@ sub _reply {
   my ($c, $status, $output) = @_;
   my $self = $c->stash('openapi.object');
   my $format = $c->stash('format') || 'json';
-  return $c->render($format => $output, status => $status)
-    unless my @errors
-    = $self->_validator->validate_response($c, $c->openapi->spec, $status, $output);
+
+  if (UNIVERSAL::isa($output, 'Mojo::Asset')) {
+    my $h = $c->res->headers;
+    if (!$h->content_type and $output->isa('Mojo::Asset::File')) {
+      my $types = $c->app->types;
+      my $type = $output->path =~ /\.(\w+)$/ ? $types->type($1) : undef;
+      $h->content_type($type || $types->type('bin'));
+    }
+    return $c->reply->asset($output);
+  }
+
+  my @errors = $self->_validator->validate_response($c, $c->openapi->spec, $status, $output);
+  return $c->render($format => $output, status => $status) unless @errors;
+
   $self->_log($c, '>>>', \@errors);
-  $c->render(json => {errors => \@errors, status => 500}, status => 500);
+  $c->render($format => {errors => \@errors, status => 500}, status => 500);
 }
 
 sub _reply_spec {
