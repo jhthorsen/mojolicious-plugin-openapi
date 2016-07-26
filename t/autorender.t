@@ -5,8 +5,7 @@ use Test::More;
 use Mojolicious::Lite;
 
 post '/auto' => sub {
-  my $c = shift;
-  return if $c->openapi->invalid_input;
+  my $c = shift->openapi->valid_input or return;
   return $c->reply->openapi(200 => [42]) if $c->req->json->{invalid_output};
   return $c->render(text => 'make sure openapi.errors is part of output');
   },

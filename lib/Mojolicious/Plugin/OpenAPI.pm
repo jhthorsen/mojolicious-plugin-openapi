@@ -19,6 +19,7 @@ sub register {
   my $api_spec = $self->_load_spec($app, $config);
 
   $app->helper('openapi.invalid_input' => sub { $self->_validate_request(@_) });
+  $app->helper('openapi.valid_input'   => sub { $self->_validate_request(@_) ? undef : $_[0] });
   $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
   $app->helper('reply.openapi'         => sub { $self->_reply(@_) });
   $app->hook(before_render => \&_before_render) unless $app->defaults->{'openapi.base_paths'};
@@ -172,9 +173,8 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
   # Will be moved under "basePath", resulting in "POST /api/echo"
   post "/echo" => sub {
-    my $c = shift;
-    return if $c->openapi->invalid_input;
-    return $c->reply->openapi(200 => $c->validation->param("body"));
+    my $c = shift->openapi->valid_input or return;
+    $c->reply->openapi(200 => $c->validation->param("body"));
   }, "echo";
 
   # Load specification and start web server
@@ -256,6 +256,16 @@ Returns the OpenAPI specification for the current route. Example:
       }
     }
   }
+
+=head2 openapi.valid_input
+
+  $c = $c->openapi->valid_input;
+
+Returns the L<Mojolicious::Controller> object if the input is valid. This
+helper will also auto render a response. Use L</openapi.invalid_input> if this
+is not the desired behavior.
+
+See L</SYNOPSIS> for example usage.
 
 =head2 reply.openapi
 
