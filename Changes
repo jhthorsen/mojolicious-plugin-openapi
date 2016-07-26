@@ -3,6 +3,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 0.06 Not Released
  - Add support for naming baseUrl (specification) route
  - Add openapi.valid_input helper
+ - Fix loading the plugin twice
 
 0.05 2016-07-26T15:04:25+0200
  - Fix "false" must be false and not true

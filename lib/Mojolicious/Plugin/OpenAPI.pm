@@ -18,11 +18,13 @@ sub register {
   my ($self, $app, $config) = @_;
   my $api_spec = $self->_load_spec($app, $config);
 
-  $app->helper('openapi.invalid_input' => sub { $self->_validate_request(@_) });
-  $app->helper('openapi.valid_input'   => sub { $self->_validate_request(@_) ? undef : $_[0] });
-  $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
-  $app->helper('reply.openapi'         => sub { $self->_reply(@_) });
-  $app->hook(before_render => \&_before_render) unless $app->defaults->{'openapi.base_paths'};
+  unless ($app->defaults->{'openapi.base_paths'}) {
+    $app->helper('openapi.invalid_input' => \&_invalid_input);
+    $app->helper('openapi.valid_input'   => \&_valid_input);
+    $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
+    $app->helper('reply.openapi'         => \&_reply);
+    $app->hook(before_render => \&_before_render);
+  }
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
@@ -41,10 +43,9 @@ sub _add_routes {
   $base_path =~ s!/$!!;
 
   push @{$app->defaults->{'openapi.base_paths'}}, $base_path;
+  $route->to({'openapi.api_spec' => $api_spec, 'openapi.object' => $self});
 
-  $route->to('openapi.api_spec' => $api_spec);
   my $spec_route = $route->get->to(cb => \&_reply_spec);
-
   if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
     $spec_route->name($spec_route_name);
   }
@@ -68,8 +69,6 @@ sub _add_routes {
       }
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $endpoint->to($_ => $_->{default})
-        for grep { $_->{in} eq 'path' and exists $_->{default} } @{$op_spec->{parameters} || []};
       $endpoint->to({'openapi.op_spec' => $op_spec});
       warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
     }
@@ -89,6 +88,21 @@ sub _before_render {
   my $res = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : NOT_IMPLEMENTED();
   $args->{status} = $res->{status};
   $args->{$format} = $res;
+}
+
+sub _invalid_input {
+  my ($c, $args) = @_;
+  my $self    = $c->stash('openapi.object');
+  my $op_spec = $c->openapi->spec;
+  my @errors  = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
+
+  if (@errors) {
+    $self->_log($c, '<<<', \@errors);
+    $c->render(json => {errors => \@errors, status => 400}, status => 400)
+      if $args->{auto_render} // 1;
+  }
+
+  return @errors;
 }
 
 sub _load_spec {
@@ -115,7 +129,8 @@ sub _log {
 }
 
 sub _reply {
-  my ($self, $c, $status, $output) = @_;
+  my ($c, $status, $output) = @_;
+  my $self = $c->stash('openapi.object');
   my $format = $c->stash('format') || 'json';
   return $c->render($format => $output, status => $status)
     unless my @errors
@@ -145,19 +160,7 @@ sub _route_path {
   return $path;
 }
 
-sub _validate_request {
-  my ($self, $c, $args) = @_;
-  my $op_spec = $c->openapi->spec;
-  my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
-
-  if (@errors) {
-    $self->_log($c, '<<<', \@errors);
-    $c->render(json => {errors => \@errors, status => 400}, status => 400)
-      if $args->{auto_render} // 1;
-  }
-
-  return @errors;
-}
+sub _valid_input { _invalid_input($_[0], {}) ? undef : $_[0]; }
 
 1;
 
