@@ -2,16 +2,26 @@ use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
 
-use Mojolicious::Lite;
-plugin OpenAPI => {url => 'data://main/todo.json'};
-app->routes->namespaces(['MyApp::Controller']);
+{
+  use Mojolicious::Lite;
+  app->routes->namespaces(['MyApp::Controller']);
+  get '/die' => sub { die 'Oh noes!' }, 'Die';
+  plugin OpenAPI => {url => 'data://main/hook.json'};
+}
+
 my $t = Test::Mojo->new;
-$t->get_ok('/api/todo' => json => {})->status_is(404);
+
+# Exception
+$t->get_ok('/api/die')->status_is(500)->json_is('/errors/0/message', 'Internal server error.');
+
+# Not implemented
+$t->get_ok('/api/todo' => json => {})->status_is(404)->json_is('/errors/0/message', 'Not found.');
 $t->post_ok('/api/todo' => json => ['invalid'])->status_is(501)
   ->json_is('/errors/0/message', 'Not implemented.');
 
+# Implemented, but still Not found
 define_controller();
-$t->get_ok('/api/todo' => json => {})->status_is(404);
+$t->get_ok('/api/todo' => json => {})->status_is(404)->json_is('/errors/0/message', 'Not found.');
 $t->post_ok('/api/todo' => json => {})->status_is(200)->json_is('/todo', 42);
 
 done_testing;
@@ -31,15 +41,26 @@ HERE
 
 package main;
 __DATA__
-@@ todo.json
+@@ hook.json
 {
   "swagger" : "2.0",
-  "info" : { "version": "0.8", "title" : "Test todo response" },
+  "info" : { "version": "0.8", "title" : "Test before_render hook" },
   "consumes" : [ "application/json" ],
   "produces" : [ "application/json" ],
   "schemes" : [ "http" ],
   "basePath" : "/api",
   "paths" : {
+    "/die" : {
+      "get" : {
+        "operationId" : "Die",
+        "responses" : {
+          "200": {
+            "description": "response",
+            "schema": { "type": "object" }
+          }
+        }
+      }
+    },
     "/todo" : {
       "post" : {
         "x-mojo-to": "dummy#todo",

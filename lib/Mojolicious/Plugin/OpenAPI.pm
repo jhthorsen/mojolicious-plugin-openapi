@@ -6,8 +6,10 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '0.04';
 
-my $EXCEPTION = {errors => [{message => 'Internal server error.', path => '/'}], status => 500};
-my $NOT_IMPLEMENTED = {errors => [{message => 'Not implemented.', path => '/'}], status => 501};
+sub EXCEPTION { +{errors => [{message => 'Internal server error.', path => '/'}], status => 500} }
+sub NOT_FOUND { +{errors => [{message => 'Not found.',             path => '/'}], status => 404} }
+sub NOT_IMPLEMENTED { +{errors => [{message => 'Not implemented.', path => '/'}], status => 501} }
+
 my $X_RE = qr{^x-};
 
 has _validator => sub { JSON::Validator::OpenAPI->new; };
@@ -19,7 +21,7 @@ sub register {
   $app->helper('openapi.invalid_input' => sub { $self->_validate_request(@_) });
   $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
   $app->helper('reply.openapi'         => sub { $self->_reply(@_) });
-  $app->hook(before_render => \&_before_render);
+  $app->hook(before_render => \&_before_render) unless $app->defaults->{'openapi.base_paths'};
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
@@ -35,6 +37,8 @@ sub _add_routes {
   $route = $app->routes->any($base_path) unless $route;
   $base_path = $api_spec->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
+
+  push @{$app->defaults->{'openapi.base_paths'}}, $base_path;
 
   $route->to('openapi.api_spec' => $api_spec);
   $route->get->to(cb => \&_reply_spec);
@@ -68,18 +72,17 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
+  my $status = $args->{status} || 200;
+  return unless $args->{exception} or $status == 404;
 
-  # TODO: Is this robust enough?
-  # Want to disable this hook if the user does $c->render(template => "foo.html");
-  return if !$args->{exception} and grep {/^\w+$/} keys %$args;
-  return unless $c->stash('openapi.op_spec');
+  my $path     = $c->req->url->path->to_string;
+  my $has_spec = $c->stash('openapi.op_spec');
+  return unless $has_spec or grep { $path =~ /^$_/ } @{$c->stash('openapi.base_paths')};
+
   my $format = $c->stash('format') || 'json';
-  my $io = $args->{exception} ? $EXCEPTION : $NOT_IMPLEMENTED;
-  $args->{status} = delete $io->{status};
-
-  # TODO: Is $format a good idea? Was thinking someone might want to set
-  # $c->stash(format => "xml") and it "should just work"
-  $args->{$format} = $io;
+  my $res = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : NOT_IMPLEMENTED();
+  $args->{status} = $res->{status};
+  $args->{$format} = $res;
 }
 
 sub _load_spec {

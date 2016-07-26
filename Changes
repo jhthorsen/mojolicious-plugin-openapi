@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 0.05 Not Released
  - Fix "false" must be false and not true
+ - Make sure 404 is returned as default format and not html
 
 0.04 2016-07-25T15:03:31+0200
  - Fix setting default values in JSON::Validator::OpenAPI 0.76
