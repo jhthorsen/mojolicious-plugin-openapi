@@ -6,9 +6,8 @@ SYNOPSIS
 
       # Will be moved under "basePath", resulting in "POST /api/echo"
       post "/echo" => sub {
-        my $c = shift;
-        return if $c->openapi->invalid_input;
-        return $c->reply->openapi(200 => $c->validation->param("body"));
+        my $c = shift->openapi->valid_input or return;
+        $c->reply->openapi(200 => $c->validation->param("body"));
       }, "echo";
 
       # Load specification and start web server
@@ -87,6 +86,15 @@ HELPERS
         }
       }
 
+  openapi.valid_input
+      $c = $c->openapi->valid_input;
+
+    Returns the Mojolicious::Controller object if the input is valid. This
+    helper will also auto render a response. Use "openapi.invalid_input" if
+    this is not the desired behavior.
+
+    See "SYNOPSIS" for example usage.
+
   reply.openapi
       $c->reply->openapi($status => $output);
 
@@ -133,6 +141,12 @@ METHODS
           route => $app->routes->under("/api")->to("user#auth"),
           url   => $app->home->rel_file("cool.api"),
         });
+
+    * spec_route_name
+
+      Name of the route that handles the "basePath" part of the
+      specification and serves the specification. Defaults to "x-mojo-name"
+      in the specification at the top level.
 
     * url
 
