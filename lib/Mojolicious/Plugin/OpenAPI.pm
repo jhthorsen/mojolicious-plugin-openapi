@@ -4,7 +4,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 use JSON::Validator::OpenAPI;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 sub EXCEPTION { +{errors => [{message => 'Internal server error.', path => '/'}], status => 500} }
 sub NOT_FOUND { +{errors => [{message => 'Not found.',             path => '/'}], status => 404} }
