@@ -6,6 +6,9 @@ use Test::More;
   use Mojolicious::Lite;
   app->routes->namespaces(['MyApp::Controller']);
   get '/die' => sub { die 'Oh noes!' }, 'Die';
+  get
+    '/not-found' => sub { shift->reply->openapi(404 => {this_is_fine => 1}) },
+    'NotFound';
   plugin OpenAPI => {url => 'data://main/hook.json'};
 }
 
@@ -15,14 +18,17 @@ my $t = Test::Mojo->new;
 $t->get_ok('/api/die')->status_is(500)->json_is('/errors/0/message', 'Internal server error.');
 
 # Not implemented
-$t->get_ok('/api/todo' => json => {})->status_is(404)->json_is('/errors/0/message', 'Not found.');
+$t->get_ok('/api/todo')->status_is(404)->json_is('/errors/0/message', 'Not found.');
 $t->post_ok('/api/todo' => json => ['invalid'])->status_is(501)
   ->json_is('/errors/0/message', 'Not implemented.');
 
 # Implemented, but still Not found
 define_controller();
-$t->get_ok('/api/todo' => json => {})->status_is(404)->json_is('/errors/0/message', 'Not found.');
-$t->post_ok('/api/todo' => json => {})->status_is(200)->json_is('/todo', 42);
+$t->get_ok('/api/todo')->status_is(404)->json_is('/errors/0/message', 'Not found.');
+$t->post_ok('/api/todo')->status_is(200)->json_is('/todo', 42);
+
+# Custom Not Found response
+$t->get_ok('/api/not-found')->status_is(404)->json_is('/this_is_fine', 1);
 
 done_testing;
 
@@ -55,6 +61,17 @@ __DATA__
         "operationId" : "Die",
         "responses" : {
           "200": {
+            "description": "response",
+            "schema": { "type": "object" }
+          }
+        }
+      }
+    },
+    "/not-found" : {
+      "get" : {
+        "operationId" : "NotFound",
+        "responses" : {
+          "404": {
             "description": "response",
             "schema": { "type": "object" }
           }

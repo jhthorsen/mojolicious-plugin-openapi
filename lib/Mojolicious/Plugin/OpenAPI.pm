@@ -72,8 +72,8 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
-  my $status = $args->{status} || 200;
-  return unless $args->{exception} or $status == 404;
+  my $template = $args->{template} || '';
+  return unless $args->{exception} or $template =~ /^not_found\b/;
 
   my $path     = $c->req->url->path->to_string;
   my $has_spec = $c->stash('openapi.op_spec');
