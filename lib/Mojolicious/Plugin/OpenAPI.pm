@@ -36,6 +36,7 @@ sub _add_routes {
   my $base_path = $api_spec->get('/basePath') || '/';
   my $paths     = $api_spec->get('/paths');
   my $route     = $config->{route};
+  my %uniq;
 
   $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route = $app->routes->any($base_path) unless $route;
@@ -59,6 +60,10 @@ sub _add_routes {
       my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
       my $to      = $op_spec->{'x-mojo-to'};
       my $endpoint;
+
+      die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
+        if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
+      die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
       if ($name and $endpoint = $route->root->find($name)) {
         $route->add_child($endpoint);
@@ -111,7 +116,7 @@ sub _load_spec {
   my $api_spec = $jv->schema($config->{url})->schema;
   my @errors
     = $jv->schema(JSON::Validator::OpenAPI::SPECIFICATION_URL())->validate($api_spec->data);
-  die join "\n", "Invalid Open API spec:", @errors if @errors;
+  die join "\n", "[OpenAPI] Invalid spec:", @errors if @errors;
   warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
   return $api_spec;
 }

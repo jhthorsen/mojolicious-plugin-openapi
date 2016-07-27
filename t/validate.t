@@ -3,7 +3,7 @@ use Test::More;
 use Mojolicious::Lite;
 
 eval { plugin OpenAPI => {url => 'data://main/invalid.json'} };
-like $@, qr{Invalid Open API spec}, 'invalid';
+like $@, qr{Invalid spec.*Missing}si, 'invalid';
 done_testing;
 
 __DATA__
