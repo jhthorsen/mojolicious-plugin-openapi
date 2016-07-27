@@ -1,5 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+0.08 Not Released
+
 0.07 2016-07-26T21:53:56+0200
  - Add support for serving binary data
 
