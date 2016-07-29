@@ -33,9 +33,10 @@ sub register {
 
 sub _add_routes {
   my ($self, $app, $api_spec, $config) = @_;
-  my $base_path = $api_spec->get('/basePath') || '/';
-  my $paths     = $api_spec->get('/paths');
-  my $route     = $config->{route};
+  my $base_path    = $api_spec->get('/basePath') || '/';
+  my $paths        = $api_spec->get('/paths');
+  my $route        = $config->{route};
+  my $route_prefix = "";
   my %uniq;
 
   $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
@@ -49,6 +50,7 @@ sub _add_routes {
   my $spec_route = $route->get->to(cb => \&_reply_spec);
   if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
     $spec_route->name($spec_route_name);
+    $route_prefix = "$spec_route_name.";
   }
 
   for my $path (sort { length $a <=> length $b } keys %$paths) {
@@ -70,7 +72,7 @@ sub _add_routes {
       }
       if (!$endpoint) {
         $endpoint = $route->$http_method(_route_path($path, $op_spec));
-        $endpoint->name($name) if $name;
+        $endpoint->name("$route_prefix$name") if $name;
       }
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;

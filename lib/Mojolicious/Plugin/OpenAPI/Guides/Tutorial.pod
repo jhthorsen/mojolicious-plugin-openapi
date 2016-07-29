@@ -74,10 +74,7 @@ ref will be flatten. Examples:
 
 =head3 x-mojo-name
 
-"x-mojo-name" is also a non-standard key, which will either find an existing
-route (useful for L<Mojolicious::Lite> apps) or name the route which is
-generated. The default value used is "operationId" (see the specification),
-unless "x-mojo-name" is specified.
+See L</Route names>.
 
 =head2 Application
 
@@ -127,6 +124,20 @@ L<Mojolicious::Lite> application.
 The input will be validated using
 L<Mojolicious::Plugin::OpenAPI/openapi.invalid_input> while the output is
 validated through L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
+
+=head2 Route names
+
+Routes will get its name from either L</x-mojo-name> or from L</operationId>.
+
+"x-mojo-name" can also be used the other way around, to find already defined
+routes. This is especially useful for L<Mojolicious::Lite> apps.
+
+Note that if L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name> is
+specified then all the route names will have that value as prefix:
+
+  spec_route_name = "my_cool_api"
+  operationId     = "Foo"
+  Route name      = "my_cool_api.Foo";
 
 =head2 Default error document
 

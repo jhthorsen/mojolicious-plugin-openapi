@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 0.08 Not Released
  - Add check for unique operationId and route names
+ - All route names will have "spec_route_name." as prefix
 
 0.07 2016-07-26T21:53:56+0200
  - Add support for serving binary data
