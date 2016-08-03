@@ -114,15 +114,17 @@ sub _invalid_input {
 
 sub _load_spec {
   my ($self, $app, $config) = @_;
-  my $jv      = JSON::Validator->new;
   my $openapi = JSON::Validator->new->schema(JSON::Validator::OpenAPI::SPECIFICATION_URL());
   my ($api_spec, @errors);
 
   # first check if $ref is in the right place,
   # and then check if the spec is correct
-  for (sub { }, undef) {
-    $api_spec = $jv->tap(resolver => $_ || $openapi->resolver)->schema($config->{url})->schema;
-    @errors = $jv->schema($openapi->schema->data)->validate($api_spec->data);
+  for my $r (sub { }, undef) {
+    next if $r and $config->{allow_invalid_ref};
+    my $jv = JSON::Validator->new;
+    $jv->resolver($r) if $r;
+    $api_spec = $jv->schema($config->{url})->schema;
+    @errors   = $openapi->validate($api_spec->data);
     die join "\n", "[OpenAPI] Invalid spec:", @errors if @errors;
   }
 
@@ -323,6 +325,13 @@ documents.
 C<%config> can have:
 
 =over 2
+
+=item * allow_invalid_ref
+
+The OpenAPI specification does not allow "$ref" at every level, but setting
+this flag to a true value will ignore the $ref check.
+
+Note that setting this attribute is discourage.
 
 =item * coerce
 

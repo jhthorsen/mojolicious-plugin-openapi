@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 0.09 Not Released
  - Add check for $ref in the right place in the input specification
+   Contributor: Lari Taskula
 
 0.08 2016-07-29T14:33:14+0200
  - Add check for unique operationId and route names

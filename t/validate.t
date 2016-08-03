@@ -8,6 +8,9 @@ like $@, qr{Invalid spec.*Missing}si, 'missing spec elements';
 eval { plugin OpenAPI => {url => 'data://main/swagger2/issues/89.json'} };
 like $@, qr{Properties not allowed.*\$ref}si, 'ref in the wrong place';
 
+eval { plugin OpenAPI => {allow_invalid_ref => 1, url => 'data://main/swagger2/issues/89.json'} };
+ok !$@, 'allow_invalid_ref=1';
+
 done_testing;
 
 __DATA__
