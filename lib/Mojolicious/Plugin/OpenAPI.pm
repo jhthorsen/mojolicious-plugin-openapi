@@ -24,6 +24,7 @@ sub register {
     $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
     $app->helper('reply.openapi'         => \&_reply);
     $app->hook(before_render => \&_before_render);
+    push @{$app->renderer->classes}, __PACKAGE__;
   }
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
@@ -166,14 +167,24 @@ sub _reply {
   $c->render($format => {errors => \@errors, status => 500}, status => 500);
 }
 
+
 sub _reply_spec {
-  my $c    = shift;
-  my $spec = $c->stash('openapi.api_spec')->data;
+  my $c      = shift;
+  my $spec   = $c->stash('openapi.api_spec')->data;
+  my $format = $c->stash('format') || 'json';
 
   local $spec->{id};
   delete $spec->{id};
   local $spec->{host} = $c->req->url->to_abs->host_port;
-  $c->render(json => $spec);
+
+  return $c->render(json => $spec) unless $format eq 'html';
+  return $c->render(
+    template  => 'mojolicious/plugin/openapi/layout',
+    esc       => sub { local $_ = shift; s/\W/-/g; $_ },
+    serialize => \&_serialize,
+    spec      => $spec,
+    X_RE      => $X_RE
+  );
 }
 
 sub _route_path {
@@ -185,6 +196,10 @@ sub _route_path {
     "($type$pname)";
   }/ge;
   return $path;
+}
+
+sub _serialize {
+  Data::Dumper->new([@_])->Indent(1)->Pair(': ')->Sortkeys(1)->Terse(1)->Useqq(1)->Dump;
 }
 
 sub _valid_input { _invalid_input($_[0], {}) ? undef : $_[0]; }
@@ -408,3 +423,188 @@ the terms of the Artistic License version 2.0.
 =back
 
 =cut
+
+__DATA__
+@@ mojolicious/plugin/openapi/header.html.ep
+<h1 id="title"><%= $spec->{info}{title} || 'No title' %></h1>
+<p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %></span></p>
+
+% if ($spec->{info}{description}) {
+<h2 id="description">Description</h2>
+<p class="description">
+  %= $spec->{info}{description}
+</p>
+% }
+
+% if ($spec->{info}{termsOfService}) {
+<h2 id="terms-of-service">Terms of service</h2>
+<p class="terms-of-service">
+  %= $spec->{info}{termsOfService}
+</p>
+% }
+
+% my $schemes = $spec->{schemes} || ["http"];
+% my $url = Mojo::URL->new("http://$spec->{host}");
+<h3 id="base-url">Base URL</h3>
+<ul>
+% for my $scheme (@$schemes) {
+  % $url->scheme($scheme);
+  <li><a href="<%= $url %>"><%= $url %></a></li>
+% }
+</ul>
+@@ mojolicious/plugin/openapi/footer.html.ep
+% my $contact = $spec->{info}{contact};
+% my $license = $spec->{info}{license};
+<h2 class="license">License</h2>
+% if ($license->{name}) {
+<p class="license"><a href="<%= $license->{url} || '' %>"><%= $license->{name} %></a></p>
+% } else {
+<p class="no-license">No license specified.</p>
+% }
+<h2 class="contact">Contact information</h2>
+% if ($contact->{email}) {
+<p class="contact-email"><a href="mailto:<%= $contact->{email} %>"><%= $contact->{email} %></a></p>
+% }
+% if ($contact->{url}) {
+<p class="contact-url"><a href="mailto:<%= $contact->{url} %>"><%= $contact->{url} %></a></p>
+% }
+@@ mojolicious/plugin/openapi/human.html.ep
+% if ($spec->{summary}) {
+<p class="spec-summary"><%= $spec->{summary} %></p>
+% }
+% if ($spec->{description}) {
+<p class="spec-description"><%= $spec->{description} %></p>
+% }
+% if (!$spec->{description} and !$spec->{summary}) {
+<p class="op-summary op-doc-missing">This resource is not documented.</p>
+% }
+@@ mojolicious/plugin/openapi/parameters.html.ep
+% my $has_parameters = @{$op->{parameters} || []};
+% my $body;
+<h3 class="op-parameters">Parameters</h3>
+% if ($has_parameters) {
+<table class="op-parameters">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>In</th>
+      <th>Type</th>
+      <th>Required</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+% }
+% for my $p (@{$op->{parameters} || []}) {
+  % $body = $p->{schema} if $p->{in} eq 'body';
+    <tr>
+      <td><%= $p->{name} %></td>
+      <td><%= $p->{in} %></td>
+      <td><%= $p->{type} %></td>
+      <td><%= $p->{required} ? "Yes" : "No" %></td>
+      <td><%= $p->{description} || "" %></td>
+    </tr>
+% }
+% if ($has_parameters) {
+  </tbody>
+</table>
+% } else {
+<p class="op-parameters">This resource has no input parameters.</p>
+% }
+% if ($body) {
+<h4 class="op-parameter-body">Body</h4>
+<pre class="op-parameter-body"><%= $serialize->($body) %></pre>
+% }
+@@ mojolicious/plugin/openapi/response.html.ep
+% for my $code (sort keys %{$op->{responses}}) {
+  % next if $code =~ $X_RE;
+  % my $res = $op->{responses}{$code};
+<h3 class="op-response">Response <%= $code %></h3>
+%= include "mojolicious/plugin/openapi/human", spec => $res
+<pre class="op-response"><%= $serialize->($res->{schema}) %></pre>
+% }
+@@ mojolicious/plugin/openapi/resource.html.ep
+<h3 id="op-<%= lc $method %><%= $esc->($path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></h3>
+% if ($op->{deprecated}) {
+<p class="op-deprecated">This resource is deprecated!</p>
+% }
+% if ($op->{operationId}) {
+<p class="op-id"><b>Operation ID:</b> <span><%= $op->{operationId} %></span></p>
+% }
+%= include "mojolicious/plugin/openapi/human", spec => $op
+%= include "mojolicious/plugin/openapi/parameters", op => $op
+%= include "mojolicious/plugin/openapi/response", op => $op
+@@ mojolicious/plugin/openapi/resources.html.ep
+<h2 id="resources">Resources</h2>
+% for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
+  % next if $path =~ $X_RE;
+  % for my $http_method (sort keys %{$spec->{paths}{$path}}) {
+    % next if $http_method =~ $X_RE;
+    % my $op = $spec->{paths}{$path}{$http_method};
+    %= include "mojolicious/plugin/openapi/resource", method => $http_method, op => $op, path => $path
+  % }
+% }
+@@ mojolicious/plugin/openapi/layout.html.ep
+<!doctype html>
+<html lang="en">
+<head>
+  <title><%= $spec->{info}{title} || 'No title' %></title>
+  <style>
+    body {
+      font-family: 'Gotham Narrow SSm','Helvetica Neue',Helvetica,sans-serif;
+      font-size: 16px;
+      margin: 3em;
+      padding: 0;
+      color: #222;
+    }
+    a {
+      color: #225;
+      text-decoration: underline;
+    }
+    h1, h2, h3, h4 { font-weight: bold; margin: 1em 0; }
+    h1 { font-size: 2em; }
+    h2 { font-size: 1.6em; margin-top: 2em; }
+    h3 { font-size: 1.2em; }
+    h4 { font-size: 1.1em; }
+    pre {
+      background: #eee;
+      border: 1px solid #ddd;
+      padding: 0.5em;
+      margin: 1em -0.5em;
+      overflow: auto;
+    }
+    table {
+      margin: 0em -0.5em;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td, th {
+      vertical-align: top;
+      text-align: left;
+      padding: 0.5em;
+    }
+    th {
+      font-weight: bold;
+      border-bottom: 1px solid #ccc;
+    }
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    div.container { max-width: 50em; margin: 0 auto; }
+    p.version { color: #666; margin: -0.5em 0 2em 0; }
+    p.op-deprecated { color: #c00; }
+    h3.op-path { margin-top: 3em; }
+    .container > h3.op-path { margin-top: 1em; }
+  </style>
+</head>
+<body>
+<div class="container">
+  %= include "mojolicious/plugin/openapi/header"
+  %= include "mojolicious/plugin/openapi/endpoint"
+  %= include "mojolicious/plugin/openapi/resources"
+  %= include "mojolicious/plugin/openapi/footer"
+</div>
+</body>
+</html>

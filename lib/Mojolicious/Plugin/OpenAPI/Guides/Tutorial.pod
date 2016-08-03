@@ -51,6 +51,10 @@ The first part of the path ("/api") comes from C<basePath>, the second part
 comes from the key under C<paths>, and the HTTP method comes from the key under
 C</pets>.
 
+The C<basePath> will also be used to add a route that renders back the
+specification either as JSON or HTML, dependent on the extension used in the
+request.
+
 C<parameters> and C<responses> will be used to define rules for
 L<input|Mojolicious::Plugin::OpenAPI/openapi.input> and
 L<output|Mojolicious::Plugin::OpenAPI/reply.openapi>. Continue reading for

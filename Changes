@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 0.09 Not Released
+ - Add basic support for rendering spec as HTML
  - Add check for $ref in the right place in the input specification
    Contributor: Lari Taskula
 

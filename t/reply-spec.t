@@ -24,6 +24,8 @@ use Mojolicious;
   my $t = Test::Mojo->new($app);
   $t->get_ok('/url')->status_is(200)->content_is('/api');
   $t->get_ok('/api')->status_is(200)->json_is('/info/version', 0.8);
+  $t->get_ok('/api.html')->status_is(200)->text_is('title', 'Test reply spec')
+    ->text_is('h1#title', 'Test reply spec')->text_is('h3#op-post-pets', 'POST /api/pets');
 }
 
 sub add_url_route {
