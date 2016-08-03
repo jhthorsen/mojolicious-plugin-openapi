@@ -114,11 +114,18 @@ sub _invalid_input {
 
 sub _load_spec {
   my ($self, $app, $config) = @_;
-  my $jv       = JSON::Validator->new;
-  my $api_spec = $jv->schema($config->{url})->schema;
-  my @errors
-    = $jv->schema(JSON::Validator::OpenAPI::SPECIFICATION_URL())->validate($api_spec->data);
-  die join "\n", "[OpenAPI] Invalid spec:", @errors if @errors;
+  my $jv      = JSON::Validator->new;
+  my $openapi = JSON::Validator->new->schema(JSON::Validator::OpenAPI::SPECIFICATION_URL());
+  my ($api_spec, @errors);
+
+  # first check if $ref is in the right place,
+  # and then check if the spec is correct
+  for (sub { }, undef) {
+    $api_spec = $jv->tap(resolver => $_ || $openapi->resolver)->schema($config->{url})->schema;
+    @errors = $jv->schema($openapi->schema->data)->validate($api_spec->data);
+    die join "\n", "[OpenAPI] Invalid spec:", @errors if @errors;
+  }
+
   warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
   return $api_spec;
 }
