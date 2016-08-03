@@ -15,6 +15,12 @@ $t->app->plugin(OpenAPI => {spec_route_name => 'my_api', url => 'data://main/ful
 ok $t->app->routes->find('my_api'),          'my_api is defined';
 ok $t->app->routes->find('my_api.Whatever'), 'my_api.Whatever is defined';
 
+eval { plugin OpenAPI => {url => 'data://main/unique-route.json'} };
+like $@, qr{Route name "xyz" is not unique}, 'unique route names';
+
+eval { plugin OpenAPI => {url => 'data://main/unique-op.json'} };
+like $@, qr{operationId "xyz" is not unique}, 'unique operationId';
+
 done_testing;
 
 sub define_controller {
@@ -52,6 +58,50 @@ __DATA__
       "get" : {
         "operationId" : "Whatever",
         "responses" : { "200": { "description": "response", "schema": { "type": "object" } } }
+      }
+    }
+  }
+}
+@@ unique-op.json
+{
+  "swagger" : "2.0",
+  "info" : { "version": "0.8", "title" : "Test unique operationId" },
+  "basePath" : "/api",
+  "paths" : {
+    "/r" : {
+      "get" : {
+        "operationId": "xyz",
+        "responses": {
+          "200": { "description": "response", "schema": { "type": "object" } }
+        }
+      },
+      "post" : {
+        "operationId": "xyz",
+        "responses": {
+          "200": { "description": "response", "schema": { "type": "object" } }
+        }
+      }
+    }
+  }
+}
+@@ unique-route.json
+{
+  "swagger" : "2.0",
+  "info" : { "version": "0.8", "title" : "Test unique route names" },
+  "basePath" : "/api",
+  "paths" : {
+    "/r" : {
+      "get" : {
+        "x-mojo-name": "xyz",
+        "responses": {
+          "200": { "description": "response", "schema": { "type": "object" } }
+        }
+      },
+      "post" : {
+        "x-mojo-name": "xyz",
+        "responses": {
+          "200": { "description": "response", "schema": { "type": "object" } }
+        }
       }
     }
   }
