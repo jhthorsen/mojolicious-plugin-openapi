@@ -118,6 +118,13 @@ METHODS
 
     %config can have:
 
+    * allow_invalid_ref
+
+      The OpenAPI specification does not allow "$ref" at every level, but
+      setting this flag to a true value will ignore the $ref check.
+
+      Note that setting this attribute is discourage.
+
     * coerce
 
       See "coerce" in JSON::Validator for possible values that "coerce" can
