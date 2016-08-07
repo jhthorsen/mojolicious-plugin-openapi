@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 0.10 Not Released
+ - Replaced openapi.invalid_input() with openapi.validate()
 
 0.09 2016-08-04T09:30:23+0200
  - Add basic support for rendering spec as HTML

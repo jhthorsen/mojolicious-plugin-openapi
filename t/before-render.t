@@ -37,9 +37,8 @@ sub define_controller {
   package MyApp::Controller::Dummy;
   use Mojo::Base 'Mojolicious::Controller';
   sub todo {
-    my $c = shift;
-    return if $c->openapi->invalid_input;
-    return $c->reply->openapi(200, {todo => 42});
+    my $c = shift->openapi->valid_input or return;
+    $c->reply->openapi(200, {todo => 42});
   }
   1;
 HERE

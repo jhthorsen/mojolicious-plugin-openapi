@@ -4,16 +4,16 @@ use Test::More;
 
 use Mojolicious::Lite;
 post "/echo" => sub {
-  my $c = shift;
-  return if $c->openapi->invalid_input;
-  return $c->reply->openapi(200 => $c->validation->param("body"));
+  my $c = shift->openapi->valid_input or return;
+  my $data = {body => $c->validation->param("body")};
+  $c->reply->openapi(200 => $data);
   },
   "echo";
 
 plugin OpenAPI => {url => "data://main/echo.json"};
 
 my $t = Test::Mojo->new;
-$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/foo' => 123);
+$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
 
 done_testing;
 

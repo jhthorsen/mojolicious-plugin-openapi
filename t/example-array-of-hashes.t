@@ -4,9 +4,8 @@ use Test::More;
 
 use Mojolicious::Lite;
 post '/echo' => sub {
-  my $c = shift;
-  return if $c->openapi->invalid_input;
-  return $c->reply->openapi(200 => $c->req->json);
+  my $c = shift->openapi->valid_input or return;
+  $c->reply->openapi(200 => $c->req->json);
   },
   'echo';
 
