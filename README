@@ -6,8 +6,15 @@ SYNOPSIS
 
       # Will be moved under "basePath", resulting in "POST /api/echo"
       post "/echo" => sub {
+
+        # Validate input request or return an error document
         my $c = shift->openapi->valid_input or return;
-        $c->reply->openapi(200 => $c->validation->param("body"));
+
+        # Generate some data
+        my $data = {body => $c->validation->param("body")};
+
+        # Validate the output response and render it to the user agent
+        $c->reply->openapi(200 => $data);
       }, "echo";
 
       # Load specification and start web server
@@ -39,6 +46,9 @@ SYNOPSIS
         }
       }
 
+    See Mojolicious::Plugin::OpenAPI::Guides::Tutorial for a tutorial on how
+    to write a "full" app with application class and controllers.
+
 DESCRIPTION
     Mojolicious::Plugin::OpenAPI is Mojolicious::Plugin that add routes and
     input/output validation to your Mojolicious application based on a
@@ -52,25 +62,6 @@ DESCRIPTION
     This plugin is currently EXPERIMENTAL.
 
 HELPERS
-  openapi.invalid_input
-      @errors = $c->openapi->invalid_input;
-      @errors = $c->openapi->invalid_input({auto_render => 0});
-
-    Used to validate a request. @errors holds a list of
-    JSON::Validator::Error objects or empty list on valid input. Setting
-    "auto_render" to a false value will disable the internal auto rendering.
-    This is useful if you want to craft a custom resonse.
-
-    Validated input parameters will be copied to
-    "Mojolicious::Controller/validation", which again can be extracted by
-    the "name" in the parameters list from the spec. Example:
-
-      # specification:
-      "parameters": [{"in": "body", "name": "whatever", "schema": {"type": "object"}}],
-
-      # controller
-      my $body = $c->validation->param("whatever");
-
   openapi.spec
       $hash = $c->openapi->spec;
 
@@ -86,14 +77,31 @@ HELPERS
         }
       }
 
+  openapi.validate
+      @errors = $c->openapi->validate;
+
+    Used to validate a request. @errors holds a list of
+    JSON::Validator::Error objects or empty list on valid input.
+
+    Note that this helper is only for customization. You probably want
+    "openapi.valid_input" in most cases.
+
+    Validated input parameters will be copied to
+    "Mojolicious::Controller/validation", which again can be extracted by
+    the "name" in the parameters list from the spec. Example:
+
+      # specification:
+      "parameters": [{"in": "body", "name": "whatever", "schema": {"type": "object"}}],
+
+      # controller
+      my $body = $c->validation->param("whatever");
+
   openapi.valid_input
       $c = $c->openapi->valid_input;
 
-    Returns the Mojolicious::Controller object if the input is valid. This
-    helper will also auto render a response. Use "openapi.invalid_input" if
-    this is not the desired behavior.
-
-    See "SYNOPSIS" for example usage.
+    Returns the Mojolicious::Controller object if the input is valid or
+    automatically render an error document if not and return false. See
+    "SYNOPSIS" for example usage.
 
   reply.openapi
       $c->reply->openapi($status => $output);
@@ -159,19 +167,6 @@ METHODS
 
       See "schema" in JSON::Validator for the different "url" formats that
       is accepted.
-
-TODO
-    This plugin is still a big rough on the edges, but I decided to release
-    it on CPAN so people can start playing around with it.
-
-    * Add WebSockets support
-      <https://github.com/jhthorsen/mojolicious-plugin-openapi/compare/webso
-      cket>.
-
-    * Add support for /api.html (human readable documentation)
-
-    * Never add support for "x-mojo-around-action", but possibly "before
-      action".
 
 AUTHOR
     Jan Henning Thorsen
