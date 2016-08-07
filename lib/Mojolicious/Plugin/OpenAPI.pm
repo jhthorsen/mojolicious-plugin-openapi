@@ -125,6 +125,7 @@ sub _load_spec {
     my $jv = JSON::Validator->new;
     $jv->resolver($r) if $r;
     $api_spec = $jv->schema($config->{url})->schema;
+    $openapi->coerce('booleans' => $jv->coerce()->{'booleans'});
     @errors   = $openapi->validate($api_spec->data);
     die join "\n", "[OpenAPI] Invalid spec:", @errors if @errors;
   }

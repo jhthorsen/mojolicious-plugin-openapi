@@ -44,7 +44,7 @@ paths:
       parameters:
         - { in: query, name: days, type: number, default: 42 }
         - { in: formData, name: name, type: string, default: batman }
-        - { in: header, name: X-Foo, type: string, default: yikes }
+        - { in: header, name: X-Foo, type: string, default: yikes, required: true }
       responses:
         200:
           description: Echo response
