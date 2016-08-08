@@ -23,7 +23,7 @@ sub register {
     $app->helper('openapi.invalid_input' => \&_invalid_input);
     $app->helper('openapi.validate'      => \&_validate);
     $app->helper('openapi.valid_input'   => \&_valid_input);
-    $app->helper('openapi.spec'          => sub { shift->stash('openapi.op_spec') });
+    $app->helper('openapi.spec'          => \&_helper_spec);
     $app->helper('reply.openapi'         => \&_reply);
     $app->hook(before_render => \&_before_render);
     push @{$app->renderer->classes}, __PACKAGE__;
@@ -98,6 +98,12 @@ sub _before_render {
   my $res = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : NOT_IMPLEMENTED();
   $args->{status} = $res->{status};
   $args->{$format} = $res;
+}
+
+sub _helper_spec {
+  my ($c, $path) = @_;
+  return $c->stash('openapi.op_spec') unless defined $path;
+  return $c->stash('openapi.api_spec')->get($path);
 }
 
 sub _invalid_input {
@@ -285,15 +291,19 @@ This plugin is currently EXPERIMENTAL.
 
 =head2 openapi.spec
 
+  $hash = $c->openapi->spec($json_pointer)
+  $hash = $c->openapi->spec("/info/title")
   $hash = $c->openapi->spec;
 
-Returns the OpenAPI specification for the current route. Example:
+Returns the OpenAPI specification. A JSON Pointer can be used to extract a
+given section of the specification. The default value of C<$json_pointer> will
+be relative to the current operation. Example:
 
   {
     "paths": {
       "/pets": {
         "get": {
-          // This datastructure is returned
+          // This datastructure is returned by default
         }
       }
     }

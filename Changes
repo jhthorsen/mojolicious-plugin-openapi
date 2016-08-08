@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+0.11 Not Released
+ - Add support for retrieving the complete API spec
+
 0.10 2016-08-07T22:16:38+0200
  - Replaced openapi.invalid_input() with openapi.validate()
  - Fix validating YAML specifications #3 #4
