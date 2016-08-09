@@ -21,10 +21,13 @@ and generate routes and input/output rules from it. See L<JSON::Validator> for
 L<supported schema file formats|JSON::Validator/Supported schema formats>.
 
   {
+    "swagger": "2.0",
+    "info": { "version": "1.0", "title": "Some awesome API" },
     "basePath": "/api",
     "paths": {
       "/pets": {
         "get": {
+          "x-mojo-name": "get_pets",
           "x-mojo-to": "pet#list",
           "summary": "Finds pets in the system",
           "parameters": [
@@ -48,19 +51,58 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
 
 The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
 The first part of the path ("/api") comes from C<basePath>, the second part
-comes from the key under C<paths>, and the HTTP method comes from the key under
-C</pets>.
+comes from the keys under C<paths>, and the HTTP method comes from the keys
+under C</pets>.
+
+Here are some more details about the difference keys:
+
+=over 2
+
+=item * swagger and info
+
+These two sections are required to make the specification valid. Check out
+L<https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md>
+for a complete reference to the specification.
+
+=item * host, schemes, consumes, produces, security and securityDefinitions
+
+These keys are currently not in use. "host" will be replaced by the "Host"
+header in the request. The rest of the keys are currently not in use.
+
+Submit an L<issue|https://github.com/jhthorsen/mojolicious-plugin-openapi/issues>
+if you have ideas on what to use these keys for.
+
+=item * basePath
 
 The C<basePath> will also be used to add a route that renders back the
-specification either as JSON or HTML, dependent on the extension used in the
-request.
+specification either as JSON or HTML. Examples:
 
-C<parameters> and C<responses> will be used to define rules for
-L<input|Mojolicious::Plugin::OpenAPI/openapi.input> and
-L<output|Mojolicious::Plugin::OpenAPI/reply.openapi>. Continue reading for
-explanation about L</x-mojo-to>.
+=over 2
 
-=head3 x-mojo-to
+=item * http://example.com/api.html
+
+Retrieve the expanded version of the API in human readable format. The
+formatting is currently a bit rough, but should be easier than reading the JSON
+spec.
+
+=item * http://example.com/api.json
+
+Retrieve the expanded version of the API, useful for JavaScript clients and
+other client side applications.
+
+=back
+
+=item * parameters and responses
+
+C<parameters> and C<responses> will be used to define input and output
+validtion rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
+and L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
+
+=item * x-mojo-name
+
+See L</Route names>.
+
+=item * x-mojo-to
 
 The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key
 can be either a plain string, object (hash) or an array. The string and hash
@@ -76,9 +118,7 @@ ref will be flatten. Examples:
   "x-mojo-to": ["pet#list", {"foo": 123}]
   $route->to("pet#list", {foo => 123});
 
-=head3 x-mojo-name
-
-See L</Route names>.
+=back
 
 =head2 Application
 
@@ -131,17 +171,28 @@ validated through L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
 
 =head2 Route names
 
-Routes will get its name from either L</x-mojo-name> or from L</operationId>.
+Routes will get its name from either L</x-mojo-name> or from L</operationId> if
+defined in the specification.
 
-"x-mojo-name" can also be used the other way around, to find already defined
+The route name can also be used the other way around, to find already defined
 routes. This is especially useful for L<Mojolicious::Lite> apps.
 
-Note that if L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name> is
-specified then all the route names will have that value as prefix:
+Note that if L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name>
+then all the route names will have that value as prefix:
 
-  spec_route_name = "my_cool_api"
-  operationId     = "Foo"
-  Route name      = "my_cool_api.Foo";
+  spec_route_name            = "my_cool_api"
+  operationId or x-mojo-name = "Foo"
+  Route name                 = "my_cool_api.Foo"
+
+You can also set "x-mojo-name" in the spec, instead of passing
+L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name>
+to C<plugin()|Mojolicious::Plugin::OpenAPI/register>:
+
+  {
+    "swagger": "2.0",
+    "info": { "version": "1.0", "title": "Some awesome API" },
+    "x-mojo-name": "my_cool_api"
+  }
 
 =head2 Default error document
 
