@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-0.11 Not Released
+0.11 2016-08-09T13:35:16+0200
  - Add support for retrieving the complete API spec
  - Improved tutorial
 

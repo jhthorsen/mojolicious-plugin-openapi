@@ -63,15 +63,19 @@ DESCRIPTION
 
 HELPERS
   openapi.spec
+      $hash = $c->openapi->spec($json_pointer)
+      $hash = $c->openapi->spec("/info/title")
       $hash = $c->openapi->spec;
 
-    Returns the OpenAPI specification for the current route. Example:
+    Returns the OpenAPI specification. A JSON Pointer can be used to extract
+    a given section of the specification. The default value of $json_pointer
+    will be relative to the current operation. Example:
 
       {
         "paths": {
           "/pets": {
             "get": {
-              // This datastructure is returned
+              // This datastructure is returned by default
             }
           }
         }
