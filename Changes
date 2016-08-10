@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-0.12 Not Released
+0.12 2016-08-10T21:16:54+0200
  - Started DEPRECATING $c->reply->openapi()
  - Add support for $c->render(openapi => $data);
 

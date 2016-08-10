@@ -14,7 +14,7 @@ SYNOPSIS
         my $data = {body => $c->validation->param("body")};
 
         # Validate the output response and render it to the user agent
-        $c->reply->openapi(200 => $data);
+        $c->render(openapi => $data);
       }, "echo";
 
       # Load specification and start web server
@@ -108,17 +108,9 @@ HELPERS
     "SYNOPSIS" for example usage.
 
   reply.openapi
-      $c->reply->openapi($status => $output);
+    Will be DEPRECATED in favor of:
 
-    Will validate $output before passing it on to "render" in
-    Mojolicious::Controller. Note that $output will be passed on using the
-    format key in stash, which defaults to "json". This also goes for
-    auto-rendering. Example:
-
-      my $format = $c->stash("format") || "json";
-      $c->render($format => \%output);
-
-    $status is a HTTP status code.
+      $c->render(openapi => $output);
 
 METHODS
   register
@@ -150,6 +142,16 @@ METHODS
       messages.
 
       Default: "warn".
+
+    * renderer
+
+      Holds a code ref that can be used to render the response. Should
+      return a plain string of data. The default is:
+
+        sub {
+          my ($c, $data) = @_;
+          return Mojo::JSON::encode_json($data);
+        }
 
     * route
 
