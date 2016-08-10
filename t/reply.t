@@ -5,15 +5,16 @@ use Test::More;
 use Mojolicious::Lite;
 my $reply = 'unset';
 
-post "/echo" => sub {
+post '/echo' => sub {
   my $c = shift->openapi->valid_input or return;
-  my $data = {body => $c->validation->param("body")};
+  my $data = {body => $c->validation->param('body')};
   return $c->reply->openapi(200 => $data) if $reply eq 'original';
   return $c->reply->openapi($data, status => 400) if $reply eq 'options';
   return $c->reply->openapi($data) if $reply eq 'default';
+  return $c->render(openapi => $data) if $reply eq 'render';
   die 'should never come to this';
   },
-  "echo";
+  'echo';
 
 plugin OpenAPI => {url => "data://main/echo.json"};
 
@@ -26,6 +27,9 @@ $reply = 'options';
 $t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
 
 $reply = 'original';
+$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
+
+$reply = 'render';
 $t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
 
 done_testing;

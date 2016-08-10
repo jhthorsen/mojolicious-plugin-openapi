@@ -2,6 +2,7 @@ package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator::OpenAPI;
+use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
@@ -26,10 +27,12 @@ sub register {
     $app->helper('openapi.spec'          => \&_helper_spec);
     $app->helper('reply.openapi'         => \&_reply);
     $app->hook(before_render => \&_before_render);
+    $app->renderer->add_handler(openapi => \&_render);
     push @{$app->renderer->classes}, __PACKAGE__;
   }
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
+  $self->{renderer} = $config->{renderer} || \&Mojo::JSON::encode_json;
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config);
 }
@@ -48,7 +51,7 @@ sub _add_routes {
   $base_path =~ s!/$!!;
 
   push @{$app->defaults->{'openapi.base_paths'}}, $base_path;
-  $route->to({'openapi.api_spec' => $api_spec, 'openapi.object' => $self});
+  $route->to({handler => 'openapi', 'openapi.api_spec' => $api_spec, 'openapi.object' => $self});
 
   my $spec_route = $route->get->to(cb => \&_reply_spec);
   if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
@@ -147,9 +150,7 @@ sub _reply {
   my $c      = shift;
   my $status = ref $_[0] ? 200 : shift;
   my $output = shift;
-  my @render = @_;
-  my $self   = $c->stash('openapi.object');
-  my $format = $c->stash('format') || 'json';
+  my @args   = @_;
 
   if (UNIVERSAL::isa($output, 'Mojo::Asset')) {
     my $h = $c->res->headers;
@@ -158,16 +159,32 @@ sub _reply {
       my $type = $output->path =~ /\.(\w+)$/ ? $types->type($1) : undef;
       $h->content_type($type || $types->type('bin'));
     }
+    delete $c->stash->{handler};
     return $c->reply->asset($output);
   }
 
-  my @errors = $self->_validator->validate_response($c, $c->openapi->spec, $status, $output);
-  return $c->render(@render, $format => $output, status => $status) unless @errors;
-
-  $self->_log($c, '>>>', \@errors);
-  $c->render($format => {errors => \@errors, status => 500}, status => 500);
+  push @args, status => $status if $status;
+  return $c->render(@args, openapi => $output);
 }
 
+sub _render {
+  my ($renderer, $c, $output, $options) = @_;
+  my $res  = $c->stash('openapi')        or return;
+  my $self = $c->stash('openapi.object') or return;
+  my $status = $c->stash('status') || 200;
+  my $v = $self->_validator;
+
+  $options->{format} = $c->stash('format') || 'json';
+
+  if (my @errors = $v->validate_response($c, $c->openapi->spec, $status, $res)) {
+    $self->_log($c, '>>>', \@errors);
+    $c->stash(status => 500);
+    $$output = $self->{renderer}->({errors => \@errors, status => 500});
+  }
+  else {
+    $$output = $self->{renderer}->($res);
+  }
+}
 
 sub _reply_spec {
   my $c      = shift;
@@ -177,6 +194,7 @@ sub _reply_spec {
   local $spec->{id};
   delete $spec->{id};
   local $spec->{host} = $c->req->url->to_abs->host_port;
+  delete $c->stash->{handler};
 
   return $c->render(json => $spec) unless $format eq 'html';
   return $c->render(
@@ -242,7 +260,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     my $data = {body => $c->validation->param("body")};
 
     # Validate the output response and render it to the user agent
-    $c->reply->openapi(200 => $data);
+    $c->render(openapi => $data);
   }, "echo";
 
   # Load specification and start web server
@@ -342,17 +360,9 @@ L</SYNOPSIS> for example usage.
 
 =head2 reply.openapi
 
-  $c->reply->openapi($status => $output);
+Will be DEPRECATED in favor of:
 
-Will L<validate|/openapi.validate> C<$output> before passing it on to
-L<Mojolicious::Controller/render>. Note that C<$output> will be passed on using
-the L<format|Mojolicious::Guides::Rendering/Content type> key in stash, which
-defaults to "json". This also goes for L<auto-rendering|/Controller>. Example:
-
-  my $format = $c->stash("format") || "json";
-  $c->render($format => \%output);
-
-C<$status> is a HTTP status code.
+  $c->render(openapi => $output);
 
 =head1 METHODS
 
@@ -387,6 +397,13 @@ Default: 1
 C<log_level> is used when logging invalid request/response error messages.
 
 Default: "warn".
+
+=item * renderer
+
+Holds a code ref that can be used to render the response. Should return
+a plain string of data.
+
+Default: L<Mojo::JSON/encode_json>.
 
 =item * route
 
