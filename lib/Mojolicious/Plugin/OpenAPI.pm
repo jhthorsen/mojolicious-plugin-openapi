@@ -32,7 +32,7 @@ sub register {
   }
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
-  $self->{renderer} = $config->{renderer} || \&Mojo::JSON::encode_json;
+  $self->{renderer} = $config->{renderer} || sub { Mojo::JSON::encode_json($_[1]) };
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config);
 }
@@ -159,7 +159,6 @@ sub _reply {
       my $type = $output->path =~ /\.(\w+)$/ ? $types->type($1) : undef;
       $h->content_type($type || $types->type('bin'));
     }
-    delete $c->stash->{handler};
     return $c->reply->asset($output);
   }
 
@@ -174,15 +173,15 @@ sub _render {
   my $status = $c->stash('status') || 200;
   my $v = $self->_validator;
 
-  $options->{format} = $c->stash('format') || 'json';
+  $c->stash->{format} ||= 'json';
 
   if (my @errors = $v->validate_response($c, $c->openapi->spec, $status, $res)) {
     $self->_log($c, '>>>', \@errors);
     $c->stash(status => 500);
-    $$output = $self->{renderer}->({errors => \@errors, status => 500});
+    $$output = $self->{renderer}->($c, {errors => \@errors, status => 500});
   }
   else {
-    $$output = $self->{renderer}->($res);
+    $$output = $self->{renderer}->($c, $res);
   }
 }
 
@@ -194,10 +193,10 @@ sub _reply_spec {
   local $spec->{id};
   delete $spec->{id};
   local $spec->{host} = $c->req->url->to_abs->host_port;
-  delete $c->stash->{handler};
 
   return $c->render(json => $spec) unless $format eq 'html';
   return $c->render(
+    handler   => 'ep',
     template  => 'mojolicious/plugin/openapi/layout',
     esc       => sub { local $_ = shift; s/\W/-/g; $_ },
     serialize => \&_serialize,
@@ -401,9 +400,12 @@ Default: "warn".
 =item * renderer
 
 Holds a code ref that can be used to render the response. Should return
-a plain string of data.
+a plain string of data. The default is:
 
-Default: L<Mojo::JSON/encode_json>.
+  sub {
+    my ($c, $data) = @_;
+    return Mojo::JSON::encode_json($data);
+  }
 
 =item * route
 
