@@ -144,8 +144,11 @@ sub _log {
 }
 
 sub _reply {
-  my ($c, $status, $output) = @_;
-  my $self = $c->stash('openapi.object');
+  my $c      = shift;
+  my $status = ref $_[0] ? 200 : shift;
+  my $output = shift;
+  my @render = @_;
+  my $self   = $c->stash('openapi.object');
   my $format = $c->stash('format') || 'json';
 
   if (UNIVERSAL::isa($output, 'Mojo::Asset')) {
@@ -159,7 +162,7 @@ sub _reply {
   }
 
   my @errors = $self->_validator->validate_response($c, $c->openapi->spec, $status, $output);
-  return $c->render($format => $output, status => $status) unless @errors;
+  return $c->render(@render, $format => $output, status => $status) unless @errors;
 
   $self->_log($c, '>>>', \@errors);
   $c->render($format => {errors => \@errors, status => 500}, status => 500);
