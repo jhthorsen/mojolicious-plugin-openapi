@@ -21,11 +21,10 @@ sub register {
   my $api_spec = $self->_load_spec($app, $config);
 
   unless ($app->defaults->{'openapi.base_paths'}) {
-    $app->helper('openapi.invalid_input' => \&_invalid_input);
-    $app->helper('openapi.validate'      => \&_validate);
-    $app->helper('openapi.valid_input'   => \&_valid_input);
-    $app->helper('openapi.spec'          => \&_helper_spec);
-    $app->helper('reply.openapi'         => \&_reply);
+    $app->helper('openapi.validate'    => \&_validate);
+    $app->helper('openapi.valid_input' => sub { _validate($_[0]) ? undef : $_[0] });
+    $app->helper('openapi.spec'        => \&_helper_spec);
+    $app->helper('reply.openapi'       => \&_reply);
     $app->hook(before_render => \&_before_render);
     $app->renderer->add_handler(openapi => \&_render);
     push @{$app->renderer->classes}, __PACKAGE__;
@@ -107,11 +106,6 @@ sub _helper_spec {
   my ($c, $path) = @_;
   return $c->stash('openapi.op_spec') unless defined $path;
   return $c->stash('openapi.api_spec')->get($path);
-}
-
-sub _invalid_input {
-  deprecated 'Use $c->openapi->validate or $c->openapi->valid_input instead';
-  goto &_validate;
 }
 
 sub _load_spec {
@@ -224,7 +218,9 @@ sub _validate {
   my ($c, $args) = @_;
   my $self    = $c->stash('openapi.object');
   my $op_spec = $c->openapi->spec;
-  my @errors  = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
+
+  # Write validated data to $c->validation->output
+  my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
 
   if (@errors) {
     $self->_log($c, '<<<', \@errors);
@@ -234,8 +230,6 @@ sub _validate {
 
   return @errors;
 }
-
-sub _valid_input { _validate($_[0], {}) ? undef : $_[0]; }
 
 1;
 
@@ -356,12 +350,6 @@ C<Mojolicious::Controller/validation>, which again can be extracted by the
 Returns the L<Mojolicious::Controller> object if the input is valid or
 automatically render an error document if not and return false. See
 L</SYNOPSIS> for example usage.
-
-=head2 reply.openapi
-
-Will be DEPRECATED in favor of:
-
-  $c->render(openapi => $output);
 
 =head1 METHODS
 

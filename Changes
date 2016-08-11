@@ -1,15 +1,19 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+0.13 Not Released
+ - Removed $c->openapi->invalid_input()
+
 0.12 2016-08-10T21:16:54+0200
- - Started DEPRECATING $c->reply->openapi()
  - Add support for $c->render(openapi => $data);
+ - Started DEPRECATING $c->reply->openapi()
 
 0.11 2016-08-09T13:35:16+0200
  - Add support for retrieving the complete API spec
  - Improved tutorial
 
 0.10 2016-08-07T22:16:38+0200
- - Replaced openapi.invalid_input() with openapi.validate()
+ - Add $c->openapi->validate()
+ - Deprecated $c->openapi->invalid_input()
  - Fix validating YAML specifications #3 #4
    Contributor: Ilya Rassadin
 

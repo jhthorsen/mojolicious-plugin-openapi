@@ -142,11 +142,10 @@ L<Mojolicious::Lite> application.
   package Myapp::Controller::Pet;
 
   sub list {
-    my $c = shift;
 
     # Do not continue on invalid input and render a default 400
     # error document.
-    return if $c->openapi->invalid_input;
+    my $c = shift->openapi->valid_input or return;
 
     # You might want to introspect the specification for the current route
     my $spec = $c->openapi->spec;
@@ -154,7 +153,7 @@ L<Mojolicious::Lite> application.
       return $c->render(openapi => [], status => 498);
     }
 
-    # $c->openapi->invalid_input copies valid data to validation object,
+    # $c->openapi->valid_input copies valid data to validation object,
     # and the normal Mojolicious api works as well.
     my $input = $c->validation->output;
     my $age   = $c->param("age"); # same as $input->{age}
@@ -166,7 +165,7 @@ L<Mojolicious::Lite> application.
   }
 
 The input will be validated using
-L<Mojolicious::Plugin::OpenAPI/openapi.invalid_input> while the output is
+L<Mojolicious::Plugin::OpenAPI/openapi.valid_input> while the output is
 validated through L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
 
 =head2 Route names

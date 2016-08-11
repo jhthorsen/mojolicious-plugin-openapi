@@ -5,9 +5,8 @@ use Test::More;
 use Mojolicious::Lite;
 
 post '/pets' => sub {
-  my $c = shift;
-  return if $c->openapi->validate;
-  return $c->reply->openapi(200 => $c->req->json);
+  my $c = shift->openapi->valid_input or return;
+  $c->reply->openapi(200 => $c->req->json);
   },
   'addPet';
 
