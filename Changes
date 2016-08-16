@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-0.13 Not Released
+0.13 2016-08-16T19:54:48+0200
  - Removed $c->openapi->invalid_input()
  - Add support for rendering specification on OPTIONS #1
 

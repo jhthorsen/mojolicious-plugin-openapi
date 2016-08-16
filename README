@@ -107,11 +107,6 @@ HELPERS
     automatically render an error document if not and return false. See
     "SYNOPSIS" for example usage.
 
-  reply.openapi
-    Will be DEPRECATED in favor of:
-
-      $c->render(openapi => $output);
-
 METHODS
   register
       $self->register($app, \%config);
