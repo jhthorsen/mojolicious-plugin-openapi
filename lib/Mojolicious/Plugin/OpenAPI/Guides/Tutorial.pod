@@ -54,6 +54,14 @@ The first part of the path ("/api") comes from C<basePath>, the second part
 comes from the keys under C<paths>, and the HTTP method comes from the keys
 under C</pets>.
 
+The different parts of the specification can also be retrieved as JSON using
+the "OPTIONS" HTTP method. Example:
+
+  OPTIONS /api/pets
+  OPTIONS /api/pets?method=get
+
+Note that the use of "OPTIONS" is EXPERIMENTAL, and subject to change.
+
 Here are some more details about the difference keys:
 
 =over 2

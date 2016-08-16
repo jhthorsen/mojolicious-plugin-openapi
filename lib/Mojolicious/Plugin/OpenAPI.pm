@@ -60,6 +60,7 @@ sub _add_routes {
 
   for my $path (sort { length $a <=> length $b } keys %$paths) {
     next if $path =~ $X_RE;
+    my $has_options;
 
     for my $http_method (keys %{$paths->{$path}}) {
       next if $http_method =~ $X_RE;
@@ -67,6 +68,8 @@ sub _add_routes {
       my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
       my $to      = $op_spec->{'x-mojo-to'};
       my $endpoint;
+
+      $has_options = 1 if lc $http_method eq 'options';
 
       die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
@@ -83,6 +86,10 @@ sub _add_routes {
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $endpoint->to({'openapi.op_spec' => $op_spec});
       warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
+    }
+
+    unless ($has_options) {
+      $route->options($path => sub { _render_route_spec($_[0], $path) });
     }
   }
 }
@@ -177,6 +184,15 @@ sub _render {
   else {
     $$output = $self->{renderer}->($c, $res);
   }
+}
+
+sub _render_route_spec {
+  my ($c, $path) = @_;
+  my $spec   = $c->stash('openapi.api_spec')->data->{paths}{$path};
+  my $method = $c->param('method');
+  $spec = $spec->{$method} if $method;
+  return $c->render(json => $spec) if $spec;
+  return $c->render(json => {}, status => 404);
 }
 
 sub _reply_spec {

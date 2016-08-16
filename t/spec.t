@@ -17,6 +17,10 @@ $t->get_ok('/api/spec')->status_is(200)
   ->json_is('/op_spec/responses/200/description', 'Spec response.')
   ->json_is('/info/version',                      '0.8');
 
+$t->options_ok('/api/spec')->status_is(200)->json_is('/get/operationId', 'Spec');
+$t->options_ok('/api/spec?method=get')->status_is(200)->json_is('/operationId', 'Spec');
+$t->options_ok('/api/spec?method=post')->status_is(404);
+
 done_testing;
 
 __DATA__
