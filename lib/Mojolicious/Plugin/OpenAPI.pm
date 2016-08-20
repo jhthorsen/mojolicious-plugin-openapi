@@ -175,6 +175,7 @@ sub _render {
   my $v = $self->_validator;
 
   $c->stash->{format} ||= 'json';
+  delete $options->{encoding};
 
   if (my @errors = $v->validate_response($c, $c->openapi->spec, $status, $res)) {
     $self->_log($c, '>>>', \@errors);
@@ -188,7 +189,7 @@ sub _render {
 
 sub _render_json {
   $_[0]->res->headers->content_type('application/json;charset=UTF-8');
-  return Mojo::Util::decode("UTF-8", Mojo::JSON::encode_json($_[1]));
+  return Mojo::JSON::encode_json($_[1]);
 }
 
 sub _render_route_spec {
