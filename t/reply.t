@@ -21,16 +21,20 @@ plugin OpenAPI => {url => "data://main/echo.json"};
 my $t = Test::Mojo->new;
 
 $reply = 'default';
-$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
+$t->post_ok('/api/echo' => json => {foo => 'utf табак'})->status_is(200)
+  ->json_is('/body/foo' => 'utf табак')->content_type_is('application/json;charset=UTF-8');
 
 $reply = 'options';
-$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
+$t->post_ok('/api/echo' => json => {foo => 'utf табак'})->status_is(200)
+  ->json_is('/body/foo' => 'utf табак')->content_type_is('application/json;charset=UTF-8');
 
 $reply = 'original';
-$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
+$t->post_ok('/api/echo' => json => {foo => 'utf табак'})->status_is(200)
+  ->json_is('/body/foo' => 'utf табак')->content_type_is('application/json;charset=UTF-8');
 
 $reply = 'render';
-$t->post_ok('/api/echo' => json => {foo => 123})->status_is(200)->json_is('/body/foo' => 123);
+$t->post_ok('/api/echo' => json => {foo => 'utf табак'})->status_is(200)
+  ->json_is('/body/foo' => 'utf табак')->content_type_is('application/json;charset=UTF-8');
 
 done_testing;
 

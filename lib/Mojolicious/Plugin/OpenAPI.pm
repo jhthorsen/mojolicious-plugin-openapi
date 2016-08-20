@@ -31,7 +31,7 @@ sub register {
   }
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
-  $self->{renderer} = $config->{renderer} || sub { Mojo::JSON::encode_json($_[1]) };
+  $self->{renderer} = $config->{renderer} || \&_render_json;
   $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
   $self->_add_routes($app, $api_spec, $config);
 }
@@ -184,6 +184,11 @@ sub _render {
   else {
     $$output = $self->{renderer}->($c, $res);
   }
+}
+
+sub _render_json {
+  $_[0]->res->headers->content_type('application/json;charset=UTF-8');
+  return Mojo::Util::decode("UTF-8", Mojo::JSON::encode_json($_[1]));
 }
 
 sub _render_route_spec {
