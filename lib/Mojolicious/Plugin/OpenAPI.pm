@@ -6,7 +6,7 @@ use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '0.14';
+our $VERSION = '1.00';
 
 sub EXCEPTION { +{errors => [{message => 'Internal server error.', path => '/'}], status => 500} }
 sub NOT_FOUND { +{errors => [{message => 'Not found.',             path => '/'}], status => 404} }
@@ -320,8 +320,6 @@ Have a look at the L</SEE ALSO> for references to more documentation, or jump
 right to the L<tutorial|Mojolicious::Plugin::OpenAPI::Guides::Tutorial>.
 
 L<Mojolicious::Plugin::OpenAPI> will replace L<Mojolicious::Plugin::Swagger2>.
-
-This plugin is currently EXPERIMENTAL.
 
 =head1 HELPERS
 

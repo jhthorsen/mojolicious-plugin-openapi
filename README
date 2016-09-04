@@ -59,8 +59,6 @@ DESCRIPTION
 
     Mojolicious::Plugin::OpenAPI will replace Mojolicious::Plugin::Swagger2.
 
-    This plugin is currently EXPERIMENTAL.
-
 HELPERS
   openapi.spec
       $hash = $c->openapi->spec($json_pointer)
