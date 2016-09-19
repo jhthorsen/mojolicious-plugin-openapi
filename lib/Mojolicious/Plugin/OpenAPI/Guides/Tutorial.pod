@@ -104,7 +104,10 @@ other client side applications.
 
 C<parameters> and C<responses> will be used to define input and output
 validtion rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
-and L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
+and when rendering the response back to the client, using C<render(openapi => ...)>.
+
+Have a look at L<Mojolicious::Plugin::OpenAPI/RENDERER> for more details about
+output rendering.
 
 =item * x-mojo-name
 
@@ -174,7 +177,8 @@ L<Mojolicious::Lite> application.
 
 The input will be validated using
 L<Mojolicious::Plugin::OpenAPI/openapi.valid_input> while the output is
-validated through L<Mojolicious::Plugin::OpenAPI/reply.openapi>.
+validated through then L<openapi|Mojolicious::Plugin::OpenAPI/RENDERER>
+handler.
 
 =head2 Route names
 

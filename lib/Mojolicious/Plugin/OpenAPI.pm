@@ -275,6 +275,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     my $data = {body => $c->validation->param("body")};
 
     # Validate the output response and render it to the user agent
+    # using a custom "openapi" handler.
     $c->render(openapi => $data);
   }, "echo";
 
@@ -371,6 +372,32 @@ Returns the L<Mojolicious::Controller> object if the input is valid or
 automatically render an error document if not and return false. See
 L</SYNOPSIS> for example usage.
 
+=head2 reply.openapi
+
+This helper is discourage and might go away. Have a look at L</RENDERER>
+instead.
+
+=head1 RENDERER
+
+This plugin register a new handler called C<openapi>. The special thing about
+this handler is that it will validate the data before sending it back to the
+user agent. Examples:
+
+  $c->render(json => {foo => 123});    # without validation
+  $c->render(openapi => {foo => 123}); # with validation
+
+This handler will also use L</renderer> to format the output data. The code
+below shows the default L</renderer> which generates JSON data:
+
+  $app->plugin(
+    OpenAPI => {
+      renderer => sub {
+        my ($c, $data) = @_;
+        return Mojo::JSON::encode_json($data);
+      }
+    }
+  );
+
 =head1 METHODS
 
 =head2 register
@@ -407,13 +434,7 @@ Default: "warn".
 
 =item * renderer
 
-Holds a code ref that can be used to render the response. Should return
-a plain string of data. The default is:
-
-  sub {
-    my ($c, $data) = @_;
-    return Mojo::JSON::encode_json($data);
-  }
+See L</RENDERER>.
 
 =item * route
 
