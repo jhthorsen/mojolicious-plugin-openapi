@@ -14,6 +14,7 @@ SYNOPSIS
         my $data = {body => $c->validation->param("body")};
 
         # Validate the output response and render it to the user agent
+        # using a custom "openapi" handler.
         $c->render(openapi => $data);
       }, "echo";
 
@@ -105,6 +106,30 @@ HELPERS
     automatically render an error document if not and return false. See
     "SYNOPSIS" for example usage.
 
+  reply.openapi
+    This helper is discourage and might go away. Have a look at "RENDERER"
+    instead.
+
+RENDERER
+    This plugin register a new handler called "openapi". The special thing
+    about this handler is that it will validate the data before sending it
+    back to the user agent. Examples:
+
+      $c->render(json => {foo => 123});    # without validation
+      $c->render(openapi => {foo => 123}); # with validation
+
+    This handler will also use "renderer" to format the output data. The
+    code below shows the default "renderer" which generates JSON data:
+
+      $app->plugin(
+        OpenAPI => {
+          renderer => sub {
+            my ($c, $data) = @_;
+            return Mojo::JSON::encode_json($data);
+          }
+        }
+      );
+
 METHODS
   register
       $self->register($app, \%config);
@@ -138,13 +163,7 @@ METHODS
 
     * renderer
 
-      Holds a code ref that can be used to render the response. Should
-      return a plain string of data. The default is:
-
-        sub {
-          my ($c, $data) = @_;
-          return Mojo::JSON::encode_json($data);
-        }
+      See "RENDERER".
 
     * route
 
