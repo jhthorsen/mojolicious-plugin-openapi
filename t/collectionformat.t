@@ -14,9 +14,16 @@ plugin OpenAPI => {url => 'data://main/discriminator.json'};
 
 my $t = Test::Mojo->new;
 
+# Expected array - got null
 $t->get_ok('/api/pets')->status_is(400)->json_is('/errors/0/path', '/ri');
+
+# Expected integer - got number.
 $t->get_ok('/api/pets?ri=1.3')->status_is(400)->json_is('/errors/0/path', '/ri/0');
+
+# Not enough items: 1\/2
 $t->get_ok('/api/pets?ri=3&ml=5')->status_is(400)->json_is('/errors/0/path', '/ml');
+
+# Valid
 $t->get_ok('/api/pets?ri=3&ml=4&ml=2')->status_is(200)->json_is('/ml', [4, 2])->json_is('/ri', [3]);
 
 done_testing;
