@@ -186,6 +186,14 @@ METHODS
       See "schema" in JSON::Validator for the different "url" formats that
       is accepted.
 
+    * version_from_class
+
+      Can be used to overriden "/info/version" in the API specification,
+      from the return value from the "VERSION()" method in
+      "version_from_class".
+
+      Defaults to the current $app.
+
 AUTHOR
     Jan Henning Thorsen
 
