@@ -490,15 +490,17 @@ __DATA__
 <h1 id="title"><%= $spec->{info}{title} || 'No title' %></h1>
 <p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %></span></p>
 
+%= include "mojolicious/plugin/openapi/toc"
+
 % if ($spec->{info}{description}) {
-<h2 id="description">Description</h2>
+<h2 id="description"><a href="#title">Description</a></h2>
 <p class="description">
   %= $spec->{info}{description}
 </p>
 % }
 
 % if ($spec->{info}{termsOfService}) {
-<h2 id="terms-of-service">Terms of service</h2>
+<h2 id="terms-of-service"><a href="#title">Terms of service</a></h2>
 <p class="terms-of-service">
   %= $spec->{info}{termsOfService}
 </p>
@@ -506,13 +508,13 @@ __DATA__
 @@ mojolicious/plugin/openapi/footer.html.ep
 % my $contact = $spec->{info}{contact};
 % my $license = $spec->{info}{license};
-<h2 class="license">License</h2>
+<h2 id="license"><a href="#title">License</a></h2>
 % if ($license->{name}) {
 <p class="license"><a href="<%= $license->{url} || '' %>"><%= $license->{name} %></a></p>
 % } else {
 <p class="no-license">No license specified.</p>
 % }
-<h2 class="contact">Contact information</h2>
+<h2 id="contact"<a href="#title">Contact information</a></h2>
 % if ($contact->{email}) {
 <p class="contact-email"><a href="mailto:<%= $contact->{email} %>"><%= $contact->{email} %></a></p>
 % }
@@ -532,7 +534,7 @@ __DATA__
 @@ mojolicious/plugin/openapi/parameters.html.ep
 % my $has_parameters = @{$op->{parameters} || []};
 % my $body;
-<h3 class="op-parameters">Parameters</h3>
+<h4 class="op-parameters">Parameters</h3>
 % if ($has_parameters) {
 <table class="op-parameters">
   <thead>
@@ -570,12 +572,12 @@ __DATA__
 % for my $code (sort keys %{$op->{responses}}) {
   % next if $code =~ $X_RE;
   % my $res = $op->{responses}{$code};
-<h3 class="op-response">Response <%= $code %></h3>
+<h4 class="op-response">Response <%= $code %></h3>
 %= include "mojolicious/plugin/openapi/human", spec => $res
 <pre class="op-response"><%= $serialize->($res->{schema}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
-<h3 id="op-<%= lc $method %><%= $esc->($path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></h3>
+<h3 id="op-<%= lc $method %><%= $esc->($path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></a></h3>
 % if ($op->{deprecated}) {
 <p class="op-deprecated">This resource is deprecated!</p>
 % }
@@ -586,12 +588,12 @@ __DATA__
 %= include "mojolicious/plugin/openapi/parameters", op => $op
 %= include "mojolicious/plugin/openapi/response", op => $op
 @@ mojolicious/plugin/openapi/resources.html.ep
-<h2 id="resources">Resources</h2>
+<h2 id="resources"><a href="#title">Resources</a></h2>
 
 % my $schemes = $spec->{schemes} || ["http"];
 % my $url = Mojo::URL->new("http://$spec->{host}");
-<h3 id="base-url">Base URL</h3>
-<ul>
+<h3 id="base-url"><a href="#title">Base URL</a></h3>
+<ul class="unstyled">
 % for my $scheme (@$schemes) {
   % $url->scheme($scheme);
   <li><a href="<%= $url %>"><%= $url %></a></li>
@@ -606,6 +608,29 @@ __DATA__
     %= include "mojolicious/plugin/openapi/resource", method => $http_method, op => $op, path => $path
   % }
 % }
+@@ mojolicious/plugin/openapi/toc.html.ep
+<ul id="toc">
+  % if ($spec->{info}{description}) {
+  <li><a href="#description">Description</a></li>
+  % }
+  % if ($spec->{info}{termsOfService}) {
+  <li><a href="#terms-of-service">Terms of service</a></li>
+  % }
+  <li>
+    <a href="#resources">Resources</a>
+    <ul>
+    % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
+      % next if $path =~ $X_RE;
+      % for my $method (sort keys %{$spec->{paths}{$path}}) {
+        % next if $method =~ $X_RE;
+        <li><a href="#op-<%= lc $method %><%= $esc->($path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></h3>
+      % }
+    % }
+    </ul>
+  </li>
+  <li><a href="#license">License</a></li>
+  <li><a href="#contact">Contact</a></li>
+</ul>
 @@ mojolicious/plugin/openapi/layout.html.ep
 <!doctype html>
 <html lang="en">
@@ -618,12 +643,14 @@ __DATA__
       margin: 3em;
       padding: 0;
       color: #222;
+      line-height: 1.4em;
     }
     a {
       color: #225;
       text-decoration: underline;
     }
     h1, h2, h3, h4 { font-weight: bold; margin: 1em 0; }
+    h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: #222; }
     h1 { font-size: 2em; }
     h2 { font-size: 1.6em; margin-top: 2em; }
     h3 { font-size: 1.2em; }
@@ -650,10 +677,15 @@ __DATA__
       border-bottom: 1px solid #ccc;
     }
     ul {
-      list-style: none;
       margin: 0;
+      padding: 0 1.5rem;
+    }
+    ul.unstyled {
+      list-style: none;
       padding: 0;
     }
+    #toc a { text-decoration: none; display: block; }
+    #toc .method { display: inline-block; width: 4rem; }
     div.container { max-width: 50em; margin: 0 auto; }
     p.version { color: #666; margin: -0.5em 0 2em 0; }
     p.op-deprecated { color: #c00; }
