@@ -503,16 +503,6 @@ __DATA__
   %= $spec->{info}{termsOfService}
 </p>
 % }
-
-% my $schemes = $spec->{schemes} || ["http"];
-% my $url = Mojo::URL->new("http://$spec->{host}");
-<h3 id="base-url">Base URL</h3>
-<ul>
-% for my $scheme (@$schemes) {
-  % $url->scheme($scheme);
-  <li><a href="<%= $url %>"><%= $url %></a></li>
-% }
-</ul>
 @@ mojolicious/plugin/openapi/footer.html.ep
 % my $contact = $spec->{info}{contact};
 % my $license = $spec->{info}{license};
@@ -597,6 +587,17 @@ __DATA__
 %= include "mojolicious/plugin/openapi/response", op => $op
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources">Resources</h2>
+
+% my $schemes = $spec->{schemes} || ["http"];
+% my $url = Mojo::URL->new("http://$spec->{host}");
+<h3 id="base-url">Base URL</h3>
+<ul>
+% for my $scheme (@$schemes) {
+  % $url->scheme($scheme);
+  <li><a href="<%= $url %>"><%= $url %></a></li>
+% }
+</ul>
+
 % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
   % next if $path =~ $X_RE;
   % for my $http_method (sort keys %{$spec->{paths}{$path}}) {
