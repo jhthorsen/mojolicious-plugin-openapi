@@ -132,6 +132,14 @@ sub _load_spec {
   }
 
   warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
+
+  my $class = $config->{version_from_class} // ref $app;
+  if ($class and $class ne 'Mojolicious') {
+    if (UNIVERSAL::can($class, 'VERSION') and $class->VERSION) {
+      $api_spec->data->{info}{version} = $class->VERSION;
+    }
+  }
+
   return $api_spec;
 }
 
@@ -455,6 +463,13 @@ the top level.
 
 See L<JSON::Validator/schema> for the different C<url> formats that is
 accepted.
+
+=item * version_from_class
+
+Can be used to overriden C</info/version> in the API specification, from the
+return value from the C<VERSION()> method in C<version_from_class>.
+
+Defaults to the current C<$app>.
 
 =back
 

@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 1.02 Not Released
  - Fix bug for collectionFormat handling in JSON::Validator
+ - Add support for "version_from_class"
  - Add TOC to .html rendering of API
 
 1.01 2016-09-21T16:07:45+0200
