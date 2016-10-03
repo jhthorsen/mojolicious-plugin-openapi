@@ -27,6 +27,7 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
     "paths": {
       "/pets": {
         "get": {
+          "operationId": "getPets",
           "x-mojo-name": "get_pets",
           "x-mojo-to": "pet#list",
           "summary": "Finds pets in the system",
