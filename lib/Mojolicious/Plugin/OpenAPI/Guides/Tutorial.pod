@@ -110,7 +110,7 @@ and when rendering the response back to the client, using C<render(openapi => ..
 Have a look at L<Mojolicious::Plugin::OpenAPI/RENDERER> for more details about
 output rendering.
 
-=item * x-mojo-name
+=item * operationId and x-mojo-name
 
 See L</Route names>.
 
