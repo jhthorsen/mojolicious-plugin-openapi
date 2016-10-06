@@ -177,10 +177,12 @@ sub _reply {
 
 sub _render {
   my ($renderer, $c, $output, $options) = @_;
-  my $res  = $c->stash('openapi')        or return;
+  exists $c->stash->{openapi} or return;
+
   my $self = $c->stash('openapi.object') or return;
   my $status = $c->stash('status') || 200;
-  my $v = $self->_validator;
+  my $res    = $c->stash('openapi');
+  my $v      = $self->_validator;
 
   $c->stash->{format} ||= 'json';
   delete $options->{encoding};

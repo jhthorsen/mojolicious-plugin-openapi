@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.04 Not Released
+ - Fix responding with an empty string #9
+ - Fix responding with null
+
 1.03 2016-09-27T23:58:41+0200
  - Bumped required JSON::Validator version to 0.85 #8
 
