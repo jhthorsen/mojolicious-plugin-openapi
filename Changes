@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.04 Not Released
+1.04 2016-10-06T21:39:06+0200
  - Fix responding with an empty string #9
  - Fix responding with null
 
