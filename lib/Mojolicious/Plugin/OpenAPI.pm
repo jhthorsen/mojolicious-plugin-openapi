@@ -61,6 +61,7 @@ sub _add_routes {
   for my $path (sort { length $a <=> length $b } keys %$paths) {
     next if $path =~ $X_RE;
     my @parameters = @{$paths->{$path}{parameters} || []};
+    my $route_path = $path;
     my $has_options;
 
     for my $http_method (keys %{$paths->{$path}}) {
@@ -71,6 +72,7 @@ sub _add_routes {
       my $endpoint;
 
       $has_options = 1 if lc $http_method eq 'options';
+      $route_path = _route_path($path, $op_spec);
 
       die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
@@ -83,7 +85,7 @@ sub _add_routes {
         $route->add_child($endpoint);
       }
       if (!$endpoint) {
-        $endpoint = $route->$http_method(_route_path($path, $op_spec));
+        $endpoint = $route->$http_method($route_path);
         $endpoint->name("$route_prefix$name") if $name;
       }
 
@@ -93,7 +95,7 @@ sub _add_routes {
     }
 
     unless ($has_options) {
-      $route->options($path => sub { _render_route_spec($_[0], $path) });
+      $route->options($route_path => sub { _render_route_spec($_[0], $path) });
     }
   }
 }

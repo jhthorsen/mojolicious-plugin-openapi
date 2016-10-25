@@ -21,6 +21,8 @@ $t->options_ok('/api/spec')->status_is(200)->json_is('/get/operationId', 'Spec')
 $t->options_ok('/api/spec?method=get')->status_is(200)->json_is('/operationId', 'Spec');
 $t->options_ok('/api/spec?method=post')->status_is(404);
 
+$t->options_ok('/api/user/1')->status_is(200)->json_is('/get/operationId', 'user');
+
 done_testing;
 
 __DATA__
@@ -36,6 +38,20 @@ __DATA__
         "parameters" : [
           { "in": "body", "name": "body", "schema": { "type" : "object" } }
         ],
+        "responses" : {
+          "200": {
+            "description": "Spec response.",
+            "schema": { "type": "object" }
+          }
+        }
+      }
+    },
+    "/user/{id}" : {
+      "parameters" : [
+        { "in": "path", "name": "id", "type": "integer", "required": true }
+      ],
+      "get" : {
+        "operationId" : "user",
         "responses" : {
           "200": {
             "description": "Spec response.",
