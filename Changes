@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 1.05 Not Released
  - Add support for path parameters #11
+ - Fix typos in tutorial regarding example snippets #13
  - Fix default OPTIONS path, when it has placeholders
 
 1.04 2016-10-06T21:39:06+0200

@@ -33,12 +33,20 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
           "summary": "Finds pets in the system",
           "parameters": [
             {"in": "body", "name": "body", "schema": {"type": "object"}},
-            {"in": "query", "name": "age", "type": "integer"}}
+            {"in": "query", "name": "age", "type": "integer"}
           ],
           "responses": {
             "200": {
               "description": "Pet response",
-              "schema": { "type": "array", "items": { "type": "object" } }
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pets": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                  }
+                }
+              }
             },
             "default": {
               "description": "Unexpected error",
@@ -135,12 +143,14 @@ ref will be flatten. Examples:
 =head2 Application
 
   package Myapp;
-  use Mojolicious;
+  use Mojo::Base "Mojolicious";
 
   sub startup {
     my $app = shift;
     $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json")});
   }
+
+  1;
 
 The first thing in your code that you need to do is to load this plugin and the
 L</Specification>. See L<Mojolicious::Plugin::OpenAPI/register> for information
@@ -152,6 +162,7 @@ L<Mojolicious::Lite> application.
 =head2 Controller
 
   package Myapp::Controller::Pet;
+  use Mojo::Base "Mojolicious::Controller";
 
   sub list {
 
@@ -175,6 +186,8 @@ L<Mojolicious::Lite> application.
     my $output = {pets => [{name => "kit-e-cat"}]};
     $c->render(openapi => $output);
   }
+
+  1;
 
 The input will be validated using
 L<Mojolicious::Plugin::OpenAPI/openapi.valid_input> while the output is
