@@ -1,7 +1,7 @@
 package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
 
-use JSON::Validator::OpenAPI;
+use JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
@@ -14,7 +14,7 @@ sub NOT_IMPLEMENTED { +{errors => [{message => 'Not implemented.', path => '/'}]
 
 my $X_RE = qr{^x-};
 
-has _validator => sub { JSON::Validator::OpenAPI->new; };
+has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
