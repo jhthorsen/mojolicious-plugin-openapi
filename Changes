@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.06 Not Released
+ - Documented x-mojo-placeholder #16
+
 1.05 2016-10-26T13:23:38+0200
  - Add support for path parameters #11
  - Fix typos in tutorial regarding example snippets #13

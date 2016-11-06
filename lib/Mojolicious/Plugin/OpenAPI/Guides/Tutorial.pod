@@ -71,7 +71,7 @@ the "OPTIONS" HTTP method. Example:
 
 Note that the use of "OPTIONS" is EXPERIMENTAL, and subject to change.
 
-Here are some more details about the difference keys:
+Here are some more details about the different keys:
 
 =over 2
 
@@ -121,6 +121,24 @@ output rendering.
 =item * operationId and x-mojo-name
 
 See L</Route names>.
+
+=item * x-mojo-placeholder
+
+C<x-mojo-placeholder> can be used inside a parameter definition to instruct
+Mojolicious to parse a path part in a certain way. Example:
+
+  "parameters": [
+    {
+      "x-mojo-placeholder": "#",
+      "in": "path",
+      "name": "email",
+      "type": "string"
+    }
+  ]
+
+See L<Mojolicious::Guides::Routing> for more information about "standard",
+"relaxed" and "wildcard" placeholders. The default is to use the "standard"
+("/:foo") placeholder.
 
 =item * x-mojo-to
 
