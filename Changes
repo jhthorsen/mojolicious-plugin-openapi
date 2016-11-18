@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 1.06 Not Released
+ - Will rewrite basePath in generated spec, relative to base URL
  - Documented x-mojo-placeholder #16
 
 1.05 2016-10-26T13:23:38+0200

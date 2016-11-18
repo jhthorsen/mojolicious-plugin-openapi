@@ -3,6 +3,7 @@ use Test::Mojo;
 use Test::More;
 
 use Mojolicious::Lite;
+
 get '/spec' => sub {
   my $c = shift->openapi->valid_input or return;
   $c->render(json => {info => $c->openapi->spec('/info'), op_spec => $c->openapi->spec});
@@ -22,6 +23,15 @@ $t->options_ok('/api/spec?method=get')->status_is(200)->json_is('/operationId', 
 $t->options_ok('/api/spec?method=post')->status_is(404);
 
 $t->options_ok('/api/user/1')->status_is(200)->json_is('/get/operationId', 'user');
+
+$t->get_ok('/api')->status_is(200)->json_is('/basePath', '/api');
+
+hook before_dispatch => sub {
+  my $c = shift;
+  $c->req->url->base->path('/whatever');
+};
+
+$t->get_ok('/api')->status_is(200)->json_is('/basePath', '/whatever/api');
 
 done_testing;
 

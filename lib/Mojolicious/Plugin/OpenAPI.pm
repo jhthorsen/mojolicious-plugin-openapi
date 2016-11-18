@@ -224,7 +224,8 @@ sub _reply_spec {
 
   local $spec->{id};
   delete $spec->{id};
-  local $spec->{host} = $c->req->url->to_abs->host_port;
+  local $spec->{basePath} = $c->url_for($spec->{basePath});
+  local $spec->{host}     = $c->req->url->to_abs->host_port;
 
   return $c->render(json => $spec) unless $format eq 'html';
   return $c->render(
