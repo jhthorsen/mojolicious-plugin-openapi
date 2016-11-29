@@ -15,6 +15,7 @@ plugin OpenAPI => {url => "data://main/path-parameters.json"};
 my $t = Test::Mojo->new;
 
 $t->post_ok('/api/user/foo' => json => {})->status_is(400);
+$t->post_ok('/api/user/42a' => json => {})->status_is(400);
 $t->post_ok('/api/user/42' => json => {})->status_is(200)->json_is('/id', 42);
 
 done_testing;
