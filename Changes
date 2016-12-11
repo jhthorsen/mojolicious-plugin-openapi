@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.07 Not Released
+ - Compatible with JSON::Validator 0.90
+
 1.06 2016-11-18T15:57:26+0100
  - Will rewrite basePath in generated spec, relative to base URL
  - Documented x-mojo-placeholder #16

@@ -1,7 +1,7 @@
 package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
 
-use JSON::Validator::OpenAPI;
+use JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
@@ -14,7 +14,7 @@ sub NOT_IMPLEMENTED { +{errors => [{message => 'Not implemented.', path => '/'}]
 
 my $X_RE = qr{^x-};
 
-has _validator => sub { JSON::Validator::OpenAPI->new; };
+has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
@@ -123,30 +123,14 @@ sub _helper_spec {
 
 sub _load_spec {
   my ($self, $app, $config) = @_;
-  my $openapi = JSON::Validator->new->schema(JSON::Validator::OpenAPI::SPECIFICATION_URL());
-  my ($api_spec, @errors);
 
-  # first check if $ref is in the right place,
-  # and then check if the spec is correct
-  for my $r (sub { }, undef) {
-    next if $r and $config->{allow_invalid_ref};
-    my $jv = JSON::Validator->new;
-    $jv->resolver($r) if $r;
-    $api_spec = $jv->schema($config->{url})->schema;
-    @errors   = $openapi->coerce($jv->coerce)->validate($api_spec->data);
-    die join "\n", "[OpenAPI] Invalid spec:", @errors if @errors;
-  }
-
-  warn "[OpenAPI] Loaded $config->{url}\n" if DEBUG;
-
-  my $class = $config->{version_from_class} // ref $app;
-  if ($class and $class ne 'Mojolicious') {
-    if (UNIVERSAL::can($class, 'VERSION') and $class->VERSION) {
-      $api_spec->data->{info}{version} = $class->VERSION;
+  return $self->_validator->load_and_validate_spec(
+    $config->{url},
+    {
+      allow_invalid_ref  => $config->{allow_invalid_ref},
+      version_from_class => $config->{version_from_class} // ref $app,
     }
-  }
-
-  return $api_spec;
+  )->schema;
 }
 
 sub _log {
