@@ -21,10 +21,11 @@ sub register {
   my $api_spec = $self->_load_spec($app, $config);
 
   unless ($app->defaults->{'openapi.base_paths'}) {
-    $app->helper('openapi.validate'    => \&_validate);
-    $app->helper('openapi.valid_input' => sub { _validate($_[0]) ? undef : $_[0] });
-    $app->helper('openapi.spec'        => \&_helper_spec);
-    $app->helper('reply.openapi'       => \&_reply);
+    $app->helper('openapi.validate'        => \&_validate);
+    $app->helper('openapi.valid_input'     => sub { _validate($_[0]) ? undef : $_[0] });
+    $app->helper('openapi.spec'            => \&_helper_spec);
+    $app->helper('reply.openapi'           => \&_reply);
+    $app->helper('openapi.not_implemented' => \&NOT_IMPLEMENTED);
     $app->hook(before_render => \&_before_render);
     $app->renderer->add_handler(openapi => \&_render);
     push @{$app->renderer->classes}, __PACKAGE__;
@@ -110,7 +111,8 @@ sub _before_render {
   return unless $has_spec or grep { $path =~ /^$_/ } @{$c->stash('openapi.base_paths')};
 
   my $format = $c->stash('format') || 'json';
-  my $res = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : NOT_IMPLEMENTED();
+  my $res
+    = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : $c->openapi->not_implemented;
   $args->{status} = $res->{status};
   $args->{$format} = $res;
 }
@@ -372,6 +374,18 @@ C<Mojolicious::Controller/validation>, which again can be extracted by the
 Returns the L<Mojolicious::Controller> object if the input is valid or
 automatically render an error document if not and return false. See
 L</SYNOPSIS> for example usage.
+
+=head2 openapi.not_implemented
+
+  my $response_data = $c->openapi->not_implemented;
+
+The response data in the case of an endpoint not yet being implemented. If
+you wish to override the default you need to override this helper with your
+own logic:
+
+  $app->helper( 'openapi.not_implemented' => sub { my $c = shift; ... } );
+
+This helper is EXPERIMENTAL and subject for change.
 
 =head2 reply.openapi
 
