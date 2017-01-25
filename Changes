@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.08 2017-01-25T17:27:12+0100
+ - Add EXPERIMENTAL openapi.not_implemented helper
+
 1.07 2016-12-11T11:39:46+0100
  - Compatible with JSON::Validator 0.90
 

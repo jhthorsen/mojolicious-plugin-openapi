@@ -106,6 +106,17 @@ HELPERS
     automatically render an error document if not and return false. See
     "SYNOPSIS" for example usage.
 
+  openapi.not_implemented
+      my $response_data = $c->openapi->not_implemented;
+
+    The response data in the case of an endpoint not yet being implemented.
+    If you wish to override the default you need to override this helper
+    with your own logic:
+
+      $app->helper( 'openapi.not_implemented' => sub { my $c = shift; ... } );
+
+    This helper is EXPERIMENTAL and subject for change.
+
   reply.openapi
     This helper is discourage and might go away. Have a look at "RENDERER"
     instead.
