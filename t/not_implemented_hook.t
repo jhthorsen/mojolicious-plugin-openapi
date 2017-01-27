@@ -15,11 +15,11 @@ $t->app->helper(
     my $spec = $c->openapi->spec;
     is($spec->{operationId}, 'dig', 'not_implemented got spec');
 
-    return {mocked => "yes"};
+    return {json => [{status => "passed"}], status => 201};
   }
 );
 
-$t->post_ok('/api/emulate')->status_is(200)->json_is({mocked => "yes"});
+$t->post_ok('/api/emulate')->status_is(201)->json_is([{status => "passed"}]);
 
 done_testing;
 
