@@ -107,13 +107,18 @@ HELPERS
     "SYNOPSIS" for example usage.
 
   openapi.not_implemented
-      my $response_data = $c->openapi->not_implemented;
+      my $not_implemented_res = $c->openapi->not_implemented;
 
     The response data in the case of an endpoint not yet being implemented.
     If you wish to override the default you need to override this helper
-    with your own logic:
+    with your own logic. Note you must return a hash with the json and
+    status code:
 
-      $app->helper( 'openapi.not_implemented' => sub { my $c = shift; ... } );
+      $app->helper( 'openapi.not_implemented' => sub {
+        my $c = shift;
+        ...
+        return { json => { ... }, status => 200 };
+      });
 
     This helper is EXPERIMENTAL and subject for change.
 
