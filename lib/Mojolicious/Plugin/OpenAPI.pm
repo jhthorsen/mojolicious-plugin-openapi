@@ -8,9 +8,17 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '1.08';
 
-sub EXCEPTION { +{errors => [{message => 'Internal server error.', path => '/'}], status => 500} }
-sub NOT_FOUND { +{errors => [{message => 'Not found.',             path => '/'}], status => 404} }
-sub NOT_IMPLEMENTED { +{errors => [{message => 'Not implemented.', path => '/'}], status => 501} }
+sub EXCEPTION {
+  +{json => {errors => [{message => 'Internal server error.', path => '/'}]}, status => 500};
+}
+
+sub NOT_FOUND {
+  +{json => {errors => [{message => 'Not found.', path => '/'}]}, status => 404};
+}
+
+sub NOT_IMPLEMENTED {
+  +{json => {errors => [{message => 'Not implemented.', path => '/'}]}, status => 501};
+}
 
 my $X_RE = qr{^x-};
 
@@ -113,8 +121,7 @@ sub _before_render {
   my $format = $c->stash('format') || 'json';
   my $res
     = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : $c->openapi->not_implemented;
-  $args->{status} = $res->{status};
-  $args->{$format} = $res;
+  %$args = %$res;
 }
 
 sub _helper_spec {
@@ -377,13 +384,17 @@ L</SYNOPSIS> for example usage.
 
 =head2 openapi.not_implemented
 
-  my $response_data = $c->openapi->not_implemented;
+  my $not_implemented_res = $c->openapi->not_implemented;
 
 The response data in the case of an endpoint not yet being implemented. If
 you wish to override the default you need to override this helper with your
-own logic:
+own logic. Note you must return a hash with the json and status code:
 
-  $app->helper( 'openapi.not_implemented' => sub { my $c = shift; ... } );
+  $app->helper( 'openapi.not_implemented' => sub {
+    my $c = shift;
+    ...
+    return { json => { ... }, status => 200 };
+  });
 
 This helper is EXPERIMENTAL and subject for change.
 
