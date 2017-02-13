@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.11 Not Released
+ - Add fallback to default renderer, unless "openapi" is set in stash
+
 1.10 2017-02-21T15:35:45+0100
  - Fix resolve of specification twice #19
  - Require JSON::Validator 0.94 #30
