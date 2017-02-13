@@ -26,7 +26,14 @@ has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
-  my $api_spec = $self->_load_spec($app, $config);
+
+  $self->_validator->load_and_validate_spec(
+    $config->{url},
+    {
+      allow_invalid_ref  => $config->{allow_invalid_ref},
+      version_from_class => $config->{version_from_class} // ref $app,
+    }
+  );
 
   unless ($app->defaults->{'openapi.base_paths'}) {
     $app->helper('openapi.validate'        => \&_validate);
@@ -41,12 +48,12 @@ sub register {
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->{renderer} = $config->{renderer} || \&_render_json;
-  $self->_validator->schema($api_spec->data)->coerce($config->{coerce} // 1);
-  $self->_add_routes($app, $api_spec, $config);
+  $self->_add_routes($app, $config);
 }
 
 sub _add_routes {
-  my ($self, $app, $api_spec, $config) = @_;
+  my ($self, $app, $config) = @_;
+  my $api_spec     = $self->_validator->schema;
   my $base_path    = $api_spec->get('/basePath') || '/';
   my $paths        = $api_spec->get('/paths');
   my $route        = $config->{route};
@@ -130,18 +137,6 @@ sub _helper_spec {
   return $c->stash('openapi.api_spec')->get($path);
 }
 
-sub _load_spec {
-  my ($self, $app, $config) = @_;
-
-  return $self->_validator->load_and_validate_spec(
-    $config->{url},
-    {
-      allow_invalid_ref  => $config->{allow_invalid_ref},
-      version_from_class => $config->{version_from_class} // ref $app,
-    }
-  )->schema;
-}
-
 sub _log {
   my ($self, $c, $dir) = (shift, shift, shift);
   my $log_level = $self->{log_level};
@@ -180,13 +175,12 @@ sub _render {
 
   my $self = $c->stash('openapi.object') or return;
   my $status = $c->stash('status') || 200;
-  my $res    = $c->stash('openapi');
-  my $v      = $self->_validator;
+  my $res = $c->stash('openapi');
 
   $c->stash->{format} ||= 'json';
   delete $options->{encoding};
 
-  if (my @errors = $v->validate_response($c, $c->openapi->spec, $status, $res)) {
+  if (my @errors = $self->_validator->validate_response($c, $c->openapi->spec, $status, $res)) {
     $self->_log($c, '>>>', \@errors);
     $c->stash(status => 500);
     $$output = $self->{renderer}->($c, {errors => \@errors, status => 500});

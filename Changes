@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.10 Not Released
+ - Fix resolve of specification twice #19
+
 1.09 2017-01-30T13:11:52+0000
  - Prevent stomping of status in before_render hook
 
