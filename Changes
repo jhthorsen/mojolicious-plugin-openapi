@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.10 Not Released
+1.10 2017-02-21T15:35:45+0100
  - Fix resolve of specification twice #19
  - Require JSON::Validator 0.94 #30
 

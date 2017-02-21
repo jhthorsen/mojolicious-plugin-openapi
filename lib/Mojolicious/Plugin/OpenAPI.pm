@@ -6,7 +6,7 @@ use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '1.09';
+our $VERSION = '1.10';
 
 sub EXCEPTION {
   +{json => {errors => [{message => 'Internal server error.', path => '/'}]}, status => 500};
