@@ -171,7 +171,17 @@ sub _reply {
 
 sub _render {
   my ($renderer, $c, $output, $options) = @_;
-  exists $c->stash->{openapi} or return;
+
+  # fallback to default renderer
+  unless (exists $c->stash->{openapi}) {
+    my $renderer = $c->app->renderer;
+    my $handler  = $renderer->handlers->{$renderer->default_handler};
+    $c->app->log->debug(
+      "Using default_handler to render data since 'openapi' was not found in stash. Set 'handler' in stash to avoid this message."
+    );
+    local $options->{handler} = $renderer->default_handler;
+    return $renderer->$handler($c, $output, $options);
+  }
 
   my $self = $c->stash('openapi.object') or return;
   my $status = $c->stash('status') || 200;

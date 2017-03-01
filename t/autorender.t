@@ -2,10 +2,17 @@ use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
 
+my %inline;
+
 {
   use Mojolicious::Lite;
   app->routes->namespaces(['MyApp::Controller']);
   get '/die' => sub { die 'Oh noes!' }, 'Die';
+  get '/inline' => sub {
+    my $c = shift;
+    $c->render(%inline);
+    },
+    'Inline';
   get
     '/not-found' => sub { shift->reply->openapi(404 => {this_is_fine => 1}) },
     'NotFound';
@@ -29,6 +36,12 @@ $t->post_ok('/api/todo')->status_is(200)->json_is('/todo', 42);
 
 # Custom Not Found response
 $t->get_ok('/api/not-found')->status_is(404)->json_is('/this_is_fine', 1);
+
+# Fallback to default renderer
+$inline{template} = 'inline';
+$t->get_ok('/api/inline')->status_is(200)->content_like(qr{Too cool});
+$inline{openapi} = 'openapi is cool';
+$t->get_ok('/api/inline')->status_is(200)->content_like(qr{openapi is cool});
 
 done_testing;
 
@@ -66,6 +79,17 @@ __DATA__
         }
       }
     },
+    "/inline" : {
+      "get" : {
+        "operationId" : "Inline",
+        "responses" : {
+          "200": {
+            "description": "response",
+            "schema": { "type": "string" }
+          }
+        }
+      }
+    },
     "/not-found" : {
       "get" : {
         "operationId" : "NotFound",
@@ -94,3 +118,5 @@ __DATA__
     }
   }
 }
+@@ inline.html.ep
+Too cool
