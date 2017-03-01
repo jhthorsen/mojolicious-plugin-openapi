@@ -74,7 +74,7 @@ sub _add_routes {
     $route_prefix = "$spec_route_name.";
   }
 
-  for my $path (sort { length $a <=> length $b } keys %$paths) {
+  for my $path (_sort_paths(keys %$paths)) {
     next if $path =~ $X_RE;
     my @parameters = @{$paths->{$path}{parameters} || []};
     my $route_path = $path;
@@ -107,7 +107,7 @@ sub _add_routes {
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $endpoint->to({'openapi.op_spec' => $op_spec});
-      warn "[OpenAPI] Add route $http_method @{[$endpoint->render]}\n" if DEBUG;
+      warn "[OpenAPI] Add route $http_method $path (@{[$endpoint->render]})\n" if DEBUG;
     }
 
     unless ($has_options) {
@@ -250,6 +250,13 @@ sub _route_path {
 
 sub _serialize {
   Data::Dumper->new([@_])->Indent(1)->Pair(': ')->Sortkeys(1)->Terse(1)->Useqq(1)->Dump;
+}
+
+sub _sort_paths {
+  return
+    map { $_->[0] }
+    sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
+    map { [$_, $_ =~ /\{/ ? 1 : 0] } @_;
 }
 
 sub _validate {
