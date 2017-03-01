@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.11 Not Released
+1.11 2017-03-01T19:42:58+0100
  - Fix adding routes with wildcards after routes without wildcards
  - Add fallback to default renderer, unless "openapi" is set in stash
 
