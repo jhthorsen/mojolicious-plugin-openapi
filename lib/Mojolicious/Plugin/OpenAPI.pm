@@ -201,8 +201,10 @@ sub _render {
 }
 
 sub _render_json {
-  $_[0]->res->headers->content_type('application/json;charset=UTF-8');
-  return Mojo::JSON::encode_json($_[1]);
+  my $c = shift;
+  return $_[0]->slurp if UNIVERSAL::isa($_[0], 'Mojo::Asset');
+  $c->res->headers->content_type('application/json;charset=UTF-8');
+  return Mojo::JSON::encode_json($_[0]);
 }
 
 sub _render_route_spec {
