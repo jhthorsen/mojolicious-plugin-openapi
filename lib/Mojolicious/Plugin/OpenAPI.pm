@@ -176,7 +176,9 @@ sub _render {
   unless (exists $c->stash->{openapi}) {
     my $renderer = $c->app->renderer;
     my $handler  = $renderer->handlers->{$renderer->default_handler};
-    $c->app->log->debug("Using default_handler to render, since 'openapi' is not set in stash");
+    $c->app->log->debug(
+      "Using default_handler to render data since 'openapi' was not found in stash. Set 'handler' in stash to avoid this message."
+    );
     local $options->{handler} = $renderer->default_handler;
     return $renderer->$handler($c, $output, $options);
   }
