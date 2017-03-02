@@ -6,7 +6,7 @@ use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 sub EXCEPTION {
   +{json => {errors => [{message => 'Internal server error.', path => '/'}]}, status => 500};
@@ -27,7 +27,7 @@ has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 sub register {
   my ($self, $app, $config) = @_;
 
-  $self->_validator->load_and_validate_spec(
+  $self->_validator->load_and_validate_schema(
     $config->{url},
     {
       allow_invalid_ref  => $config->{allow_invalid_ref},
