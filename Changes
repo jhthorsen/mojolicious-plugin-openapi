@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.14 Not Released
+ - Bump JSON::Validator version
+
 1.13 2017-03-03T00:35:26+0100
  - Forgot to bump JSON::Validator version in cpanfile #32
 
