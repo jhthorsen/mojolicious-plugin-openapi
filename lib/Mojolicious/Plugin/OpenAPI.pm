@@ -36,11 +36,12 @@ sub register {
   );
 
   unless ($app->defaults->{'openapi.base_paths'}) {
-    $app->helper('openapi.validate'        => \&_validate);
-    $app->helper('openapi.valid_input'     => sub { _validate($_[0]) ? undef : $_[0] });
-    $app->helper('openapi.spec'            => \&_helper_spec);
-    $app->helper('reply.openapi'           => \&_reply);
     $app->helper('openapi.not_implemented' => \&NOT_IMPLEMENTED);
+    $app->helper('openapi.render_spec'     => \&_reply_spec);
+    $app->helper('openapi.spec'            => \&_helper_spec);
+    $app->helper('openapi.valid_input'     => sub { _validate($_[0]) ? undef : $_[0] });
+    $app->helper('openapi.validate'        => \&_validate);
+    $app->helper('reply.openapi'           => \&_reply);
     $app->hook(before_render => \&_before_render);
     $app->renderer->add_handler(openapi => \&_render);
     push @{$app->renderer->classes}, __PACKAGE__;
@@ -68,7 +69,7 @@ sub _add_routes {
   push @{$app->defaults->{'openapi.base_paths'}}, $base_path;
   $route->to({handler => 'openapi', 'openapi.api_spec' => $api_spec, 'openapi.object' => $self});
 
-  my $spec_route = $route->get->to(cb => \&_reply_spec);
+  my $spec_route = $route->get->to(cb => sub { shift->openapi->render_spec });
   if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
     $spec_route->name($spec_route_name);
     $route_prefix = "$spec_route_name.";
@@ -366,6 +367,18 @@ be relative to the current operation. Example:
       }
     }
   }
+
+=head2 openapi.render_spec
+
+  $c = $c->openapi->render_spec;
+
+Used to render the specification as either "html" or "json". Set the
+L<Mojolicious/stash> variable "format" to change the format to render.
+
+This helper is called by default, when accessing the "basePath" resource.
+
+The "html" rendering needs improvement. Any help or feedback is much
+appreciated.
 
 =head2 openapi.validate
 
