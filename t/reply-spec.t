@@ -21,6 +21,7 @@ sub VERSION {1.42}
 
 {
   my $app = Mojolicious->new;
+  $app->routes->get('/docs')->to(cb => sub { shift->openapi->render_spec })->name('docs');
   $app->plugin(
     OpenAPI => {
       spec_route_name    => 'my.cool.api',
@@ -35,6 +36,11 @@ sub VERSION {1.42}
   $t->get_ok('/api')->status_is(200)->json_is('/info/version', 1.42);
   $t->get_ok('/api.html')->status_is(200)->text_is('title', 'Test reply spec')
     ->text_is('h1#title', 'Test reply spec')->text_is('h3#op-post-pets a', 'POST /api/pets');
+
+  $t->get_ok('/api/docs')->status_is(200)->json_is('/info/version', 1.42)
+    ->json_is('/basePath', '/api');
+  $t->get_ok('/api/docs.html')->status_is(200)->text_is('h3#op-post-pets a', 'POST /api/pets')
+    ->content_is(1);
 }
 
 sub add_url_route {
@@ -56,6 +62,17 @@ __DATA__
   "host": "api.thorsen.pm",
   "basePath": "/api",
   "paths": {
+    "/docs": {
+      "get": {
+        "operationId": "docs",
+        "responses": {
+          "200": {
+            "description": "pet response",
+            "schema": { "type": "object" }
+          }
+        }
+      }
+    },
     "/pets": {
       "post": {
         "operationId": "addPet",
