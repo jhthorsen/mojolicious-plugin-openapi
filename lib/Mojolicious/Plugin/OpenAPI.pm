@@ -28,7 +28,7 @@ sub register {
   my ($self, $app, $config) = @_;
 
   $self->_validator->load_and_validate_schema(
-    $config->{url},
+    $config->{url} || $config->{spec},
     {
       allow_invalid_ref  => $config->{allow_invalid_ref},
       version_from_class => $config->{version_from_class} // ref $app,
@@ -507,6 +507,9 @@ the top level.
 
 See L<JSON::Validator/schema> for the different C<url> formats that is
 accepted.
+
+C<spec> is an alias for "url", which might make more sense if your
+specification is written in perl, instead of JSON or YAML.
 
 =item * version_from_class
 
