@@ -27,6 +27,8 @@ has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 sub register {
   my ($self, $app, $config) = @_;
 
+  $self->_validator->coerce($config->{coerce} // 1);
+  
   $self->_validator->load_and_validate_schema(
     $config->{url} || $config->{spec},
     {
