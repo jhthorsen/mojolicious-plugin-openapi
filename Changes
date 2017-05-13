@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.14 Not Released
+1.14 2017-05-13T11:55:37+0200
  - Fix automatically coercing values #33
    Contributor: Nick Logan
  - Add openapi.render_spec helper

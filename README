@@ -80,6 +80,18 @@ HELPERS
         }
       }
 
+  openapi.render_spec
+      $c = $c->openapi->render_spec;
+
+    Used to render the specification as either "html" or "json". Set the
+    "stash" in Mojolicious variable "format" to change the format to render.
+
+    This helper is called by default, when accessing the "basePath"
+    resource.
+
+    The "html" rendering needs improvement. Any help or feedback is much
+    appreciated.
+
   openapi.validate
       @errors = $c->openapi->validate;
 
@@ -201,6 +213,9 @@ METHODS
 
       See "schema" in JSON::Validator for the different "url" formats that
       is accepted.
+
+      "spec" is an alias for "url", which might make more sense if your
+      specification is written in perl, instead of JSON or YAML.
 
     * version_from_class
 
