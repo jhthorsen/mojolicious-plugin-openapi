@@ -17,7 +17,13 @@ sub NOT_FOUND {
 }
 
 sub NOT_IMPLEMENTED {
-  +{json => {errors => [{message => 'Not implemented.', path => '/'}]}, status => 501};
+  my ($c, $args) = @_;
+  my $path = $c->req->url->path->to_string;
+  my $namespace = $args->{snapshot}->{namespace};
+  my $controller = $args->{snapshot}->{controller} || '';
+  my $nsCon = $namespace ? $namespace.'::'.$controller : $controller;
+  my $action = $args->{snapshot}->{action} || '';
+  +{json => {errors => [{message => "OpenAPI path '$path' not implemented in controller '$nsCon->$action'.", path => $path}]}, status => 501};
 }
 
 my $X_RE = qr{^x-};
@@ -129,7 +135,7 @@ sub _before_render {
 
   my $format = $c->stash('format') || 'json';
   my $res
-    = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : $c->openapi->not_implemented;
+    = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : $c->openapi->not_implemented($args, $path);
   %$args = %$res;
 }
 

@@ -27,7 +27,7 @@ $t->get_ok('/api/die')->status_is(500)->json_is('/errors/0/message', 'Internal s
 # Not implemented
 $t->get_ok('/api/todo')->status_is(404)->json_is('/errors/0/message', 'Not found.');
 $t->post_ok('/api/todo' => json => ['invalid'])->status_is(501)
-  ->json_is('/errors/0/message', 'Not implemented.');
+  ->json_is('/errors/0/message', "OpenAPI path '/api/todo' not implemented in controller 'dummy->todo'.");
 
 # Implemented, but still Not found
 define_controller();
