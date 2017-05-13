@@ -1,6 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 1.14 Not Released
+ - Fix automatically coercing values #33
+   Contributor: Nick Logan
  - Add openapi.render_spec helper
  - Add example for how to use a M::P::Swagger2 powered app with M::P::OpenAPI
  - Bump JSON::Validator version
