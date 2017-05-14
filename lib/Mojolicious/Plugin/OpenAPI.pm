@@ -7,19 +7,6 @@ use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '1.14';
-
-sub EXCEPTION {
-  +{json => {errors => [{message => 'Internal server error.', path => '/'}]}, status => 500};
-}
-
-sub NOT_FOUND {
-  +{json => {errors => [{message => 'Not found.', path => '/'}]}, status => 404};
-}
-
-sub NOT_IMPLEMENTED {
-  +{json => {errors => [{message => 'Not implemented.', path => '/'}]}, status => 501};
-}
-
 my $X_RE = qr{^x-};
 
 has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
@@ -37,12 +24,11 @@ sub register {
   );
 
   unless ($app->defaults->{'openapi.base_paths'}) {
-    $app->helper('openapi.not_implemented' => \&NOT_IMPLEMENTED);
-    $app->helper('openapi.render_spec'     => \&_reply_spec);
-    $app->helper('openapi.spec'            => \&_helper_spec);
-    $app->helper('openapi.valid_input'     => sub { _validate($_[0]) ? undef : $_[0] });
-    $app->helper('openapi.validate'        => \&_validate);
-    $app->helper('reply.openapi'           => \&_reply);
+    $app->helper('openapi.render_spec' => \&_reply_spec);
+    $app->helper('openapi.spec'        => \&_helper_spec);
+    $app->helper('openapi.valid_input' => sub { _validate($_[0]) ? undef : $_[0] });
+    $app->helper('openapi.validate'    => \&_validate);
+    $app->helper('reply.openapi'       => \&_reply);
     $app->hook(before_render => \&_before_render);
     $app->renderer->add_handler(openapi => \&_render);
     push @{$app->renderer->classes}, __PACKAGE__;
@@ -67,7 +53,7 @@ sub _add_routes {
   $base_path = $api_spec->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
-  push @{$app->defaults->{'openapi.base_paths'}}, $base_path;
+  push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
   $route->to({handler => 'openapi', 'openapi.api_spec' => $api_spec, 'openapi.object' => $self});
 
   my $spec_route = $route->get->to(cb => sub { shift->openapi->render_spec });
@@ -120,17 +106,23 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
-  my $template = $args->{template} || '';
-  return unless $args->{exception} or $template =~ /^not_found\b/;
+  return unless $args->{exception} or ($args->{template} || '') =~ /^not_found\b/;
+  return unless my $self = _self($c);
 
-  my $path     = $c->req->url->path->to_string;
-  my $has_spec = $c->stash('openapi.op_spec');
-  return unless $has_spec or grep { $path =~ /^$_/ } @{$c->stash('openapi.base_paths')};
-
-  my $format = $c->stash('format') || 'json';
-  my $res
-    = $args->{exception} ? EXCEPTION() : !$has_spec ? NOT_FOUND() : $c->openapi->not_implemented;
-  %$args = %$res;
+  if ($args->{exception}) {
+    $args->{data} = $self->{renderer}
+      ->($c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500});
+  }
+  elsif (!$c->stash('openapi.op_spec')) {
+    $args->{status} = 404;
+    $args->{data}   = $self->{renderer}
+      ->($c, {errors => [{message => 'Not found.', path => '/'}], status => 404});
+  }
+  else {
+    $args->{status} = 501;
+    $args->{data}   = $self->{renderer}
+      ->($c, {errors => [{message => 'Not implemented.', path => '/'}], status => 501});
+  }
 }
 
 sub _helper_spec {
@@ -185,7 +177,7 @@ sub _render {
     return $renderer->$handler($c, $output, $options);
   }
 
-  my $self = $c->stash('openapi.object') or return;
+  my $self = _self($c) or return;
   my $status = $c->stash('status') || 200;
   my $res = $c->stash('openapi');
 
@@ -250,6 +242,14 @@ sub _route_path {
   return $path;
 }
 
+sub _self {
+  my $c    = shift;
+  my $self = $c->stash('openapi.object');
+  return $self if $self;
+  my $path = $c->req->url->path->to_string;
+  return +(map { $_->[1] } grep { $path =~ /^$_->[0]/ } @{$c->stash('openapi.base_paths')})[0];
+}
+
 sub _serialize {
   Data::Dumper->new([@_])->Indent(1)->Pair(': ')->Sortkeys(1)->Terse(1)->Useqq(1)->Dump;
 }
@@ -263,7 +263,7 @@ sub _sort_paths {
 
 sub _validate {
   my ($c, $args) = @_;
-  my $self    = $c->stash('openapi.object');
+  my $self    = _self($c);
   my $op_spec = $c->openapi->spec;
 
   # Write validated data to $c->validation->output
@@ -271,7 +271,7 @@ sub _validate {
 
   if (@errors) {
     $self->_log($c, '<<<', \@errors);
-    $c->render(json => {errors => \@errors, status => 400}, status => 400)
+    $c->render(data => $self->{renderer}->($c, {errors => \@errors, status => 400}), status => 400)
       if $args->{auto_render} // 1;
   }
 
@@ -408,22 +408,6 @@ C<Mojolicious::Controller/validation>, which again can be extracted by the
 Returns the L<Mojolicious::Controller> object if the input is valid or
 automatically render an error document if not and return false. See
 L</SYNOPSIS> for example usage.
-
-=head2 openapi.not_implemented
-
-  my $not_implemented_res = $c->openapi->not_implemented;
-
-The response data in the case of an endpoint not yet being implemented. If
-you wish to override the default you need to override this helper with your
-own logic. Note you must return a hash with the json and status code:
-
-  $app->helper( 'openapi.not_implemented' => sub {
-    my $c = shift;
-    ...
-    return { json => { ... }, status => 200 };
-  });
-
-This helper is EXPERIMENTAL and subject for change.
 
 =head2 reply.openapi
 
