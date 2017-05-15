@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.15 Not Released
+1.15 2017-05-15T09:15:14+0200
  - Fix "renderer" will also be called for internal errors #34 #35
  - Removed openapi.not_implemented helper
 
