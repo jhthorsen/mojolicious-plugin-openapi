@@ -123,6 +123,8 @@ sub _before_render {
     $args->{data}   = $self->{renderer}
       ->($c, {errors => [{message => 'Not implemented.', path => '/'}], status => 501});
   }
+
+  $args->{status} = $c->stash('status') // $args->{status};
 }
 
 sub _helper_spec {

@@ -4,6 +4,7 @@ use Test::More;
 
 use Mojolicious::Lite;
 
+my $code;
 my $age = 43;
 get '/user' => sub {
   my $c = shift->openapi->valid_input or return;
@@ -41,6 +42,10 @@ $t->delete_ok('/api/user')->status_is(501)->json_is('/messages/0/message', 'Not 
 $t->get_ok('/api/nope')->status_is(404)->json_is('/messages/0/message', 'Not found.')
   ->json_is('/t', $^T);
 
+$code = 200;
+$t->delete_ok('/api/user')->status_is(200)->json_is('/messages/0/message', 'Not implemented.')
+  ->json_is('/t', $^T);
+
 done_testing;
 
 sub renderer {
@@ -48,6 +53,8 @@ sub renderer {
 
   $data->{messages} = delete $data->{errors} if $data->{errors};
   $data->{t} = $^T if ref $data eq 'HASH';
+
+  $c->stash(status => $code) if $code;
 
   return Mojo::JSON::encode_json($data);
 }
