@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.16 Not Released
+1.16 2017-05-18T11:23:52+0200
  - Can override status code in "renderer" function
 
 1.15 2017-05-15T09:15:14+0200
