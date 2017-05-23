@@ -94,7 +94,7 @@ sub _add_routes {
       }
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $endpoint->to({'openapi.op_spec' => $op_spec});
+      $endpoint->to({'openapi.op_path' => [$path, $http_method]});
       warn "[OpenAPI] Add route $http_method $path (@{[$endpoint->render]})\n" if DEBUG;
     }
 
@@ -114,7 +114,7 @@ sub _before_render {
     $args->{data} = $self->{renderer}
       ->($c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500});
   }
-  elsif (!$c->stash('openapi.op_spec')) {
+  elsif (!$c->stash('openapi.op_path')) {
     $args->{status} = 404;
     $args->{data}   = $self->{renderer}
       ->($c, {errors => [{message => 'Not found.', path => '/'}], status => 404});
@@ -130,8 +130,16 @@ sub _before_render {
 
 sub _helper_spec {
   my ($c, $path) = @_;
-  return $c->stash('openapi.op_spec') unless defined $path;
-  return $c->stash('openapi.api_spec')->get($path);
+  my ($op_path, $spec);
+
+  for my $r (reverse @{$c->match->stack}) {
+    $spec    ||= $r->{'openapi.api_spec'};
+    $op_path ||= $r->{'openapi.op_path'};
+  }
+
+  return $spec->get($path) if $path;
+  return undef unless $op_path;
+  return $spec->data->{paths}{$op_path->[0]}{$op_path->[1]};
 }
 
 sub _log {
