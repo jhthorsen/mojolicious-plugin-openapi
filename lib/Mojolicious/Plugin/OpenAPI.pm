@@ -9,7 +9,8 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 our $VERSION = '1.18';
 my $X_RE = qr{^x-};
 
-has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
+has _security_cb => sub { +{} };
+has _validator   => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
@@ -36,6 +37,7 @@ sub register {
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->{renderer} = $config->{renderer} || \&_render_json;
+  $self->_security_cb($config->{security} || {});
   $self->_add_routes($app, $config);
 }
 
@@ -83,6 +85,9 @@ sub _add_routes {
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
+      if ($op_spec->{security}) {
+        $route = $route->under('/')->to(cb => $self->_security_action($op_spec->{security}));
+      }
       if ($name and $endpoint = $route->root->find($name)) {
         $route->add_child($endpoint);
       }
@@ -255,6 +260,28 @@ sub _route_path {
     "($type$pname)";
   }/ge;
   return $path;
+}
+
+sub _security_action {
+  my ($self, $security_settings) = @_;
+  my $security_cb = $self->_security_cb;
+
+  return sub {
+    my $c = shift;
+    my @cc
+      = map { my ($name, $config) = %$_; ($security_cb->{$name}, $config); } @$security_settings;
+    my $wrapper;
+
+    $wrapper = sub {
+      my $c = shift;
+      my $cb = shift @cc || sub { die 'No security handler defined' };
+      $c->$cb(shift @cc, $wrapper);
+    };
+
+    push @cc, sub { shift->continue; };
+    Mojo::IOLoop->next_tick(sub { $c->$wrapper });
+    return undef;
+  };
 }
 
 sub _self {
@@ -537,6 +564,8 @@ the terms of the Artistic License version 2.0.
 =over 2
 
 =item * L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial>
+
+=item * L<Mojolicious::Plugin::OpenAPI::Guides::Security>
 
 =item * L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>.
 
