@@ -73,6 +73,7 @@ sub _add_routes {
       my $op_spec = $paths->{$path}{$http_method};
       my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
       my $to      = $op_spec->{'x-mojo-to'};
+#SHOULD x-mojo-to be a mandatory parameter?      die "[OpenAPI] 'x-mojo-to' is not set for \$path '$path', \$http_method '$http_method'. Don't know where this route should be routed to?" unless $to;
       my $endpoint;
 
       $has_options = 1 if lc $http_method eq 'options';
