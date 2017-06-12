@@ -110,6 +110,7 @@ sub _before_render {
   return unless my $self = _self($c);
 
   if ($args->{exception}) {
+    $c->stash(exception => $args->{exception});
     $args->{data} = $self->{renderer}
       ->($c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500});
   }

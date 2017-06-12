@@ -8,7 +8,7 @@ my $code;
 my $age = 43;
 get '/user' => sub {
   my $c = shift->openapi->valid_input or return;
-  die 'no age!' unless defined $age;
+  die "no age!\n" unless defined $age;
   $c->render(openapi => {age => $age});
   },
   'get_user';
@@ -34,7 +34,7 @@ $t->post_ok('/api/user', form => {age => 'invalid input'})->status_is(400)
 
 undef $age;
 $t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/message', 'Internal server error.')
-  ->json_is('/t', $^T);
+  ->json_is('/exception', "no age!\n")->json_is('/t', $^T);
 
 $t->delete_ok('/api/user')->status_is(501)->json_is('/messages/0/message', 'Not implemented.')
   ->json_is('/t', $^T);
@@ -53,6 +53,7 @@ sub renderer {
 
   $data->{messages} = delete $data->{errors} if $data->{errors};
   $data->{t} = $^T if ref $data eq 'HASH';
+  $data->{exception} = $c->stash('exception') if $c->stash('exception');
 
   $c->stash(status => $code) if $code;
 
