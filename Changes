@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.17 Not Released
+ - Add "exception" stash variable on internal server error #38
+   Contributor: Manuel Mausz
+
 1.16 2017-05-18T11:23:52+0200
  - Can override status code in "renderer" function
 
