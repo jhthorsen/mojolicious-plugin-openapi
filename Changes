@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.17 Not Released
+1.17 2017-06-12T20:58:57+0200
  - Add support for fetching API spec in route chain
  - Add "exception" stash variable on internal server error #38
    Contributor: Manuel Mausz
