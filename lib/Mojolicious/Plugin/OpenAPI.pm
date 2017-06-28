@@ -76,7 +76,10 @@ sub _add_routes {
       my $endpoint;
 
       $has_options = 1 if lc $http_method eq 'options';
-      $route_path = _route_path($path, $op_spec);
+      {
+        local $op_spec->{parameters} = [@parameters, @{$op_spec->{parameters} || []}];
+        $route_path = _route_path($path, $op_spec);
+      }
 
       die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
