@@ -7,12 +7,16 @@ my $t = Test::Mojo->new(make_app());
 
 monkey_patch 'Myapp::Controller::Pet' => one => sub {
   my $c = shift->openapi->valid_input or return;
-  return $c->render(openapi => {email => $c->param('email')});
+  $c->render(openapi => {username => $c->stash('username')});
 };
 
 $t->app->plugin(OpenAPI => {url => 'data://main/echo.json'});
 
-$t->get_ok('/api/jhthorsen@cpan.org')->status_is(200)->json_is('/email' => 'jhthorsen@cpan.org');
+$t->get_ok('/api/jhthorsen@cpan.org')->status_is(200)->json_is('/username' => 'jhthorsen@cpan.org');
+$t->options_ok('/api/jhthorsen@cpan.org?method=get')->status_is(200)
+  ->json_is('/parameters/0/x-mojo-placeholder' => '#')->json_is('/parameters/0/in' => 'path')
+  ->json_is('/parameters/0/name' => 'username')->json_is('/parameters/1/in' => 'query')
+  ->json_is('/parameters/1/name' => 'fields');
 
 done_testing;
 
@@ -37,17 +41,14 @@ __DATA__
   "schemes" : [ "http" ],
   "basePath" : "/api",
   "paths" : {
-    "/{email}" : {
+    "/{username}" : {
+      "parameters": [
+        { "x-mojo-placeholder": "#", "in": "path", "name": "username", "required": true, "type": "string" }
+      ],
       "get" : {
         "x-mojo-to" : "pet#one",
         "parameters" : [
-          {
-            "x-mojo-placeholder": "#",
-            "in": "path",
-            "name": "email",
-            "required": true,
-            "type": "string"
-          }
+          { "in": "query", "name": "fields", "type": "string" }
         ],
         "responses" : {
           "200": { "description": "Echo response", "schema": { "type": "object" } }

@@ -64,7 +64,7 @@ sub _add_routes {
 
   for my $path (_sort_paths(keys %$paths)) {
     next if $path =~ $X_RE;
-    my @parameters = @{$paths->{$path}{parameters} || []};
+    my @path_parameters = @{$paths->{$path}{parameters} || []};
     my $route_path = $path;
     my $has_options;
 
@@ -75,6 +75,10 @@ sub _add_routes {
       my $to      = $op_spec->{'x-mojo-to'};
       my $endpoint;
 
+      if (@path_parameters) {
+        $op_spec->{parameters} = [@path_parameters, @{$op_spec->{parameters} || []}];
+      }
+
       $has_options = 1 if lc $http_method eq 'options';
       $route_path = _route_path($path, $op_spec);
 
@@ -82,9 +86,6 @@ sub _add_routes {
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
-      if (@parameters) {
-        $op_spec->{parameters} = [@parameters, @{$op_spec->{parameters} || []}];
-      }
       if ($name and $endpoint = $route->root->find($name)) {
         $route->add_child($endpoint);
       }
