@@ -18,6 +18,10 @@ $t->options_ok('/api/jhthorsen@cpan.org?method=get')->status_is(200)
   ->json_is('/parameters/0/name' => 'username')->json_is('/parameters/1/in' => 'query')
   ->json_is('/parameters/1/name' => 'fields')->json_hasnt('/x-all-parameters');
 
+# make sure rendering doesn't croak when "parameters" are under a path
+# Not a HASH reference at template mojolicious/plugin/openapi/resource.html.ep
+$t->get_ok('/api.html')->status_is(200);
+
 done_testing;
 
 sub make_app {

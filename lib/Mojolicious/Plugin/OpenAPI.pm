@@ -666,7 +666,7 @@ __DATA__
 % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
   % next if $path =~ $X_RE;
   % for my $http_method (sort keys %{$spec->{paths}{$path}}) {
-    % next if $http_method =~ $X_RE;
+    % next if $http_method =~ $X_RE or $http_method eq 'parameters';
     % my $op = $spec->{paths}{$path}{$http_method};
     %= include "mojolicious/plugin/openapi/resource", method => $http_method, op => $op, path => $path
   % }
