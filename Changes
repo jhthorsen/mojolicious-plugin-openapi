@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.18 Not Released
+ - Fix rendering of documentation does not die when "parameters" are under a path
+ - Fix generating routes with "parameters" under a path #42
+ - Fix other documentation renderers, when "parameters" under a pth #42
+
 1.17 2017-06-12T20:58:57+0200
  - Add support for fetching API spec in route chain
  - Add "exception" stash variable on internal server error #38
