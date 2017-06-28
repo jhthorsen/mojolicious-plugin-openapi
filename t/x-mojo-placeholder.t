@@ -16,7 +16,7 @@ $t->get_ok('/api/jhthorsen@cpan.org')->status_is(200)->json_is('/username' => 'j
 $t->options_ok('/api/jhthorsen@cpan.org?method=get')->status_is(200)
   ->json_is('/parameters/0/x-mojo-placeholder' => '#')->json_is('/parameters/0/in' => 'path')
   ->json_is('/parameters/0/name' => 'username')->json_is('/parameters/1/in' => 'query')
-  ->json_is('/parameters/1/name' => 'fields');
+  ->json_is('/parameters/1/name' => 'fields')->json_hasnt('/x-all-parameters');
 
 done_testing;
 
