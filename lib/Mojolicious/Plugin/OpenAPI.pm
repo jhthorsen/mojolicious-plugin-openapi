@@ -76,15 +76,15 @@ sub _add_routes {
       my $endpoint;
 
       $has_options = 1 if lc $http_method eq 'options';
-      $route_path = _route_path($path, $op_spec);
+      {
+        local $op_spec->{parameters} = [@parameters, @{$op_spec->{parameters} || []}];
+        $route_path = _route_path($path, $op_spec);
+      }
 
       die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
-      if (@parameters) {
-        $op_spec->{parameters} = [@parameters, @{$op_spec->{parameters} || []}];
-      }
       if ($name and $endpoint = $route->root->find($name)) {
         $route->add_child($endpoint);
       }
@@ -94,7 +94,7 @@ sub _add_routes {
       }
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $endpoint->to({'openapi.op_path' => [$path, $http_method]});
+      $endpoint->to({'openapi.op_path' => [$path, $http_method], 'openapi.path_parameters' => \@parameters});
       warn "[OpenAPI] Add route $http_method $path (@{[$endpoint->render]})\n" if DEBUG;
     }
 
@@ -278,6 +278,7 @@ sub _validate {
   my $op_spec = $c->openapi->spec;
 
   # Write validated data to $c->validation->output
+  local $op_spec->{parameters} = [@{$c->stash('openapi.path_parameters')}, @{$op_spec->{parameters} || []}];
   my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
 
   if (@errors) {
