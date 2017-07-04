@@ -6,7 +6,7 @@ WriteMakefile(
   LICENSE       => 'artistic_2',
   ABSTRACT_FROM => 'lib/Mojolicious/Plugin/OpenAPI.pm',
   VERSION_FROM  => 'lib/Mojolicious/Plugin/OpenAPI.pm',
-  EXE_FILES     => [qw(  )],
+  EXE_FILES     => [qw()],
   META_MERGE    => {
     resources => {
       bugtracker => 'https://github.com/jhthorsen/mojolicious-plugin-openapi/issues',
