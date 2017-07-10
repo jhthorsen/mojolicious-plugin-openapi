@@ -158,12 +158,7 @@ sub _log {
   );
 }
 
-sub _pointer_escape {
-  my $str = shift;
-  $str =~ s/~/~0/g;
-  $str =~ s!/!~1!g;
-  return $str;
-}
+sub _pointer_escape { local $_ = shift; s/~/~0/g; s!/!~1!g; $_; }
 
 sub _reply {
   my $c      = shift;
@@ -278,84 +273,48 @@ sub _security_action {
 
   return sub {
     my $c = shift;
-    my @security = @{$c->openapi->spec->{security} || $global};
+    my @security_or = @{$c->openapi->spec->{security} || $global};
+    my %res;
 
-    # return and continue if a requirement set is empty
-    return $c->continue unless @security;
+    return 1 unless @security_or;    # nothing to check
 
-    my ($wrapper, @errors, %cache);
-    my $index = -1;
-    $wrapper = sub {
-      my $c = shift;
+    $c->delay(
+      sub {
+        my ($delay) = @_;
 
-      # return (and don't continue) if no more requirement sets remain
-      return $c->render(openapi => {errors => \@errors}, status => 401) unless @security;
-      my $requirements = shift @security;
-      $index++;
-
-      # check cache
-      my @checks;
-      for my $req (sort keys %$requirements) {
-        my $scopes = $requirements->{$req};
-
-# build a cache name by joining the security definition name and the scopes with 3 pipes, unlikely in the real world
-        my $name  = join '|||', $req, sort @$scopes;
-        my $path  = "/security/$index/" . _pointer_escape($req);
-        my $check = [$name, $path, $security_cb->{$req}, $definitions->{$req}, $scopes];
-
-        if (exists $cache{$name}) {
-          my $cached = $cache{$name};
-
-          # a defined cached is an immediate overall fail, move on
-          return $c->$wrapper if defined $cached;
-
-          # otherwise flag to pass later
-          push @$check, 1;
+        for my $security_and (@security_or) {
+          for my $name (keys %$security_and) {
+            next if exists $res{$name};
+            my $scb = $security_cb->{$name};
+            $res{$name} = ["No security callback for $name."] and next unless $scb;
+            $res{$name} = undef;
+            my $dcb = $delay->begin;
+            $c->$scb($name, $security_and->{$name}, sub { $res{$name} //= $_[1]; $dcb->(); });
+          }
         }
 
-        push @checks, $check;
-      }
+        $delay->pass;    # make sure we go to the next step
+      },
+      sub {
+        my ($delay) = @_;
+        my ($i, @errors) = (0);
 
-      $c->delay(
-        sub {
-          my $delay = shift;
-          for my $check (@checks) {
-            my ($name, $path, $action, $def, $scopes, $cached) = @$check;
-
-            # a cached flag is a pass on this check
-            $delay->pass([$name, $path, undef]) && next if $cached;
-
-            # otherwise perform the check
-            my $end = $delay->begin(0);
-            $c->$action($def, $scopes, sub { $end->([$name, $path, $_[1]]) });
-          }
-        },
-        sub {
-          my $delay  = shift;
-          my $failed = 0;
-          for my $check (@_) {
-            my ($name, $path, $err) = @$check;
-
-            #cache result
-            $cache{$name} = $err;
-
-            # if check failed
-            if (defined $err) {
-
-              # note that these checks are ANDed,
-              # so if one fails then this ORed security requirement fails
-              $failed = 1;
-              push @errors, {message => $err, path => $path};
-            }
+        for my $security_and (@security_or) {
+          my @e;
+          for my $name (sort keys %$security_and) {
+            my $path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
+            push @e, {message => $res{$name}, path => $path} if defined $res{$name};
           }
 
-         # if all checks passed, continue dispatch, otherwise try the next ORed security requirement
-          $failed ? $c->$wrapper : $c->continue;
+          return $c->continue unless @e;
+          push @errors, @e;
+          $i++;
         }
-      );
-    };
 
-    $c->$wrapper;
+        return $c->render(openapi => {errors => \@errors}, status => 401);
+      },
+    );
+
     return undef;
   };
 }
