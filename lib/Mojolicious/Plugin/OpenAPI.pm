@@ -9,8 +9,8 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 our $VERSION = '1.18';
 my $X_RE = qr{^x-};
 
-has _security_cb => sub { +{} };
-has _validator   => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
+has _security_cb => undef;
+has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
@@ -37,7 +37,7 @@ sub register {
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->{renderer} = $config->{renderer} || \&_render_json;
-  $self->_security_cb($config->{security} || {});
+  $self->_security_cb($config->{security}) if $config->{security};
   $self->_add_routes($app, $config);
 }
 
@@ -64,7 +64,7 @@ sub _add_routes {
     $route_prefix = "$spec_route_name.";
   }
 
-  if ($api_spec->get('/securityDefinitions')) {
+  if ($api_spec->get('/securityDefinitions') and $self->_security_cb) {
     $route = $route->under('/')->to(cb => $self->_security_action($api_spec));
   }
 
