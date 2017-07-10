@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.19 2017-07-10T22:44:19+0200
+ - Add support for "security" and "securityDefinitions"
+   Contributor: Joel Berger
+
 1.18 2017-07-04T09:23:48+0200
  - Fix rendering of documentation does not die when "parameters" are under a path
  - Fix generating routes with "parameters" under a path #42

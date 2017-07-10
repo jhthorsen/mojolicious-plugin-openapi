@@ -2,7 +2,7 @@
 use ExtUtils::MakeMaker;
 WriteMakefile(
   NAME          => 'Mojolicious::Plugin::OpenAPI',
-  AUTHOR        => 'Jan Henning Thorsen <jhthorsen@cpan.org>',
+  AUTHOR        => 'Joel Berger <joel.a.berger@gmail.com>',
   LICENSE       => 'artistic_2',
   ABSTRACT_FROM => 'lib/Mojolicious/Plugin/OpenAPI.pm',
   VERSION_FROM  => 'lib/Mojolicious/Plugin/OpenAPI.pm',

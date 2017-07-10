@@ -221,6 +221,8 @@ COPYRIGHT AND LICENSE
 SEE ALSO
     * Mojolicious::Plugin::OpenAPI::Guides::Tutorial
 
+    * Mojolicious::Plugin::OpenAPI::Guides::Security
+
     * <http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.ht
       ml>.
 
