@@ -58,12 +58,12 @@ plugin OpenAPI => {
     pass1 => sub {
       my ($c, $def, $scopes, $cb) = @_;
       $checks{pass1}++;
-      $c->$cb();
+      $c->$cb;
     },
     pass2 => sub {
       my ($c, $def, $scopes, $cb) = @_;
       $checks{pass2}++;
-      $c->$cb();
+      $c->$cb;
     },
     fail1 => sub {
       my ($c, $def, $scopes, $cb) = @_;
@@ -76,7 +76,9 @@ plugin OpenAPI => {
     fail2 => sub {
       my ($c, $def, $scopes, $cb) = @_;
       $checks{fail2}++;
-      $c->$cb('Failed fail2');
+      my %res = %$def;
+      $res{message} = 'Failed fail2';
+      $c->$cb(\%res);
     },
     '~fail/escape' => sub {
       my ($c, $def, $scopes, $cb) = @_;
@@ -91,7 +93,11 @@ plugin OpenAPI => {
   },
 };
 
+my %security_definition
+  = (description => 'fail2', in => 'header', name => 'Authorization', type => 'apiKey');
+
 my $t = Test::Mojo->new;
+
 {
   local %checks;
   $t->post_ok('/api/global' => json => {})->status_is(200)->json_is('/ok' => 1);
@@ -123,7 +129,7 @@ my $t = Test::Mojo->new;
     {
       errors => [
         {message => 'Failed fail1', path => '/security/0/fail1'},
-        {message => 'Failed fail2', path => '/security/1/fail2'}
+        {message => 'Failed fail2', %security_definition},
       ]
     }
   );
@@ -136,7 +142,7 @@ my $t = Test::Mojo->new;
     {
       errors => [
         {message => 'Failed fail1', path => '/security/0/fail1'},
-        {message => 'Failed fail2', path => '/security/0/fail2'}
+        {message => 'Failed fail2', %security_definition}
       ]
     }
   );
@@ -177,25 +183,25 @@ __DATA__
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "dummy"
+      "description": "pass1"
     },
     "pass2": {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "dummy"
+      "description": "pass2"
     },
     "fail1": {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "dummy"
+      "description": "fail1"
     },
     "fail2": {
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "dummy"
+      "description": "fail2"
     },
     "~fail/escape": {
       "type": "apiKey",
@@ -207,7 +213,7 @@ __DATA__
       "type": "apiKey",
       "name": "Authorization",
       "in": "header",
-      "description": "dummy"
+      "description": "die"
     }
   },
   "security": [{"pass1": []}],

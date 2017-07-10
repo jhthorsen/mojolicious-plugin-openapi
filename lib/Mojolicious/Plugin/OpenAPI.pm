@@ -276,7 +276,7 @@ sub _security_action {
     my @security_or = @{$c->openapi->spec->{security} || $global};
     my %res;
 
-    return 1 unless @security_or;    # nothing to check
+    return 1 unless @security_or;    # Nothing to check
 
     $c->delay(
       sub {
@@ -289,11 +289,15 @@ sub _security_action {
             $res{$name} = ["No security callback for $name."] and next unless $scb;
             $res{$name} = undef;
             my $dcb = $delay->begin;
-            $c->$scb($name, $security_and->{$name}, sub { $res{$name} //= $_[1]; $dcb->(); });
+            $c->$scb(
+              $definitions->{$name},
+              $security_and->{$name},
+              sub { $res{$name} //= $_[1]; $dcb->(); }
+            );
           }
         }
 
-        $delay->pass;    # make sure we go to the next step
+        $delay->pass;    # Make sure we go to the next step
       },
       sub {
         my ($delay) = @_;
@@ -303,15 +307,16 @@ sub _security_action {
           my @e;
           for my $name (sort keys %$security_and) {
             my $path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
-            push @e, {message => $res{$name}, path => $path} if defined $res{$name};
+            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $path}
+              if defined $res{$name};
           }
 
-          return $c->continue unless @e;
+          return $c->continue unless @e;    # Success!
           push @errors, @e;
           $i++;
         }
 
-        return $c->render(openapi => {errors => \@errors}, status => 401);
+        $c->render(openapi => {errors => \@errors}, status => 401);
       },
     );
 
