@@ -68,9 +68,9 @@ In this example, we have the "dummy" security handler:
       url      => "data://main/sec.json",
       security => {
         dummy => sub {
-          my ($c, $security, $next) = @_;
-          return $c->$next if $c->req->headers->authorization;
-          return $c->render(openapi => $security, status => 401);
+          my ($c, $definition, $scopes, $cb) = @_;
+          return $c->$cb() if $c->req->headers->authorization;
+          return $c->$cb('Authorization header not present');
         }
       }
     });
@@ -78,13 +78,23 @@ In this example, we have the "dummy" security handler:
 
   1;
 
-C<$c> is a L<Mojolicious::Controller> object. C<$security> is the in this case
-is just an empty array ref, but it will contain the value for "security" under
-the given HTTP method. C<$next> is the method you need to call, if this security
-check passed.
+C<$c> is a L<Mojolicious::Controller> object. C<$definition> is the security
+definition from C</securityDefinitions>. C<$scopes> is the Oauth scopes, which
+in this case is just an empty array ref, but it will contain the value for
+"security" under the given HTTP method.
 
-At any point, you can call L<Mojolicious::Controller/render> to prevent
-L<Mojolicious::Please::OpenAPI> from dispatching to your action.
+Call C<$cb> with C<undef> or no argument at all to indicate pass. Call C<$cb>
+with a defined value (usually a string) to indicate that the check has failed.
+When none of the sets of security restrictions are satisfied, the standard
+OpenAPI structure is built using the values passed to the callbacks as the
+messages and rendered to the client with a status of 401.
+
+Note that the callback must be called or the dispatch will hang.
+
+B<TODO>:
+If after all of the checks have been performed, no set of requirements are
+satisfied then the a 401 error will be rendered.  Any exceptions that are
+thrown will result in a 500 being rendered.
 
 The first thing in your code that you need to do is to load this plugin and the
 L</Specification>. See L<Mojolicious::Plugin::OpenAPI/register> for information
