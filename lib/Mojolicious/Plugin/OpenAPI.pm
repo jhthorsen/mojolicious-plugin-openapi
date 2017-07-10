@@ -9,6 +9,7 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 our $VERSION = '1.18';
 my $X_RE = qr{^x-};
 
+has _security_cb => undef;
 has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
 sub register {
@@ -36,6 +37,7 @@ sub register {
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->{renderer} = $config->{renderer} || \&_render_json;
+  $self->_security_cb($config->{security}) if $config->{security};
   $self->_add_routes($app, $config);
 }
 
@@ -60,6 +62,10 @@ sub _add_routes {
   if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
     $spec_route->name($spec_route_name);
     $route_prefix = "$spec_route_name.";
+  }
+
+  if ($api_spec->get('/securityDefinitions') and $self->_security_cb) {
+    $route = $route->under('/')->to(cb => $self->_security_action($api_spec));
   }
 
   for my $path (_sort_paths(keys %$paths)) {
@@ -151,6 +157,8 @@ sub _log {
     Mojo::JSON::encode_json(@_)
   );
 }
+
+sub _pointer_escape { local $_ = shift; s/~/~0/g; s!/!~1!g; $_; }
 
 sub _reply {
   my $c      = shift;
@@ -255,6 +263,65 @@ sub _route_path {
     "($type$pname)";
   }/ge;
   return $path;
+}
+
+sub _security_action {
+  my ($self, $api_spec) = @_;
+  my $global      = $api_spec->get('/security') || [];
+  my $definitions = $api_spec->get('/securityDefinitions');
+  my $security_cb = $self->_security_cb;
+
+  return sub {
+    my $c = shift;
+    my @security_or = @{$c->openapi->spec->{security} || $global};
+    my %res;
+
+    return 1 unless @security_or;    # Nothing to check
+
+    $c->delay(
+      sub {
+        my ($delay) = @_;
+
+        for my $security_and (@security_or) {
+          for my $name (keys %$security_and) {
+            next if exists $res{$name};
+            my $scb = $security_cb->{$name};
+            $res{$name} = ["No security callback for $name."] and next unless $scb;
+            $res{$name} = undef;
+            my $dcb = $delay->begin;
+            $c->$scb(
+              $definitions->{$name},
+              $security_and->{$name},
+              sub { $res{$name} //= $_[1]; $dcb->(); }
+            );
+          }
+        }
+
+        $delay->pass;    # Make sure we go to the next step
+      },
+      sub {
+        my ($delay) = @_;
+        my ($i, @errors) = (0);
+
+        for my $security_and (@security_or) {
+          my @e;
+          for my $name (sort keys %$security_and) {
+            my $path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
+            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $path}
+              if defined $res{$name};
+          }
+
+          return $c->continue unless @e;    # Success!
+          push @errors, @e;
+          $i++;
+        }
+
+        $c->render(openapi => {errors => \@errors}, status => 401);
+      },
+    );
+
+    return undef;
+  };
 }
 
 sub _self {
@@ -537,6 +604,8 @@ the terms of the Artistic License version 2.0.
 =over 2
 
 =item * L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial>
+
+=item * L<Mojolicious::Plugin::OpenAPI::Guides::Security>
 
 =item * L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>.
 
