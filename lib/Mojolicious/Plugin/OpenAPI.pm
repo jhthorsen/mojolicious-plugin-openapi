@@ -103,7 +103,10 @@ sub _add_routes {
     }
 
     unless ($has_options) {
-      $route->options($route_path => sub { _render_route_spec($_[0], $path) });
+      $route->options($route_path)->to(
+        'openapi.default_options' => 1,
+        cb => sub { _render_route_spec($_[0], $path) },
+      );
     }
   }
 }
@@ -273,7 +276,12 @@ sub _security_action {
 
   return sub {
     my $c = shift;
-    my @security_or = @{$c->openapi->spec->{security} || $global};
+    return 1
+      if $c->req->method eq 'OPTIONS'
+      && $c->match->stack->[-1]{'openapi.default_options'};
+
+    my $spec = $c->openapi->spec || {};
+    my @security_or = @{$spec->{security} || $global};
     my %res;
 
     return 1 unless @security_or;    # Nothing to check
