@@ -15,6 +15,12 @@ post '/simple' => sub {
   },
   'simple';
 
+options '/options' => sub {
+  my $c = shift->openapi->valid_input or return;
+  $c->reply->openapi(200 => {ok => 1});
+  },
+  'options';
+
 post '/fail_or_pass' => sub {
   my $c = shift->openapi->valid_input or return;
   $c->reply->openapi(200 => {ok => 1});
@@ -105,9 +111,24 @@ my $t = Test::Mojo->new;
 }
 
 {
+  # global does not define an options handler, so it gets the default
+  # which is allowed through the security
+  local %checks;
+  $t->options_ok('/api/global')->status_is(200);
+  is_deeply \%checks, {}, 'expected checks occurred';
+}
+
+{
   local %checks;
   $t->post_ok('/api/simple' => json => {})->status_is(200)->json_is('/ok' => 1);
   is_deeply \%checks, {pass2 => 1}, 'expected checks occurred';
+}
+
+{
+  # route defined with an options handler so it must use the defined security
+  local %checks;
+  $t->options_ok('/api/options' => json => {})->status_is(200)->json_is('/ok' => 1);
+  is_deeply \%checks, {pass1 => 1}, 'expected checks occurred';
 }
 
 {
@@ -243,6 +264,19 @@ __DATA__
         }
       }
     },
+    "/options": {
+      "options": {
+        "x-mojo-name": "options",
+        "security": [{"pass1": []}],
+        "parameters": [
+          { "in": "body", "name": "body", "schema": { "type": "object" } }
+        ],
+        "responses": {
+          "200": {"description": "Echo response", "schema": { "type": "object" }},
+          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+        }
+      }
+    },
     "/fail_or_pass": {
       "post": {
         "x-mojo-name": "fail_or_pass",
@@ -299,7 +333,7 @@ __DATA__
         "security": [
           {
             "fail1": [],
-            "fail2": [] 
+            "fail2": []
           }
         ],
         "parameters": [

@@ -91,15 +91,6 @@ messages and rendered to the client with a status of 401.
 
 Note that the callback must be called or the dispatch will hang.
 
-B<TODO>:
-If after all of the checks have been performed, no set of requirements are
-satisfied then the a 401 error will be rendered.  Any exceptions that are
-thrown will result in a 500 being rendered.
-
-The first thing in your code that you need to do is to load this plugin and the
-L</Specification>. See L<Mojolicious::Plugin::OpenAPI/register> for information
-about what the plugin config can be.
-
 See also L<Mojolicious::Plugin::OpenAPI/SYNOPSIS> for example
 L<Mojolicious::Lite> application.
 
@@ -107,6 +98,14 @@ L<Mojolicious::Lite> application.
 
 Your controllers and actions are unchanged. The difference in behavior is that
 the action simply won't be called if you fail to pass the security tests.
+
+=head2 Exempted routes
+
+All of the routes created by the plugin are protected by the security
+defintions with the following exemptions.  The base route that renders the
+spec/documentation is exempted.  Additionally, when a route does not define its
+own C<OPTIONS> handler a documentation endpoint is generated which is exempt as
+well.
 
 =head1 SEE ALSO
 
