@@ -20,7 +20,7 @@ has _default_response => sub {
           type  => "array",
           items => {
             type       => "object",
-            required   => ["message", "path"],
+            required   => ["message"],
             properties => {message => {"type" => "string"}, path => {"type" => "string"}}
           }
         }
