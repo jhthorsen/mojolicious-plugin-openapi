@@ -9,6 +9,26 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 our $VERSION = '1.19';
 my $X_RE = qr{^x-};
 
+has _default_response => sub {
+  return {
+    description => "Default response.",
+    schema      => {
+      type       => "object",
+      required   => ["errors"],
+      properties => {
+        errors => {
+          type  => "array",
+          items => {
+            type       => "object",
+            required   => ["message", "path"],
+            properties => {message => {"type" => "string"}, path => {"type" => "string"}}
+          }
+        }
+      }
+    }
+  };
+};
+
 has _security_cb => undef;
 has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
@@ -35,10 +55,7 @@ sub register {
     push @{$app->renderer->classes}, __PACKAGE__;
   }
 
-  unless (exists $config->{default_response}) {
-    $config->{default_response}
-      = {description => 'Default response.', schema => {'$ref' => "http://git.io/vcKD4#"}};
-  }
+  $self->_default_response($config->{default_response}) if exists $config->{default_response};
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->{renderer} = $config->{renderer} || \&_render_json;
@@ -86,7 +103,7 @@ sub _add_routes {
       my $to      = $op_spec->{'x-mojo-to'};
       my $endpoint;
 
-      $op_spec->{responses}{default} ||= $config->{default_response};
+      $op_spec->{responses}{default} ||= $self->_default_response;
       $op_spec->{'x-all-parameters'} = [@path_parameters, @{$op_spec->{parameters} || []}];
       $has_options = 1 if lc $http_method eq 'options';
       $route_path = _route_path($path, $op_spec);
@@ -564,15 +581,22 @@ added.
 
 Default value:
 
-  {description => 'Default response.', schema => {'$ref' => "http://git.io/vcKD4#"}}
-
-Default error document:
-
   {
-    errors => [
-      {message => "Some error message", path => "/what/ever"},
-      ...
-    ]
+    description => "Default response.",
+    schema      => {
+      type       => "object",
+      required   => ["errors"],
+      properties => {
+        errors => {
+          type  => "array",
+          items => {
+            type       => "object",
+            required   => ["message", "path"],
+            properties => {message => {"type" => "string"}, path => {"type" => "string"}}
+          }
+        }
+      }
+    }
   }
 
 Note! The default "description" might change.
