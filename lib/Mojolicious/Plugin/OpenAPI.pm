@@ -35,6 +35,11 @@ sub register {
     push @{$app->renderer->classes}, __PACKAGE__;
   }
 
+  unless (exists $config->{default_response}) {
+    $config->{default_response}
+      = {description => 'Default response.', schema => {'$ref' => "http://git.io/vcKD4#"}};
+  }
+
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->{renderer} = $config->{renderer} || \&_render_json;
   $self->_security_cb($config->{security}) if $config->{security};
@@ -81,6 +86,7 @@ sub _add_routes {
       my $to      = $op_spec->{'x-mojo-to'};
       my $endpoint;
 
+      $op_spec->{responses}{default} ||= $config->{default_response};
       $op_spec->{'x-all-parameters'} = [@path_parameters, @{$op_spec->{parameters} || []}];
       $has_options = 1 if lc $http_method eq 'options';
       $route_path = _route_path($path, $op_spec);
@@ -103,10 +109,8 @@ sub _add_routes {
     }
 
     unless ($has_options) {
-      $route->options($route_path)->to(
-        'openapi.default_options' => 1,
-        cb => sub { _render_route_spec($_[0], $path) },
-      );
+      $route->options($route_path)
+        ->to('openapi.default_options' => 1, cb => sub { _render_route_spec($_[0], $path) },);
     }
   }
 }
@@ -276,9 +280,7 @@ sub _security_action {
 
   return sub {
     my $c = shift;
-    return 1
-      if $c->req->method eq 'OPTIONS'
-      && $c->match->stack->[-1]{'openapi.default_options'};
+    return 1 if $c->req->method eq 'OPTIONS' && $c->match->stack->[-1]{'openapi.default_options'};
 
     my $spec = $c->openapi->spec || {};
     my @security_or = @{$spec->{security} || $global};
@@ -553,6 +555,27 @@ Note that setting this attribute is discourage.
 See L<JSON::Validator/coerce> for possible values that C<coerce> can take.
 
 Default: 1
+
+=item * default_response
+
+Used to set the "default" response schema, unless already specified in the
+spec. Set this argument to C<undef()> if you don't want the default to be
+added.
+
+Default value:
+
+  {description => 'Default response.', schema => {'$ref' => "http://git.io/vcKD4#"}}
+
+Default error document:
+
+  {
+    errors => [
+      {message => "Some error message", path => "/what/ever"},
+      ...
+    ]
+  }
+
+Note! The default "description" might change.
 
 =item * log_level
 

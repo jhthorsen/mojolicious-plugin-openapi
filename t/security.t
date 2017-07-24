@@ -246,8 +246,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -259,8 +258,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -272,8 +270,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -288,8 +285,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -306,8 +302,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -322,8 +317,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -340,8 +334,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -353,8 +346,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -375,8 +367,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     },
@@ -391,25 +382,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type": "object" } }
         ],
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }},
-          "401": {"description": "Sorry mate", "schema": { "$ref": "#/definitions/Error" }}
-        }
-      }
-    }
-  },
-  "definitions": {
-    "Error": {
-      "type": "object",
-      "properties": {
-        "errors": {
-          "type": "array",
-          "items": {
-            "required": ["message"],
-            "properties": {
-              "message": { "type": "string", "description": "Human readable description of the error" },
-              "path": { "type": "string", "description": "JSON pointer to the input data where the error occur" }
-            }
-          }
+          "200": {"description": "Echo response", "schema": { "type": "object" }}
         }
       }
     }

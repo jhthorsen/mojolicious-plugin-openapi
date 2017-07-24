@@ -81,10 +81,6 @@ __DATA__
                 }
               }
             }
-          },
-          "default": {
-            "description": "Unexpected error",
-            "schema": { "$ref": "http://git.io/vcKD4#" }
           }
         }
       }

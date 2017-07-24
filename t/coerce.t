@@ -40,8 +40,7 @@ __DATA__
                 "age": { "type": "integer"}
               }
             }
-          },
-          "500": { "description": "Error", "schema": { "type": "object" } }
+          }
         }
       }
     }

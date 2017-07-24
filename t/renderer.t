@@ -51,8 +51,8 @@ done_testing;
 sub renderer {
   my ($c, $data) = @_;
 
-  $data->{messages} = delete $data->{errors} if $data->{errors};
-  $data->{t} = $^T if ref $data eq 'HASH';
+  $data->{messages}  = delete $data->{errors} if $data->{errors};
+  $data->{t}         = $^T                    if ref $data eq 'HASH';
   $data->{exception} = $c->stash('exception') if $c->stash('exception');
 
   $c->stash(status => $code) if $code;
@@ -84,8 +84,7 @@ __DATA__
               "type": "object",
               "properties": { "age": { "type": "integer"} }
             }
-          },
-          "500": { "description": "Error", "schema": { "type": "object" } }
+          }
         }
       },
       "post": {
