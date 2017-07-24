@@ -166,6 +166,34 @@ METHODS
 
       Default: 1
 
+    * default_response
+
+      Used to set the "default" response schema, unless already specified in
+      the spec. Set this argument to "undef()" if you don't want the default
+      to be added.
+
+      Default value:
+
+        {
+          description => "Default response.",
+          schema      => {
+            type       => "object",
+            required   => ["errors"],
+            properties => {
+              errors => {
+                type  => "array",
+                items => {
+                  type       => "object",
+                  required   => ["message", "path"],
+                  properties => {message => {"type" => "string"}, path => {"type" => "string"}}
+                }
+              }
+            }
+          }
+        }
+
+      Note! The default "description" might change.
+
     * log_level
 
       "log_level" is used when logging invalid request/response error

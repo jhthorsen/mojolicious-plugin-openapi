@@ -6,7 +6,7 @@ use Mojo::JSON;
 use Mojo::Util 'deprecated';
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '1.19';
+our $VERSION = '1.20';
 my $X_RE = qr{^x-};
 
 has _default_response => sub {
