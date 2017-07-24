@@ -883,7 +883,6 @@ __DATA__
 <body>
 <div class="container">
   %= include "mojolicious/plugin/openapi/header"
-  %= include "mojolicious/plugin/openapi/endpoint"
   %= include "mojolicious/plugin/openapi/resources"
   %= include "mojolicious/plugin/openapi/footer"
 </div>
