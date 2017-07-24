@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.21 2017-07-24T21:46:37+0200
+ - "path" is not required in default error document
+
 1.20 2017-07-24T21:41:01+0200
  - Add "default_response" parameter to register()
 
