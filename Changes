@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.03 Not Released
+ - Improved human readable documentation rendering
+
 2.02 2018-11-14T13:13:13+0900
  - Mention EXPERIMENTAL support for OpenAPI v3 #75
 

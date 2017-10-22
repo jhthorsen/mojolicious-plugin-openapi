@@ -365,9 +365,7 @@ sub _self {
   return +(map { $_->[1] } grep { $path =~ /^$_->[0]/ } @{$c->stash('openapi.base_paths')})[0];
 }
 
-sub _serialize {
-  Data::Dumper->new([@_])->Indent(1)->Pair(': ')->Sortkeys(1)->Terse(1)->Useqq(1)->Dump;
-}
+sub _serialize { Mojo::JSON::encode_json(@_) }
 
 sub _sorted_paths {
   return
@@ -433,6 +431,30 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
 See L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial> for a tutorial on how to
 write a "full" app with application class and controllers.
+
+=head1 AUTOMATIC RESOURCES
+
+This module adds some extra resources automatically.
+
+=head2 Specification renderer
+
+The specification in JSON or human rendered format can be retrieved by
+requesting the C<basePath>.
+
+Examples:
+
+  GET https://api.example.com/v1.json
+  GET https://api.example.com/v1.html
+
+=head2 OPTIONS
+
+Using the HTTP method "OPTIONS" will render the specification for a given path.
+
+Examples:
+
+  OPTIONS https://api.example.com/v1/users
+  OPTIONS https://api.example.com/v1/users?method=get
+  OPTIONS https://api.example.com/v1/users?method=post
 
 =head1 DESCRIPTION
 
@@ -737,13 +759,17 @@ __DATA__
 % }
 % for my $p (@{$op->{parameters} || []}) {
   % $body = $p->{schema} if $p->{in} eq 'body';
-    <tr>
+  <tr>
+    % if ($spec->{parameters}{$p->{name}}) {
+      <td><a href="#ref-parameters-<%= $esc->($p->{name}) %>"><%= $p->{name} %></a></td>
+    % } else {
       <td><%= $p->{name} %></td>
-      <td><%= $p->{in} %></td>
-      <td><%= $p->{type} %></td>
-      <td><%= $p->{required} ? "Yes" : "No" %></td>
-      <td><%== $p->{description} ? $markdown->($p->{description}) : "" %></td>
-    </tr>
+    % }
+    <td><%= $p->{in} %></td>
+    <td><%= $p->{type} %></td>
+    <td><%= $p->{required} ? "Yes" : "No" %></td>
+    <td><%== $p->{description} ? $markdown->($p->{description}) : "" %></td>
+  </tr>
 % }
 % if ($has_parameters) {
   </tbody>
@@ -774,6 +800,59 @@ __DATA__
 %= include "mojolicious/plugin/openapi/human", spec => $op
 %= include "mojolicious/plugin/openapi/parameters", op => $op
 %= include "mojolicious/plugin/openapi/response", op => $op
+@@ mojolicious/plugin/openapi/references.html.ep
+% use Mojo::ByteStream 'b';
+<h2 id="references"><a href="#title">References</a></h2>
+% for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
+  % next if $key =~ $X_RE;
+  <h3 id="ref-definitions-<%= lc $esc->($key) %>"><a href="#title">#/definitions/<%= $key %></a></h3>
+  <pre class="ref"><%= $serialize->($spec->{definitions}{$key}) %></pre>
+% }
+% for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
+  % next if $key =~ $X_RE;
+  % my $item = $spec->{parameters}{$key};
+  <h3 id="ref-parameters-<%= lc $esc->($key) %>"><a href="#title">#/parameters/<%= $key %> - "<%= $item->{name} %>"</a></h3>
+  <p><%= $item->{description} || 'No description.' %></p>
+  <ul>
+    <li>In: <%= $item->{in} %></li>
+    <li>Type: <%= $item->{type} %><%= $item->{format} ? " / $item->{format}" : "" %><%= $item->{pattern} ? " / $item->{pattern}" : ""%></li>
+    % if ($item->{exclusiveMinimum} || $item->{exclusiveMaximum} || $item->{minimum} || $item->{maximum}) {
+      <li>
+        Min / max:
+        <%= $item->{exclusiveMinimum} ? "$item->{exclusiveMinimum} <" : $item->{minimum} ? "$item->{minimum} <=" : b("&infin; <=") %>
+        value
+        <%= $item->{exclusiveMaximum} ? "< $item->{exclusiveMaximum}" : $item->{maximum} ? "<= $item->{maximum}" : b("<= &infin;") %>
+      </li>
+    % }
+    % if ($item->{minLength} || $item->{maxLength}) {
+      <li>
+        Min / max:
+        <%= $item->{minLength} ? "$item->{minLength} <=" : b("&infin; <=") %>
+        length
+        <%= $item->{maxLength} ? "<= $item->{maxLength}" : b("<= &infin;") %>
+      </li>
+    % }
+    % if ($item->{minItems} || $item->{maxItems}) {
+      <li>
+        Min / max:
+        <%= $item->{minItems} ? "$item->{minItems} <=" : b("&infin; <=") %>
+        items
+        <%= $item->{maxItems} ? "<= $item->{maxItems}" : b("<= &infin;") %>
+      </li>
+    % }
+    % for my $k (qw(collectionFormat uniqueItems multipleOf enum)) {
+      % next unless $item->{$k};
+      <li><%= ucfirst $k %>: <%= ref $item->{$k} ? $serialize->($item->{$k}) : $item->{$k} %></li>
+    % }
+    <li>Required: <%= $item->{required} ? 'Yes.' : 'No.' %></li>
+    <li><%= defined $item->{default} ? "Default: " . $serialize->($item->{default}) : 'No default value.' %></li>
+  </ul>
+  % for my $k (qw(items schema)) {
+    % next unless $item->{$k};
+    <pre class="ref"><%= $serialize->($item->{$k}) %></pre>
+  % }
+% }
+
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
 
@@ -815,6 +894,19 @@ __DATA__
     % }
     </ul>
   </li>
+  <li>
+    <a href="#references">References</a>
+    <ul>
+    % for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
+      % next if $key =~ $X_RE;
+      <li><a href="#ref-definitions-<%= lc $esc->($key) %>">#/definitions/<%= $key %></a></li>
+    % }
+    % for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
+      % next if $key =~ $X_RE;
+      <li><a href="#ref-parameters-<%= lc $esc->($key) %>">#/parameters/<%= $key %></a></li>
+    % }
+    </ul>
+  </li>
   <li><a href="#license">License</a></li>
   <li><a href="#contact">Contact</a></li>
 </ul>
@@ -842,13 +934,6 @@ __DATA__
     h2 { font-size: 1.6em; margin-top: 2em; }
     h3 { font-size: 1.2em; }
     h4 { font-size: 1.1em; }
-    pre {
-      background: #eee;
-      border: 1px solid #ddd;
-      padding: 0.5em;
-      margin: 1em -0.5em;
-      overflow: auto;
-    }
     table {
       margin: 0em -0.5em;
       width: 100%;
@@ -863,32 +948,80 @@ __DATA__
       font-weight: bold;
       border-bottom: 1px solid #ccc;
     }
+    td p, th p {
+      margin: 0;
+    }
     ul {
       margin: 0;
-      padding: 0 1.5rem;
+      padding: 0 1.5em;
     }
     ul.unstyled {
       list-style: none;
       padding: 0;
     }
+    p {
+      margin: 1em 0;
+    }
+    pre {
+      background: #f3f3f3;
+      font-size: 0.9rem;
+      line-height: 1.2em;
+      letter-spacing: -0.02em;
+      border: 1px solid #ddd;
+      padding: 0.5em;
+      margin: 1em -0.5em;
+      overflow: auto;
+    }
     #toc a { text-decoration: none; display: block; }
-    #toc .method { display: inline-block; width: 4rem; }
+    #toc .method { display: inline-block; width: 7em; }
     div.container { max-width: 50em; margin: 0 auto; }
     p.version { color: #666; margin: -0.5em 0 2em 0; }
     p.op-deprecated { color: #c00; }
     h3.op-path { margin-top: 3em; }
     .container > h3.op-path { margin-top: 1em; }
+    .renderjson .disclosure { display: none; }
+    .renderjson .syntax     { color: #002b36; }
+    .renderjson .string     { color: #073642; }
+    .renderjson .number     { color: #2aa198; }
+    .renderjson .boolean    { color: #d33682; }
+    .renderjson .key        { color: #0e6fb3; }
+    .renderjson .keyword    { color: #b58900; }
   </style>
 </head>
 <body>
 <div class="container">
   %= include "mojolicious/plugin/openapi/header"
   %= include "mojolicious/plugin/openapi/resources"
+  %= include "mojolicious/plugin/openapi/references"
   %= include "mojolicious/plugin/openapi/footer"
 </div>
 <script>
-var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":u,_=function(n,o,a,u,c){var _,d=l(u),h=function(){_||e(d.parentNode,_=r(c(),i(f.hide,"disclosure",function(){_.style.display="none",d.style.display="inline"}))),_.style.display="inline",d.style.display="none"};e(d,i(f.show,"disclosure",h),t(u+" syntax",n),i(o,null,h),t(u+" syntax",a));var g=e(l(),s(y.slice(0,-1)),d);return p>0&&"string"!=u&&h(),g};return null===a?t(null,y,"keyword","null"):void 0===a?t(null,y,"keyword","undefined"):"string"==typeof a&&a.length>f.max_string_length?_('"',a.substr(0,f.max_string_length)+" ...",'"',"string",function(){return e(l("string"),t(null,y,"string",JSON.stringify(a)))}):"object"!=typeof a||[Number,String,Boolean,Date].indexOf(a.constructor)>=0?t(null,y,typeof a,JSON.stringify(a)):a.constructor==Array?0==a.length?t(null,y,"array syntax","[]"):_("["," ... ","]","array",function(){for(var r=e(l("array"),t("array syntax","[",null,"\n")),o=0;o<a.length;o++)e(r,n(f.replacer.call(a,o,a[o]),u+"    ",!1,p-1,f),o!=a.length-1?t("syntax",","):[],s("\n"));return e(r,t(null,u,"array syntax","]")),r}):o(a,f.property_list)?t(null,y,"object syntax","{}"):_("{","...","}","object",function(){var r=e(l("object"),t("object syntax","{",null,"\n"));for(var o in a)var i=o;var c=f.property_list||Object.keys(a);f.sort_objects&&(c=c.sort());for(var y in c)(o=c[y])in a&&e(r,t(null,u+"    ","key",'"'+o+'"',"object syntax",": "),n(f.replacer.call(a,o,a[o]),u+"    ",!0,p-1,f),o!=i?t("syntax",","):[],s("\n"));return e(r,t(null,u,"object syntax","}")),r})}var t=function(){for(var n=[];arguments.length;)n.push(e(l(Array.prototype.shift.call(arguments)),s(Array.prototype.shift.call(arguments))));return n},e=function(){for(var n=Array.prototype.shift.call(arguments),t=0;t<arguments.length;t++)arguments[t].constructor==Array?e.apply(this,[n].concat(arguments[t])):n.appendChild(arguments[t]);return n},r=function(n,t){return n.insertBefore(t,n.firstChild),n},o=function(n,t){var e=t||Object.keys(n);for(var r in e)if(Object.hasOwnProperty.call(n,e[r]))return!1;return!0},s=function(n){return document.createTextNode(n)},l=function(n){var t=document.createElement("span");return n&&(t.className=n),t},i=function(n,t,e){var r=document.createElement("a");return t&&(r.className=t),r.appendChild(s(n)),r.href="#",r.onclick=function(n){return e(),n&&n.stopPropagation(),!1},r},a=function t(r){var o=Object.assign({},t.options);o.replacer="function"==typeof o.replacer?o.replacer:function(n,t){return t};var s=e(document.createElement("pre"),n(r,"",!1,o.show_to_level,o));return s.className="renderjson",s};return a.set_icons=function(n,t){return a.options.show=n,a.options.hide=t,a},a.set_show_to_level=function(n){return a.options.show_to_level="string"==typeof n&&"all"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_max_string_length=function(n){return a.options.max_string_length="string"==typeof n&&"none"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_sort_objects=function(n){return a.options.sort_objects=n,a},a.set_replacer=function(n){return a.options.replacer=n,a},a.set_property_list=function(n){return a.options.property_list=n,a},a.set_show_by_default=function(n){return a.options.show_to_level=n?Number.MAX_VALUE:0,a},a.options={},a.set_icons("⊕","⊖"),a.set_show_by_default(!1),a.set_sort_objects(!1),a.set_max_string_length("none"),a.set_replacer(void 0),a.set_property_list(void 0),a}();define?define({renderjson:renderjson}):(module||{}).exports=(window||{}).renderjson=renderjson;
+var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":u,_=function(n,o,a,u,c){var _,d=l(u),h=function(){_||e(d.parentNode,_=r(c(),i(f.hide,"disclosure",function(){_.style.display="none",d.style.display="inline"}))),_.style.display="inline",d.style.display="none"};e(d,i(f.show,"disclosure",h),t(u+" syntax",n),i(o,null,h),t(u+" syntax",a));var g=e(l(),s(y.slice(0,-1)),d);return p>0&&"string"!=u&&h(),g};return null===a?t(null,y,"keyword","null"):void 0===a?t(null,y,"keyword","undefined"):"string"==typeof a&&a.length>f.max_string_length?_('"',a.substr(0,f.max_string_length)+" ...",'"',"string",function(){return e(l("string"),t(null,y,"string",JSON.stringify(a)))}):"object"!=typeof a||[Number,String,Boolean,Date].indexOf(a.constructor)>=0?t(null,y,typeof a,JSON.stringify(a)):a.constructor==Array?0==a.length?t(null,y,"array syntax","[]"):_("["," ... ","]","array",function(){for(var r=e(l("array"),t("array syntax","[",null,"\n")),o=0;o<a.length;o++)e(r,n(f.replacer.call(a,o,a[o]),u+"  ",!1,p-1,f),o!=a.length-1?t("syntax",","):[],s("\n"));return e(r,t(null,u,"array syntax","]")),r}):o(a,f.property_list)?t(null,y,"object syntax","{}"):_("{","...","}","object",function(){var r=e(l("object"),t("object syntax","{",null,"\n"));for(var o in a)var i=o;var c=f.property_list||Object.keys(a);f.sort_objects&&(c=c.sort());for(var y in c)(o=c[y])in a&&e(r,t(null,u+"  ","key",'"'+o+'"',"object syntax",": "),n(f.replacer.call(a,o,a[o]),u+"  ",!0,p-1,f),o!=i?t("syntax",","):[],s("\n"));return e(r,t(null,u,"object syntax","}")),r})}var t=function(){for(var n=[];arguments.length;)n.push(e(l(Array.prototype.shift.call(arguments)),s(Array.prototype.shift.call(arguments))));return n},e=function(){for(var n=Array.prototype.shift.call(arguments),t=0;t<arguments.length;t++)arguments[t].constructor==Array?e.apply(this,[n].concat(arguments[t])):n.appendChild(arguments[t]);return n},r=function(n,t){return n.insertBefore(t,n.firstChild),n},o=function(n,t){var e=t||Object.keys(n);for(var r in e)if(Object.hasOwnProperty.call(n,e[r]))return!1;return!0},s=function(n){return document.createTextNode(n)},l=function(n){var t=document.createElement("span");return n&&(t.className=n),t},i=function(n,t,e){var r=document.createElement("a");return t&&(r.className=t),r.appendChild(s(n)),r.href="#",r.onclick=function(n){return e(),n&&n.stopPropagation(),!1},r},a=function t(r){var o=Object.assign({},t.options);o.replacer="function"==typeof o.replacer?o.replacer:function(n,t){return t};var s=e(document.createElement("pre"),n(r,"",!1,o.show_to_level,o));return s.className="renderjson",s};return a.set_icons=function(n,t){return a.options.show=n,a.options.hide=t,a},a.set_show_to_level=function(n){return a.options.show_to_level="string"==typeof n&&"all"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_max_string_length=function(n){return a.options.max_string_length="string"==typeof n&&"none"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_sort_objects=function(n){return a.options.sort_objects=n,a},a.set_replacer=function(n){return a.options.replacer=n,a},a.set_property_list=function(n){return a.options.property_list=n,a},a.set_show_by_default=function(n){return a.options.show_to_level=n?Number.MAX_VALUE:0,a},a.options={},a.set_icons("⊕","⊖"),a.set_show_by_default(!1),a.set_sort_objects(!1),a.set_max_string_length("none"),a.set_replacer(void 0),a.set_property_list(void 0),a}();define?define({renderjson:renderjson}):(module||{}).exports=(window||{}).renderjson=renderjson;
+(function(w, d) {
+  renderjson.set_show_to_level("all");
+  renderjson.set_sort_objects(true);
+  renderjson.set_max_string_length(100);
 
+  var els = d.querySelectorAll("pre");
+  for (var i = 0; i < els.length; i++) {
+    els[i].parentNode.replaceChild(renderjson(JSON.parse(els[i].innerText)), els[i]);
+  }
+
+  els = d.querySelectorAll(".key");
+  for (var i = 0; i < els.length; i++) {
+    if (els[i].textContent != '"$ref"') continue;
+    var link = els[i].nextElementSibling;
+    while (link = link.nextElementSibling) {
+      if (!link.className || !link.className.match(/\bstring\b/)) continue;
+      var a = d.createElement("a");
+      var href = link.textContent.replace(/"/g, "");
+      a.className = link.className;
+      a.textContent = link.textContent;
+      a.href = href.match(/^#/) ? "#ref-" + href.replace(/\W/g, "-").substring(2).toLowerCase() : href;
+      link.parentNode.replaceChild(a, link);
+    }
+  }
+})(window, document);
 </script>
 </body>
 </html>
