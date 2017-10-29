@@ -65,69 +65,71 @@ sub register {
 
 sub _add_routes {
   my ($self, $app, $config) = @_;
-  my $api_spec     = $self->_validator->schema;
-  my $base_path    = $api_spec->get('/basePath') || '/';
-  my $paths        = $api_spec->get('/paths');
+  my $v            = $self->_validator;
+  my $base_path    = $v->get('/basePath') || '/';
   my $route        = $config->{route};
   my $route_prefix = "";
   my %uniq;
 
   $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route = $app->routes->any($base_path) unless $route;
-  $base_path = $api_spec->data->{basePath} = $route->to_string;
+  $base_path = $v->schema->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
   push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
-  $route->to({handler => 'openapi', 'openapi.api_spec' => $api_spec, 'openapi.object' => $self});
+  $route->to({handler => 'openapi', 'openapi.object' => $self});
 
   my $spec_route = $route->get->to(cb => sub { shift->openapi->render_spec });
-  if (my $spec_route_name = $config->{spec_route_name} || $api_spec->get('/x-mojo-name')) {
+  if (my $spec_route_name = $config->{spec_route_name} || $v->get('/x-mojo-name')) {
     $spec_route->name($spec_route_name);
     $route_prefix = "$spec_route_name.";
   }
 
-  if ($api_spec->get('/securityDefinitions') and $self->_security_cb) {
-    $route = $route->under('/')->to(cb => $self->_security_action($api_spec));
+  if ($v->get('/securityDefinitions') and $self->_security_cb) {
+    $route = $route->under('/')->to(cb => $self->_security_action);
   }
 
-  for my $path (_sort_paths(keys %$paths)) {
+  for my $path ($self->_sorted_paths) {
     next if $path =~ $X_RE;
-    my @path_parameters = @{$paths->{$path}{parameters} || []};
+    my $path_parameters = $v->get([paths => $path => 'parameters']) || [];
     my $route_path = $path;
     my $has_options;
 
-    for my $http_method (keys %{$paths->{$path}}) {
+    for my $http_method (sort keys %{$v->get([paths => $path]) || {}}) {
       next if $http_method =~ $X_RE or $http_method eq 'parameters';
-      my $op_spec = $paths->{$path}{$http_method};
-      my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-      my $to      = $op_spec->{'x-mojo-to'};
+      my $op_spec = $v->get([paths => $path => $http_method]);
+      my $name       = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+      my $to         = $op_spec->{'x-mojo-to'};
+      my @parameters = (@$path_parameters, @{$op_spec->{parameters} || []});
       my $endpoint;
 
       $op_spec->{responses}{default} ||= $self->_default_response;
-      $op_spec->{'x-all-parameters'} = [@path_parameters, @{$op_spec->{parameters} || []}];
       $has_options = 1 if lc $http_method eq 'options';
-      $route_path = _route_path($path, $op_spec);
+      $route_path = _route_path($path, \@parameters);
 
       die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
       if ($name and $endpoint = $route->root->find($name)) {
+        warn "[OpenAPI] Found existing route for '$name'.\n" if DEBUG;
         $route->add_child($endpoint);
       }
       if (!$endpoint) {
+        warn "[OpenAPI] Creating new route for '$route_path'.\n" if DEBUG;
         $endpoint = $route->$http_method($route_path);
         $endpoint->name("$route_prefix$name") if $name;
       }
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $endpoint->to({'openapi.op_path' => [$path, $http_method]});
+      $endpoint->to({'openapi.op_path' => [paths => $path => $http_method]});
+      $endpoint->to({'openapi.parameters' => \@parameters});
       warn "[OpenAPI] Add route $http_method $path (@{[$endpoint->render]})\n" if DEBUG;
     }
 
     unless ($has_options) {
       $route->options($route_path)
-        ->to('openapi.default_options' => 1, cb => sub { _render_route_spec($_[0], $path) },);
+        ->to('openapi.default_options' => 1, cb => sub { _render_route_spec($_[0], $path) });
     }
   }
 }
@@ -139,6 +141,7 @@ sub _before_render {
 
   if ($args->{exception}) {
     $c->stash(exception => $args->{exception});
+    $c->app->log->error($args->{exception}) if 0;    # TODO: Are exceptions eaten or not..?
     $args->{data} = $self->{renderer}
       ->($c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500});
   }
@@ -158,16 +161,16 @@ sub _before_render {
 
 sub _helper_spec {
   my ($c, $path) = @_;
-  my ($op_path, $spec);
+  my $self = _self($c);
 
+  return $self->_validator->get($path) if defined $path;
+
+  my $op_path;
   for my $r (reverse @{$c->match->stack}) {
-    $spec    ||= $r->{'openapi.api_spec'};
     $op_path ||= $r->{'openapi.op_path'};
   }
 
-  return $spec->get($path) if $path;
-  return undef unless $op_path;
-  return $spec->data->{paths}{$op_path->[0]}{$op_path->[1]};
+  return $op_path ? $self->_validator->get($op_path) : undef;
 }
 
 sub _log {
@@ -244,28 +247,28 @@ sub _render_json {
 
 sub _render_route_spec {
   my ($c, $path) = @_;
-  my $spec   = $c->stash('openapi.api_spec')->data->{paths}{$path};
+  my $self   = _self($c);
   my $method = $c->param('method');
-  $spec = $spec->{$method} if $method;
-  return $c->render(json => {}, status => 404) unless $spec;
+  my $spec   = $self->_validator->get([paths => $path]);
 
-  # jhthorsen: I don't like this, but I also don't want
-  # x-all-parameters to be part of the response.
-  local $spec->{'parameters'} = $spec->{'x-all-parameters'} || $spec->{'parameters'};
-  local $spec->{'x-all-parameters'};
-  delete $spec->{'x-all-parameters'};
-  return $c->render(json => $spec);
+  return $c->render(json => undef, status => 404) unless $spec;
+  return $c->render(json => $spec) unless $method;
+
+  my $method_spec = $self->_validator->get([paths => $path => $method]);
+  return $c->render(json => undef, status => 404) unless $method_spec;
+  local $method_spec->{parameters}
+    = [@{$spec->{parameters} || []}, @{$method_spec->{parameters} || []}];
+  return $c->render(json => $method_spec);
 }
 
 sub _reply_spec {
   my $c      = shift;
-  my $spec   = $c->stash('openapi.api_spec')->data;
+  my $self   = _self($c);
+  my $spec   = $self->_validator->bundle;
   my $format = $c->stash('format') || 'json';
 
-  local $spec->{id};
-  delete $spec->{id};
-  local $spec->{basePath} = $c->url_for($spec->{basePath});
-  local $spec->{host}     = $c->req->url->to_abs->host_port;
+  $spec->{basePath} = $c->url_for($spec->{basePath});
+  $spec->{host}     = $c->req->url->to_abs->host_port;
 
   return $c->render(json => $spec) unless $format eq 'html';
   return $c->render(
@@ -279,8 +282,8 @@ sub _reply_spec {
 }
 
 sub _route_path {
-  my ($path, $op_spec) = @_;
-  my %parameters = map { ($_->{name}, $_) } @{$op_spec->{'x-all-parameters'} || []};
+  my ($path, $parameters) = @_;
+  my %parameters = map { ($_->{name}, $_) } @$parameters;
   $path =~ s/{([^}]+)}/{
     my $pname = $1;
     my $type = $parameters{$pname}{'x-mojo-placeholder'} || ':';
@@ -290,14 +293,14 @@ sub _route_path {
 }
 
 sub _security_action {
-  my ($self, $api_spec) = @_;
-  my $global      = $api_spec->get('/security') || [];
-  my $definitions = $api_spec->get('/securityDefinitions');
+  my $self        = shift;
+  my $global      = $self->_validator->get('/security') || [];
+  my $definitions = $self->_validator->get('/securityDefinitions');
   my $security_cb = $self->_security_cb;
 
   return sub {
     my $c = shift;
-    return 1 if $c->req->method eq 'OPTIONS' && $c->match->stack->[-1]{'openapi.default_options'};
+    return 1 if $c->req->method eq 'OPTIONS' and $c->match->stack->[-1]{'openapi.default_options'};
 
     my $spec = $c->openapi->spec || {};
     my @security_or = @{$spec->{security} || $global};
@@ -363,11 +366,11 @@ sub _serialize {
   Data::Dumper->new([@_])->Indent(1)->Pair(': ')->Sortkeys(1)->Terse(1)->Useqq(1)->Dump;
 }
 
-sub _sort_paths {
+sub _sorted_paths {
   return
     map { $_->[0] }
     sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
-    map { [$_, $_ =~ /\{/ ? 1 : 0] } @_;
+    map { [$_, $_ =~ /\{/ ? 1 : 0] } keys %{$_[0]->_validator->get('/paths') || {}};
 }
 
 sub _validate {
@@ -376,7 +379,7 @@ sub _validate {
   my $op_spec = $c->openapi->spec;
 
   # Write validated data to $c->validation->output
-  local $op_spec->{parameters} = $op_spec->{'x-all-parameters'};
+  local $op_spec->{parameters} = $c->stash('openapi.parameters');
   my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
 
   if (@errors) {
@@ -719,7 +722,7 @@ __DATA__
 <p class="op-summary op-doc-missing">This resource is not documented.</p>
 % }
 @@ mojolicious/plugin/openapi/parameters.html.ep
-% my $has_parameters = @{$op->{'x-all-parameters'}};
+% my $has_parameters = @{$op->{parameters} || []};
 % my $body;
 <h4 class="op-parameters">Parameters</h3>
 % if ($has_parameters) {
@@ -735,7 +738,7 @@ __DATA__
   </thead>
   <tbody>
 % }
-% for my $p (@{$op->{'x-all-parameters'} || []}) {
+% for my $p (@{$op->{parameters} || []}) {
   % $body = $p->{schema} if $p->{in} eq 'body';
     <tr>
       <td><%= $p->{name} %></td>

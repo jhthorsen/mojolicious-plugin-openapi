@@ -3,7 +3,7 @@ use Test::More;
 use Mojolicious::Lite;
 
 eval { plugin OpenAPI => {url => 'data://main/invalid.json'} };
-like $@, qr{Invalid schema.*Missing}si, 'missing spec elements';
+like $@, qr{Invalid.*Missing}si, 'missing spec elements';
 
 eval { plugin OpenAPI => {url => 'data://main/swagger2/issues/89.json'} };
 like $@, qr{/definitions/\$ref}si, 'ref in the wrong place';
