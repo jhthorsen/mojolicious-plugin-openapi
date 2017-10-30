@@ -165,9 +165,20 @@ sub _helper_spec {
     $op_path ||= $r->{'openapi.op_path'};
   }
 
-  return $spec->get($path) if $path;
-  return undef unless $op_path;
-  return $spec->data->{paths}{$op_path->[0]}{$op_path->[1]};
+  my $resolved_spec;
+  if ($path) {
+    $resolved_spec = $spec->get($path)
+  }
+  elsif ($op_path) {
+    $resolved_spec = $spec->data->{paths}{$op_path->[0]}{$op_path->[1]};
+  }
+  else {
+    return undef;
+  }
+
+  my $self = _self($c);
+  $resolved_spec = $self->_validator()->_explode($resolved_spec);
+  return $resolved_spec;
 }
 
 sub _log {
