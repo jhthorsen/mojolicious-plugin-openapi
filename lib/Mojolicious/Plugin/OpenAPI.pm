@@ -176,8 +176,20 @@ sub _build_route {
     $self->{route_prefix} = "$spec_route_name.";
   }
 
-  $self->{route_prefix} //= '';
-  $self->route($route);
+  my $resolved_spec;
+  if ($path) {
+    $resolved_spec = $spec->get($path)
+  }
+  elsif ($op_path) {
+    $resolved_spec = $spec->data->{paths}{$op_path->[0]}{$op_path->[1]};
+  }
+  else {
+    return undef;
+  }
+
+  my $self = _self($c);
+  $resolved_spec = $self->_validator()->_explode($resolved_spec);
+  return $resolved_spec;
 }
 
 sub _default_schema {
