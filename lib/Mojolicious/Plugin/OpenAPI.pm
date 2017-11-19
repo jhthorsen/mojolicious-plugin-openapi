@@ -45,11 +45,11 @@ sub register {
   );
 
   unless ($app->defaults->{'openapi.base_paths'}) {
-    $app->helper('openapi.render_spec' => \&_reply_spec);
-    $app->helper('openapi.spec'        => \&_helper_spec);
-    $app->helper('openapi.valid_input' => sub { _validate($_[0]) ? undef : $_[0] });
-    $app->helper('openapi.validate'    => \&_validate);
-    $app->helper('reply.openapi'       => \&_reply);
+    $app->helper('openapi.render_spec' => \&_helper_reply_spec);
+    $app->helper('openapi.spec'        => \&_helper_get_spec);
+    $app->helper('openapi.valid_input' => sub { _helper_validate($_[0]) ? undef : $_[0] });
+    $app->helper('openapi.validate'    => \&_helper_validate);
+    $app->helper('reply.openapi'       => \&_helper_reply);
     $app->hook(before_render => \&_before_render);
     $app->renderer->add_handler(openapi => \&_render);
     push @{$app->renderer->classes}, __PACKAGE__;
@@ -129,7 +129,7 @@ sub _add_routes {
 
     unless ($has_options) {
       $route->options($route_path)
-        ->to('openapi.default_options' => 1, cb => sub { _render_route_spec($_[0], $path) });
+        ->to('openapi.default_options' => 1, cb => sub { _helper_reply_spec($_[0], $path) });
     }
   }
 }
@@ -159,7 +159,7 @@ sub _before_render {
   $args->{status} = $c->stash('status') // $args->{status};
 }
 
-sub _helper_spec {
+sub _helper_get_spec {
   my ($c, $path) = @_;
   my $self = _self($c);
 
@@ -173,21 +173,7 @@ sub _helper_spec {
   return $op_path ? $self->_validator->get($op_path) : undef;
 }
 
-sub _log {
-  my ($self, $c, $dir) = (shift, shift, shift);
-  my $log_level = $self->{log_level};
-
-  $c->app->log->$log_level(
-    sprintf 'OpenAPI %s %s %s %s',
-    $dir, $c->req->method,
-    $c->req->url->path,
-    Mojo::JSON::encode_json(@_)
-  );
-}
-
-sub _pointer_escape { local $_ = shift; s/~/~0/g; s!/!~1!g; $_; }
-
-sub _reply {
+sub _helper_reply {
   my $c      = shift;
   my $status = ref $_[0] ? 200 : shift;
   my $output = shift;
@@ -206,6 +192,69 @@ sub _reply {
   push @args, status => $status if $status;
   return $c->render(@args, openapi => $output);
 }
+
+sub _helper_reply_spec {
+  my ($c, $path) = @_;
+  my $self   = _self($c);
+  my $spec   = $self->{bundled} ||= $self->_validator->bundle;
+  my $format = $c->stash('format') || 'json';
+  my $method = $c->param('method');
+
+  if (defined $path) {
+    $spec = $spec->{paths}{$path};
+    return $c->render(json => $spec) unless $method;
+    my $method_spec = $self->_validator->get([paths => $path => $method]);
+    return $c->render(json => undef, status => 404) unless $method_spec;
+    local $method_spec->{parameters}
+      = [@{$spec->{parameters} || []}, @{$method_spec->{parameters} || []}];
+    return $c->render(json => $method_spec);
+  }
+
+  local $spec->{basePath} = $c->url_for($spec->{basePath});
+  local $spec->{host}     = $c->req->url->to_abs->host_port;
+
+  return $c->render(json => $spec) unless $format eq 'html';
+  return $c->render(
+    handler   => 'ep',
+    template  => 'mojolicious/plugin/openapi/layout',
+    esc       => sub { local $_ = shift; s/\W/-/g; $_ },
+    serialize => \&_serialize,
+    spec      => $spec,
+    X_RE      => $X_RE
+  );
+}
+
+sub _helper_validate {
+  my ($c, $args) = @_;
+  my $self    = _self($c);
+  my $op_spec = $c->openapi->spec;
+
+  # Write validated data to $c->validation->output
+  local $op_spec->{parameters} = $c->stash('openapi.parameters');
+  my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
+
+  if (@errors) {
+    $self->_log($c, '<<<', \@errors);
+    $c->render(data => $self->{renderer}->($c, {errors => \@errors, status => 400}), status => 400)
+      if $args->{auto_render} // 1;
+  }
+
+  return @errors;
+}
+
+sub _log {
+  my ($self, $c, $dir) = (shift, shift, shift);
+  my $log_level = $self->{log_level};
+
+  $c->app->log->$log_level(
+    sprintf 'OpenAPI %s %s %s %s',
+    $dir, $c->req->method,
+    $c->req->url->path,
+    Mojo::JSON::encode_json(@_)
+  );
+}
+
+sub _pointer_escape { local $_ = shift; s/~/~0/g; s!/!~1!g; $_; }
 
 sub _render {
   my ($renderer, $c, $output, $options) = @_;
@@ -243,42 +292,6 @@ sub _render_json {
   return $_[0]->slurp if UNIVERSAL::isa($_[0], 'Mojo::Asset');
   $c->res->headers->content_type('application/json;charset=UTF-8');
   return Mojo::JSON::encode_json($_[0]);
-}
-
-sub _render_route_spec {
-  my ($c, $path) = @_;
-  my $self   = _self($c);
-  my $method = $c->param('method');
-  my $spec   = $self->_validator->get([paths => $path]);
-
-  return $c->render(json => undef, status => 404) unless $spec;
-  return $c->render(json => $spec) unless $method;
-
-  my $method_spec = $self->_validator->get([paths => $path => $method]);
-  return $c->render(json => undef, status => 404) unless $method_spec;
-  local $method_spec->{parameters}
-    = [@{$spec->{parameters} || []}, @{$method_spec->{parameters} || []}];
-  return $c->render(json => $method_spec);
-}
-
-sub _reply_spec {
-  my $c      = shift;
-  my $self   = _self($c);
-  my $spec   = $self->_validator->bundle;
-  my $format = $c->stash('format') || 'json';
-
-  $spec->{basePath} = $c->url_for($spec->{basePath});
-  $spec->{host}     = $c->req->url->to_abs->host_port;
-
-  return $c->render(json => $spec) unless $format eq 'html';
-  return $c->render(
-    handler   => 'ep',
-    template  => 'mojolicious/plugin/openapi/layout',
-    esc       => sub { local $_ = shift; s/\W/-/g; $_ },
-    serialize => \&_serialize,
-    spec      => $spec,
-    X_RE      => $X_RE
-  );
 }
 
 sub _route_path {
@@ -371,24 +384,6 @@ sub _sorted_paths {
     map { $_->[0] }
     sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
     map { [$_, $_ =~ /\{/ ? 1 : 0] } keys %{$_[0]->_validator->get('/paths') || {}};
-}
-
-sub _validate {
-  my ($c, $args) = @_;
-  my $self    = _self($c);
-  my $op_spec = $c->openapi->spec;
-
-  # Write validated data to $c->validation->output
-  local $op_spec->{parameters} = $c->stash('openapi.parameters');
-  my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
-
-  if (@errors) {
-    $self->_log($c, '<<<', \@errors);
-    $c->render(data => $self->{renderer}->($c, {errors => \@errors, status => 400}), status => 400)
-      if $args->{auto_render} // 1;
-  }
-
-  return @errors;
 }
 
 1;
