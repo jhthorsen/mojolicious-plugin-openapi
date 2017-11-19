@@ -1,5 +1,11 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.22 2017-11-19T20:25:16+0100
+ - Compatible with JSON::Validator 1.06
+ - Deprecated "reply.openapi" helper
+ - Moved security handling to separate module
+ - Started on plugin support #14
+
 1.21 2017-07-24T21:46:37+0200
  - "path" is not required in default error document
 
