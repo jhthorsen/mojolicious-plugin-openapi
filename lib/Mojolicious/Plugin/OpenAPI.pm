@@ -11,17 +11,17 @@ my $X_RE = qr{^x-};
 
 has _default_response => sub {
   return {
-    description => "Default response.",
+    description => 'Default response.',
     schema      => {
-      type       => "object",
-      required   => ["errors"],
+      type       => 'object',
+      required   => ['errors'],
       properties => {
         errors => {
-          type  => "array",
+          type  => 'array',
           items => {
-            type       => "object",
-            required   => ["message"],
-            properties => {message => {"type" => "string"}, path => {"type" => "string"}}
+            type       => 'object',
+            required   => ['message'],
+            properties => {message => {type => 'string'}, path => {type => 'string'}}
           }
         }
       }
