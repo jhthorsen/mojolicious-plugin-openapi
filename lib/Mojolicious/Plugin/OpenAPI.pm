@@ -9,6 +9,9 @@ use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 our $VERSION = '1.21';
 my $X_RE = qr{^x-};
 
+has route     => sub {undef};
+has validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
+
 has _default_response => sub {
   return {
     description => 'Default response.',
@@ -38,14 +41,11 @@ has _renderer => sub {
   };
 };
 
-has _security_cb => undef;
-has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
-
 sub register {
   my ($self, $app, $config) = @_;
 
-  $self->_validator->coerce($config->{coerce} // 1);
-  $self->_validator->load_and_validate_schema(
+  $self->validator->coerce($config->{coerce} // 1);
+  $self->validator->load_and_validate_schema(
     $config->{url} || $config->{spec},
     {
       allow_invalid_ref  => $config->{allow_invalid_ref},
@@ -64,49 +64,28 @@ sub register {
     push @{$app->renderer->classes}, __PACKAGE__;
   }
 
+  local $config->{_plugins};    # Ugly hack, but I want the plugins to be temporarily objects
+  $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_default_response($config->{default_response}) if exists $config->{default_response};
   $self->_renderer($config->{renderer}) if $config->{renderer};
-
-  $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
-  $self->_security_cb($config->{security}) if $config->{security};
+  $self->_build_route($app, $config);
+  $self->_register_plugins($app, $config);
   $self->_add_routes($app, $config);
 }
 
 sub _add_routes {
   my ($self, $app, $config) = @_;
-  my $v            = $self->_validator;
-  my $base_path    = $v->get('/basePath') || '/';
-  my $route        = $config->{route};
-  my $route_prefix = "";
   my %uniq;
-
-  $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
-  $route = $app->routes->any($base_path) unless $route;
-  $base_path = $v->schema->data->{basePath} = $route->to_string;
-  $base_path =~ s!/$!!;
-
-  push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
-  $route->to({handler => 'openapi', 'openapi.object' => $self});
-
-  my $spec_route = $route->get->to(cb => sub { shift->openapi->render_spec });
-  if (my $spec_route_name = $config->{spec_route_name} || $v->get('/x-mojo-name')) {
-    $spec_route->name($spec_route_name);
-    $route_prefix = "$spec_route_name.";
-  }
-
-  if ($v->get('/securityDefinitions') and $self->_security_cb) {
-    $route = $route->under('/')->to(cb => $self->_security_action);
-  }
 
   for my $path ($self->_sorted_paths) {
     next if $path =~ $X_RE;
-    my $path_parameters = $v->get([paths => $path => 'parameters']) || [];
+    my $path_parameters = $self->validator->get([paths => $path => 'parameters']) || [];
     my $route_path = $path;
     my $has_options;
 
-    for my $http_method (sort keys %{$v->get([paths => $path]) || {}}) {
+    for my $http_method (sort keys %{$self->validator->get([paths => $path]) || {}}) {
       next if $http_method =~ $X_RE or $http_method eq 'parameters';
-      my $op_spec = $v->get([paths => $path => $http_method]);
+      my $op_spec = $self->validator->get([paths => $path => $http_method]);
       my $name       = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
       my $to         = $op_spec->{'x-mojo-to'};
       my @parameters = (@$path_parameters, @{$op_spec->{parameters} || []});
@@ -120,14 +99,14 @@ sub _add_routes {
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
-      if ($name and $endpoint = $route->root->find($name)) {
+      if ($name and $endpoint = $self->route->root->find($name)) {
         warn "[OpenAPI] Found existing route for '$name'.\n" if DEBUG;
-        $route->add_child($endpoint);
+        $self->route->add_child($endpoint);
       }
       if (!$endpoint) {
         warn "[OpenAPI] Creating new route for '$route_path'.\n" if DEBUG;
-        $endpoint = $route->$http_method($route_path);
-        $endpoint->name("$route_prefix$name") if $name;
+        $endpoint = $self->route->$http_method($route_path);
+        $endpoint->name("$self->{route_prefix}$name") if $name;
       }
 
       $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
@@ -137,7 +116,7 @@ sub _add_routes {
     }
 
     unless ($has_options) {
-      $route->options($route_path)
+      $self->route->options($route_path)
         ->to('openapi.default_options' => 1, cb => sub { _helper_reply_spec($_[0], $path) });
     }
   }
@@ -170,18 +149,41 @@ sub _before_render {
   $args->{status} = $c->stash('status') // $args->{status};
 }
 
+sub _build_route {
+  my ($self, $app, $config) = @_;
+  my $base_path = $self->validator->get('/basePath') || '/';
+  my $route = $config->{route};
+
+  $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
+  $route = $app->routes->any($base_path) unless $route;
+  $base_path = $self->validator->schema->data->{basePath} = $route->to_string;
+  $base_path =~ s!/$!!;
+
+  push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
+  $route->to({handler => 'openapi', 'openapi.object' => $self});
+
+  my $spec_route = $route->get->to(cb => sub { shift->openapi->render_spec });
+  if (my $spec_route_name = $config->{spec_route_name} || $self->validator->get('/x-mojo-name')) {
+    $spec_route->name($spec_route_name);
+    $self->{route_prefix} = "$spec_route_name.";
+  }
+
+  $self->{route_prefix} //= '';
+  $self->route($route);
+}
+
 sub _helper_get_spec {
   my ($c, $path) = @_;
   my $self = _self($c);
 
-  return $self->_validator->get($path) if defined $path;
+  return $self->validator->get($path) if defined $path;
 
   my $op_path;
   for my $r (reverse @{$c->match->stack}) {
     $op_path ||= $r->{'openapi.op_path'};
   }
 
-  return $op_path ? $self->_validator->get($op_path) : undef;
+  return $op_path ? $self->validator->get($op_path) : undef;
 }
 
 sub _helper_reply {
@@ -210,14 +212,14 @@ sub _helper_reply {
 sub _helper_reply_spec {
   my ($c, $path) = @_;
   my $self   = _self($c);
-  my $spec   = $self->{bundled} ||= $self->_validator->bundle;
+  my $spec   = $self->{bundled} ||= $self->validator->bundle;
   my $format = $c->stash('format') || 'json';
   my $method = $c->param('method');
 
   if (defined $path) {
     $spec = $spec->{paths}{$path};
     return $c->render(json => $spec) unless $method;
-    my $method_spec = $self->_validator->get([paths => $path => $method]);
+    my $method_spec = $self->validator->get([paths => $path => $method]);
     return $c->render(json => undef, status => 404) unless $method_spec;
     local $method_spec->{parameters}
       = [@{$spec->{parameters} || []}, @{$method_spec->{parameters} || []}];
@@ -245,7 +247,7 @@ sub _helper_validate {
 
   # Write validated data to $c->validation->output
   local $op_spec->{parameters} = $c->stash('openapi.parameters');
-  my @errors = $self->_validator->validate_request($c, $op_spec, $c->validation->output);
+  my @errors = $self->validator->validate_request($c, $op_spec, $c->validation->output);
 
   if (@errors) {
     $self->_log($c, '<<<', \@errors);
@@ -268,7 +270,18 @@ sub _log {
   );
 }
 
-sub _pointer_escape { local $_ = shift; s/~/~0/g; s!/!~1!g; $_; }
+sub _register_plugins {
+  my ($self, $app, $config) = @_;
+  my @plugins;
+
+  for my $plugin (@{$config->{plugins} || ['+Security']}) {
+    $plugin = "Mojolicious::Plugin::OpenAPI::$plugin" if $plugin =~ s!^\+!!;
+    eval "require $plugin;1" or Carp::confess("require $plugin: $@");
+    push @plugins, $plugin->new->register($app, $self, $config);
+  }
+
+  $config->{_plugins} = \@plugins;
+}
 
 sub _render {
   my ($renderer, $c, $output, $options) = @_;
@@ -291,7 +304,7 @@ sub _render {
   $c->stash->{format} ||= 'json';
   delete $options->{encoding};
 
-  if (my @errors = $self->_validator->validate_response($c, $c->openapi->spec, $status, $res)) {
+  if (my @errors = $self->validator->validate_response($c, $c->openapi->spec, $status, $res)) {
     $self->_log($c, '>>>', \@errors);
     $c->stash(status => 500);
     $$output = $self->_renderer->($c, {errors => \@errors, status => 500});
@@ -312,68 +325,6 @@ sub _route_path {
   return $path;
 }
 
-sub _security_action {
-  my $self        = shift;
-  my $global      = $self->_validator->get('/security') || [];
-  my $definitions = $self->_validator->get('/securityDefinitions');
-  my $security_cb = $self->_security_cb;
-
-  return sub {
-    my $c = shift;
-    return 1 if $c->req->method eq 'OPTIONS' and $c->match->stack->[-1]{'openapi.default_options'};
-
-    my $spec = $c->openapi->spec || {};
-    my @security_or = @{$spec->{security} || $global};
-    my %res;
-
-    return 1 unless @security_or;    # Nothing to check
-
-    $c->delay(
-      sub {
-        my ($delay) = @_;
-
-        for my $security_and (@security_or) {
-          for my $name (keys %$security_and) {
-            next if exists $res{$name};
-            my $scb = $security_cb->{$name};
-            $res{$name} = ["No security callback for $name."] and next unless $scb;
-            $res{$name} = undef;
-            my $dcb = $delay->begin;
-            $c->$scb(
-              $definitions->{$name},
-              $security_and->{$name},
-              sub { $res{$name} //= $_[1]; $dcb->(); }
-            );
-          }
-        }
-
-        $delay->pass;    # Make sure we go to the next step
-      },
-      sub {
-        my ($delay) = @_;
-        my ($i, @errors) = (0);
-
-        for my $security_and (@security_or) {
-          my @e;
-          for my $name (sort keys %$security_and) {
-            my $path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
-            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $path}
-              if defined $res{$name};
-          }
-
-          return $c->continue unless @e;    # Success!
-          push @errors, @e;
-          $i++;
-        }
-
-        $c->render(openapi => {errors => \@errors}, status => 401);
-      },
-    );
-
-    return undef;
-  };
-}
-
 sub _self {
   my $c    = shift;
   my $self = $c->stash('openapi.object');
@@ -390,7 +341,7 @@ sub _sorted_paths {
   return
     map { $_->[0] }
     sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
-    map { [$_, $_ =~ /\{/ ? 1 : 0] } keys %{$_[0]->_validator->get('/paths') || {}};
+    map { [$_, $_ =~ /\{/ ? 1 : 0] } keys %{$_[0]->validator->get('/paths') || {}};
 }
 
 1;
@@ -545,6 +496,20 @@ below shows the default L</renderer> which generates JSON data:
     }
   );
 
+=head1 ATTRIBUTES
+
+=head2 route
+
+  $route = $self->route;
+
+The parent L<Mojolicious::Routes::Route> object for all the OpenAPI endpoints.
+
+=head2 validator
+
+  $jv = $self->validator;
+
+Holds a L<JSON::Validator::OpenAPI::Mojolicious> object.
+
 =head1 METHODS
 
 =head2 register
@@ -660,7 +625,7 @@ the terms of the Artistic License version 2.0.
 
 =item * L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial>
 
-=item * L<Mojolicious::Plugin::OpenAPI::Guides::Security>
+=item * L<Mojolicious::Plugin::OpenAPI::Security>
 
 =item * L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>.
 
