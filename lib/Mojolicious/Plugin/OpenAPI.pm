@@ -29,6 +29,15 @@ has _default_response => sub {
   };
 };
 
+has _renderer => sub {
+  return sub {
+    my $c = shift;
+    return $_[0]->slurp if UNIVERSAL::isa($_[0], 'Mojo::Asset');
+    $c->res->headers->content_type('application/json;charset=UTF-8');
+    return Mojo::JSON::encode_json($_[0]);
+  };
+};
+
 has _security_cb => undef;
 has _validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
 
@@ -56,9 +65,9 @@ sub register {
   }
 
   $self->_default_response($config->{default_response}) if exists $config->{default_response};
+  $self->_renderer($config->{renderer}) if $config->{renderer};
 
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
-  $self->{renderer} = $config->{renderer} || \&_render_json;
   $self->_security_cb($config->{security}) if $config->{security};
   $self->_add_routes($app, $config);
 }
@@ -142,18 +151,20 @@ sub _before_render {
   if ($args->{exception}) {
     $c->stash(exception => $args->{exception});
     $c->app->log->error($args->{exception}) if 0;    # TODO: Are exceptions eaten or not..?
-    $args->{data} = $self->{renderer}
-      ->($c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500});
+    $args->{data} = $self->_renderer->(
+      $c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500}
+    );
   }
   elsif (!$c->stash('openapi.op_path')) {
     $args->{status} = 404;
-    $args->{data}   = $self->{renderer}
-      ->($c, {errors => [{message => 'Not found.', path => '/'}], status => 404});
+    $args->{data}
+      = $self->_renderer->($c, {errors => [{message => 'Not found.', path => '/'}], status => 404});
   }
   else {
     $args->{status} = 501;
-    $args->{data}   = $self->{renderer}
-      ->($c, {errors => [{message => 'Not implemented.', path => '/'}], status => 501});
+    $args->{data}   = $self->_renderer->(
+      $c, {errors => [{message => 'Not implemented.', path => '/'}], status => 501}
+    );
   }
 
   $args->{status} = $c->stash('status') // $args->{status};
@@ -238,7 +249,7 @@ sub _helper_validate {
 
   if (@errors) {
     $self->_log($c, '<<<', \@errors);
-    $c->render(data => $self->{renderer}->($c, {errors => \@errors, status => 400}), status => 400)
+    $c->render(data => $self->_renderer->($c, {errors => \@errors, status => 400}), status => 400)
       if $args->{auto_render} // 1;
   }
 
@@ -283,18 +294,11 @@ sub _render {
   if (my @errors = $self->_validator->validate_response($c, $c->openapi->spec, $status, $res)) {
     $self->_log($c, '>>>', \@errors);
     $c->stash(status => 500);
-    $$output = $self->{renderer}->($c, {errors => \@errors, status => 500});
+    $$output = $self->_renderer->($c, {errors => \@errors, status => 500});
   }
   else {
-    $$output = $self->{renderer}->($c, $res);
+    $$output = $self->_renderer->($c, $res);
   }
-}
-
-sub _render_json {
-  my $c = shift;
-  return $_[0]->slurp if UNIVERSAL::isa($_[0], 'Mojo::Asset');
-  $c->res->headers->content_type('application/json;charset=UTF-8');
-  return Mojo::JSON::encode_json($_[0]);
 }
 
 sub _route_path {
