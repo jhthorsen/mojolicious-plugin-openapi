@@ -6,7 +6,7 @@ use Mojolicious::Lite;
 
 get '/pets' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => $c->validation->output);
+  $c->render(openapi => $c->validation->output);
   },
   'getPets';
 

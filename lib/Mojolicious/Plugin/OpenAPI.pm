@@ -179,6 +179,9 @@ sub _helper_reply {
   my $output = shift;
   my @args   = @_;
 
+  Mojo::Util::deprecated(
+    '$c->reply->openapi() is DEPRECATED in favor of $c->render(openapi => ...)');
+
   if (UNIVERSAL::isa($output, 'Mojo::Asset')) {
     my $h = $c->res->headers;
     if (!$h->content_type and $output->isa('Mojo::Asset::File')) {
@@ -516,11 +519,6 @@ C<Mojolicious::Controller/validation>, which again can be extracted by the
 Returns the L<Mojolicious::Controller> object if the input is valid or
 automatically render an error document if not and return false. See
 L</SYNOPSIS> for example usage.
-
-=head2 reply.openapi
-
-This helper is discourage and might go away. Have a look at L</RENDERER>
-instead.
 
 =head1 RENDERER
 

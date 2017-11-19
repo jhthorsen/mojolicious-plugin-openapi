@@ -5,14 +5,13 @@ use Test::More;
 use Mojolicious::Lite;
 get '/echo' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {bool => $c->param('bool')});
+  $c->render(openapi => {bool => $c->param('bool')});
   },
   'echo';
 
 get '/echo/:whatever' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(
-    200 => {this_stack => $c->match->stack->[-1], whatever => $c->param('whatever')});
+  $c->render(openapi => {this_stack => $c->match->stack->[-1], whatever => $c->param('whatever')});
   },
   'whatever';
 

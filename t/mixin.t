@@ -7,7 +7,7 @@ plan skip_all => 'TEST_MIXIN=1' unless $ENV{TEST_MIXIN};
 use Mojolicious::Lite;
 get '/mixin' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => $c->openapi->spec);
+  $c->render(openapi => $c->openapi->spec);
   },
   'mixin';
 

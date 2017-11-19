@@ -5,55 +5,55 @@ use Test::More;
 use Mojolicious::Lite;
 post '/global' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'global';
 
 post '/simple' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'simple';
 
 options '/options' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'options';
 
 post '/fail_or_pass' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'fail_or_pass';
 
 post '/fail_and_pass' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'fail_and_pass';
 
 post '/multiple_fail' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'multiple_fail';
 
 post '/multiple_and_fail' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'multiple_and_fail';
 
 post '/cache' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'cache';
 
 post '/die' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 1});
+  $c->render(openapi => {ok => 1});
   },
   'die';
 

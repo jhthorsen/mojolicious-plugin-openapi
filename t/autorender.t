@@ -14,7 +14,7 @@ my %inline;
     },
     'Inline';
   get
-    '/not-found' => sub { shift->reply->openapi(404 => {this_is_fine => 1}) },
+    '/not-found' => sub { shift->render(openapi => {this_is_fine => 1}, status => 404) },
     'NotFound';
   plugin OpenAPI => {url => 'data://main/hook.json'};
 }
@@ -51,7 +51,7 @@ sub define_controller {
   use Mojo::Base 'Mojolicious::Controller';
   sub todo {
     my $c = shift->openapi->valid_input or return;
-    $c->reply->openapi(200, {todo => 42});
+    $c->render(openapi => {todo => 42});
   }
   1;
 HERE

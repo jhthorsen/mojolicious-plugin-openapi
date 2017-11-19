@@ -24,7 +24,7 @@ hook around_action => sub {
 
   my $cb = sub {
     my ($c, $data, $code) = @_;
-    $c->reply->openapi($code => $data);
+    $c->render(openapi => $data, status => $code);
   };
 
   return $c->$action($c->validation->output, $cb);

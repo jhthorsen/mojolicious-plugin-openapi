@@ -10,7 +10,7 @@ get '/headers' => sub {
 
   $c->res->headers->header('what-ever' => ref $what_ever ? @$what_ever : $what_ever);
   $c->res->headers->header('x-bool' => $args->{'x-bool'}) if exists $args->{'x-bool'};
-  $c->reply->openapi(200 => $args);
+  $c->render(openapi => $args);
   },
   'dummy';
 

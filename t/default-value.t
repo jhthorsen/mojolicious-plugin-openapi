@@ -23,8 +23,8 @@ sub echo {
     ? {param => $c->param('name'), stash => $c->stash('name')}
     : {controller => $c->param('name'), form => $c->req->body_params->param('name')};
 
-  $c->reply->openapi(
-    200 => {
+  $c->render(
+    openapi => {
       days => {controller => $c->param('days'), url => $c->req->query_params->param('days')},
       name => $name,
       x_foo      => {header => $c->req->headers->header('X-Foo')},

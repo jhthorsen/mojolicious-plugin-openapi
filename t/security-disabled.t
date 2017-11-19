@@ -5,7 +5,7 @@ use Test::More;
 use Mojolicious::Lite;
 post '/global' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => {ok => 'checks disabled'});
+  $c->render(openapi => {ok => 'checks disabled'});
   },
   'global';
 

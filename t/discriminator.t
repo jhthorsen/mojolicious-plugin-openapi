@@ -6,7 +6,7 @@ use Mojolicious::Lite;
 
 post '/pets' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->reply->openapi(200 => $c->req->json);
+  $c->render(openapi => $c->req->json);
   },
   'addPet';
 

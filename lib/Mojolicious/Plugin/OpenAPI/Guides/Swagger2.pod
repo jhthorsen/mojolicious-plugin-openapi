@@ -36,7 +36,7 @@ controllers and actions work with L<Mojolicious::Plugin::OpenAPI>.
 
       my $cb = sub {
         my ($c, $data, $code) = @_;
-        $c->reply->openapi($code => $data);
+        $c->render(openapi => $data, status => $code);
       };
 
       # Call the action with ($args, $cb)
