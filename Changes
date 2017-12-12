@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.23 Not Released
+ - Can specify schema when loading plugin
+
 1.22 2017-11-19T20:25:16+0100
  - Compatible with JSON::Validator 1.06
  - Deprecated "reply.openapi" helper

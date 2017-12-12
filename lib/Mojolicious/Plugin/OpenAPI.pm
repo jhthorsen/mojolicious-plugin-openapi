@@ -49,6 +49,7 @@ sub register {
     $config->{url} || $config->{spec},
     {
       allow_invalid_ref  => $config->{allow_invalid_ref},
+      schema             => $config->{schema},
       version_from_class => $config->{version_from_class} // ref $app,
     }
   );
