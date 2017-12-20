@@ -44,7 +44,7 @@ ok !$t->tx->res->json->{x_foo}{header}, 'x_foo header is not set';
 $t->post_ok('/api/echo')->status_is(200)->json_is('/days' => {controller => 42, url => 42})
   ->json_is('/name', {controller => 'batman', form => 'batman'})
   ->json_is('/x_foo', {header => 'yikes'})
-  ->json_is('/validation', {days => 42, name => 'batman', 'X-Foo' => 'yikes'});
+  ->json_is('/validation', {days => 42, name => 'batman', 'X-Foo' => 'yikes', enumParam => '10.1.0'});
 
 done_testing;
 
@@ -62,6 +62,11 @@ __DATA__
         "parameters": [
           { "in": "query", "name": "days", "type": "number", "default": 42 },
           { "in": "formData", "name": "name", "type": "string", "default": "batman" },
+          {
+            "in": "query", "name": "enumParam",
+            "type": "string", "default": "10.1.0",
+            "enum": [ "9.6.1", "10.1.0" ]
+          },
           { "in": "header", "name": "X-Foo", "type": "string", "default": "yikes" }
         ],
         "responses": {
