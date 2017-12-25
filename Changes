@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.23 Not Released
+1.23 2017-12-25T10:50:28+0100
+ - Fix setting default values #53 #55
  - Can specify schema when loading plugin
 
 1.22 2017-11-19T20:25:16+0100
