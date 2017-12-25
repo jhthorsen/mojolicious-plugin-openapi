@@ -586,6 +586,10 @@ C<route> can be specified in case you want to have a protected API. Example:
     url   => $app->home->rel_file("cool.api"),
   });
 
+=item * schema
+
+Can be used to set a different schema, than the default OpenAPI 2.0 spec.
+
 =item * spec_route_name
 
 Name of the route that handles the "basePath" part of the specification and
