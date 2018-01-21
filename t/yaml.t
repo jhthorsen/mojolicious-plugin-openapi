@@ -4,7 +4,7 @@ use Test::More;
 use Mojolicious;
 
 my $n = 0;
-for my $module (qw(YAML::XS YAML::Syck)) {
+for my $module (qw(YAML::XS)) {
   unless (eval "require $module;1") {
     diag "Skipping test when $module is not installed";
     next;
