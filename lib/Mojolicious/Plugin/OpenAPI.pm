@@ -57,6 +57,7 @@ sub register {
   unless ($app->defaults->{'openapi.base_paths'}) {
     $app->helper('openapi.render_spec' => \&_helper_reply_spec);
     $app->helper('openapi.spec'        => \&_helper_get_spec);
+    $app->helper('openapi.spec_for_uri' => \&_helper_get_spec_for_uri);
     $app->helper('openapi.valid_input' => sub { _helper_validate($_[0]) ? undef : $_[0] });
     $app->helper('openapi.validate'    => \&_helper_validate);
     $app->helper('reply.openapi'       => \&_helper_reply);
@@ -171,6 +172,12 @@ sub _build_route {
 
   $self->{route_prefix} //= '';
   $self->route($route);
+}
+
+sub _helper_get_spec_for_uri {
+  my ($c, $uri) = @_;
+  my ($self) = map { $_->[1] } grep $_->[0] eq $uri, @{$c->stash('openapi.base_paths')};
+  return $self->{bundled} ||= $self->validator->bundle;
 }
 
 sub _helper_get_spec {
@@ -435,6 +442,17 @@ be relative to the current operation. Example:
       }
     }
   }
+
+=head2 openapi.spec_for_uri
+
+  $hash = $c->openapi->spec_for_uri('/api');
+
+Returns the OpenAPI specification for the given base-path. Useful when
+used in an application's C<startup> method, since at that point it is
+impossible for the application to serve requests. The only requirement
+for this helper is that it have the correctly-set C<stash> value for
+C<openapi.base_paths>, which will be true if called on the application
+object.
 
 =head2 openapi.render_spec
 

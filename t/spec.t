@@ -10,6 +10,14 @@ get '/spec' => sub {
   },
   'Spec';
 
+get '/specforuri' => sub {
+  my $c = shift->openapi->valid_input or return;
+  my $response = eval { $c->openapi->spec_for_uri('/api') };
+  $response = $@ ? { error => $@ } : $response;
+  $c->render(json => $response);
+  },
+  'Spec_for_uri';
+
 plugin OpenAPI => {url => 'data://main/spec.json'};
 
 my $t = Test::Mojo->new;
@@ -17,6 +25,9 @@ my $t = Test::Mojo->new;
 $t->get_ok('/api/spec')->status_is(200)
   ->json_is('/op_spec/responses/200/description', 'Spec response.')
   ->json_is('/info/version',                      '0.8');
+
+$t->get_ok('/api/specforuri')->status_is(200)
+  ->json_is('/swagger', '2.0');
 
 $t->options_ok('/api/spec')->status_is(200)->json_is('/get/operationId', 'Spec');
 $t->options_ok('/api/spec?method=get')->status_is(200)->json_is('/operationId', 'Spec');
@@ -48,6 +59,17 @@ __DATA__
         "parameters" : [
           { "in": "body", "name": "body", "schema": { "type" : "object" } }
         ],
+        "responses" : {
+          "200": {
+            "description": "Spec response.",
+            "schema": { "type": "object" }
+          }
+        }
+      }
+    },
+    "/specforuri" : {
+      "get" : {
+        "operationId" : "Spec_for_uri",
         "responses" : {
           "200": {
             "description": "Spec response.",
