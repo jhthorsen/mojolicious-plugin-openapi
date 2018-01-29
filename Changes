@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 1.25 Not Released
  - Removed YAML::Syck test #60
+ - Change register() to return the plugin instance
 
 1.24 2018-01-19T10:37:28+0100
  - Require JSON::Validator 2.00 which fixes "enum" bug

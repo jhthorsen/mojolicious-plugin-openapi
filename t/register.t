@@ -3,7 +3,7 @@ use Test::Mojo;
 use Test::More;
 
 use Mojolicious::Lite;
-plugin OpenAPI => {route => app->routes->any('/one'), url => 'data://main/one.json'};
+my $obj = plugin OpenAPI => {route => app->routes->any('/one'), url => 'data://main/one.json'};
 plugin OpenAPI => {route => app->routes->any('/two'), url => 'data://main/two.json'};
 
 plugin OpenAPI => {
@@ -23,6 +23,10 @@ plugin OpenAPI => {
     }
   }
 };
+
+ok $obj->route->find('cool_api'), 'found api endpoint';
+isa_ok($obj->route,     'Mojolicious::Routes::Route');
+isa_ok($obj->validator, 'JSON::Validator::OpenAPI::Mojolicious');
 
 my $t = Test::Mojo->new;
 $t->get_ok('/one')->status_is(200)->json_is('/info/title', 'Test schema one');
@@ -47,6 +51,7 @@ __DATA__
   "info" : { "version": "0.8", "title" : "Test schema one" },
   "schemes" : [ "http" ],
   "basePath" : "/api",
+  "x-mojo-name": "cool_api",
   "paths" : {
     "/user" : {
       "post" : {
