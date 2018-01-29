@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.25 Not Released
+1.25 2018-01-29T10:00:59+0100
  - Removed YAML::Syck test #60
  - Change register() to return the plugin instance
 
