@@ -517,6 +517,7 @@ Holds a L<JSON::Validator::OpenAPI::Mojolicious> object.
 =head2 register
 
   $self = $self->register($app, \%config);
+  $self = $app->plugin(OpenAPI => \%config);
 
 Loads the OpenAPI specification, validates it and add routes to
 L<$app|Mojolicious>. It will also set up L</HELPERS> and adds a
