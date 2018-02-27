@@ -77,6 +77,7 @@ sub register {
 
 sub _add_routes {
   my ($self, $app, $config) = @_;
+  my $default_response = $self->_default_response;
   my %uniq;
 
   for my $path ($self->_sorted_paths) {
@@ -93,7 +94,7 @@ sub _add_routes {
       my @parameters = (@$path_parameters, @{$op_spec->{parameters} || []});
       my $endpoint;
 
-      $op_spec->{responses}{default} ||= $self->_default_response;
+      $op_spec->{responses}{default} ||= $default_response if $default_response;
       $has_options = 1 if lc $http_method eq 'options';
       $route_path = _route_path($path, \@parameters);
 
