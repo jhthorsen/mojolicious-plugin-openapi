@@ -4,9 +4,10 @@ use Test::More;
 use Mojolicious;
 
 my $n = 0;
-for my $module (qw(YAML::XS)) {
-  unless (eval "require $module;1") {
-    diag "Skipping test when $module is not installed";
+my %modules = ('YAML::XS'=>'0.67');
+for my $module (keys %modules) {
+  unless (eval "use $module $modules{$module};1") {
+    diag "Skipping test when $module $modules{$module} is not installed"; 
     next;
   }
 
