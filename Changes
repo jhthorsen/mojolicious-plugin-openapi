@@ -1,6 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.26 Not Released
+1.26 2018-03-08T21:15:52+0100
+ - Fix skipping yaml.t, unless correct version of YAML::XS is available #67
+   Contributor: Søren Lund
 
 1.25 2018-01-29T10:00:59+0100
  - Removed YAML::Syck test #60
