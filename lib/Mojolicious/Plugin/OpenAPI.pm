@@ -92,7 +92,7 @@ sub _add_routes {
       my $name       = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
       my $to         = $op_spec->{'x-mojo-to'};
       my @parameters = (@$path_parameters, @{$op_spec->{parameters} || []});
-      my $endpoint;
+      my $r;
 
       $op_spec->{responses}{default} ||= $default_response if $default_response;
       $has_options = 1 if lc $http_method eq 'options';
@@ -102,25 +102,34 @@ sub _add_routes {
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
-      if ($name and $endpoint = $self->route->root->find($name)) {
+      if ($name and $r = $self->route->root->find($name)) {
         warn "[OpenAPI] Found existing route for '$name'.\n" if DEBUG;
-        $self->route->add_child($endpoint);
+        $self->route->add_child($r);
       }
-      if (!$endpoint) {
+      if (!$r) {
         warn "[OpenAPI] Creating new route for '$route_path'.\n" if DEBUG;
-        $endpoint = $self->route->$http_method($route_path);
-        $endpoint->name("$self->{route_prefix}$name") if $name;
+        $r = $self->route->$http_method($route_path);
+        $r->name("$self->{route_prefix}$name") if $name;
       }
 
-      $endpoint->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $endpoint->to({'openapi.op_path' => [paths => $path => $http_method]});
-      $endpoint->to({'openapi.parameters' => \@parameters});
-      warn "[OpenAPI] Add route $http_method $path (@{[$endpoint->render]})\n" if DEBUG;
+      $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
+      $r->to({'openapi.op_path' => [paths => $path => $http_method]});
+      $r->to({'openapi.parameters' => \@parameters});
+      warn "[OpenAPI] Add route $http_method $path (@{[$r->render]}) @{[$r->name // '']}\n"
+        if DEBUG;
     }
 
     unless ($has_options) {
-      $self->route->options($route_path)
-        ->to('openapi.default_options' => 1, cb => sub { _helper_reply_spec($_[0], $path) });
+
+      # TODO: This route name might change in future release, but is added now to prevent
+      # routes with duplicate names
+      my $name = $route_path;
+      $name =~ s!\W+!!g;
+      my $r
+        = $self->route->options($route_path)
+        ->to('openapi.default_options' => 1, cb => sub { _helper_reply_spec($_[0], $path) })
+        ->name("$self->{route_prefix}${name}_options");
+      warn "[OpenAPI] Add route options $path (@{[$r->render]}) @{[$r->name // '']}\n" if DEBUG;
     }
   }
 }

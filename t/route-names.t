@@ -7,13 +7,20 @@ app->routes->namespaces(['MyApp::Controller']);
 get '/whatever' => sub { die 'Oh noes!' }, 'Whatever';
 plugin OpenAPI => {url => 'data://main/lite.json'};
 my $t = Test::Mojo->new;
+my $r;
 ok $t->app->routes->find('Whatever'), 'Whatever is defined';
 
 $t = Test::Mojo->new(Mojolicious->new);
-$t->app->routes->namespaces(['MyApp::Controller']);
+$r = $t->app->routes->namespaces(['MyApp::Controller']);
 $t->app->plugin(OpenAPI => {spec_route_name => 'my_api', url => 'data://main/full.json'});
-ok $t->app->routes->find('my_api'),          'my_api is defined';
-ok $t->app->routes->find('my_api.Whatever'), 'my_api.Whatever is defined';
+ok $r->lookup('my_api'), 'my_api is defined';
+$r = $r->lookup('my_api')->parent;
+ok $r->find('my_api.Whatever'), 'my_api.Whatever is defined';
+
+{
+  local $TODO = 'This default route name might change in the future';
+  ok $r->find('my_api.whatever_options'), 'my_api.whatever_options is defined';
+}
 
 eval { plugin OpenAPI => {url => 'data://main/unique-route.json'} };
 like $@, qr{Route name "xyz" is not unique}, 'unique route names';
