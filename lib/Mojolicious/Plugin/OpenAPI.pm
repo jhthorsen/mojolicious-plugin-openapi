@@ -4,6 +4,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 use JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::JSON;
 use Mojo::Util 'deprecated';
+use Text::Markdown;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '1.26';
@@ -246,6 +247,7 @@ sub _helper_reply_spec {
     handler   => 'ep',
     template  => 'mojolicious/plugin/openapi/layout',
     esc       => sub { local $_ = shift; s/\W/-/g; $_ },
+    markdown  => \&_markdown,
     serialize => \&_serialize,
     spec      => $spec,
     X_RE      => $X_RE
@@ -280,6 +282,10 @@ sub _log {
     $c->req->url->path,
     Mojo::JSON::encode_json(@_)
   );
+}
+
+sub _markdown {
+  return Text::Markdown::markdown(@_);
 }
 
 sub _register_plugins {
@@ -664,9 +670,9 @@ __DATA__
 
 % if ($spec->{info}{description}) {
 <h2 id="description"><a href="#title">Description</a></h2>
-<p class="description">
-  %= $spec->{info}{description}
-</p>
+<div class="description">
+  %== $markdown->($spec->{info}{description})
+</div>
 % }
 
 % if ($spec->{info}{termsOfService}) {
@@ -696,7 +702,7 @@ __DATA__
 <p class="spec-summary"><%= $spec->{summary} %></p>
 % }
 % if ($spec->{description}) {
-<p class="spec-description"><%= $spec->{description} %></p>
+<div class="spec-description"><%== $markdown->($spec->{description}) %></div>
 % }
 % if (!$spec->{description} and !$spec->{summary}) {
 <p class="op-summary op-doc-missing">This resource is not documented.</p>
@@ -725,7 +731,7 @@ __DATA__
       <td><%= $p->{in} %></td>
       <td><%= $p->{type} %></td>
       <td><%= $p->{required} ? "Yes" : "No" %></td>
-      <td><%= $p->{description} || "" %></td>
+      <td><%== $p->{description} ? $markdown->($p->{description}) : "" %></td>
     </tr>
 % }
 % if ($has_parameters) {
