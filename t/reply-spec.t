@@ -39,9 +39,13 @@ sub VERSION {1.42}
 
   $t->get_ok('/api/docs')->status_is(200)->json_is('/info/version', 1.42)
     ->json_is('/basePath', '/api');
-  $t->get_ok('/api/docs.html')->status_is(200)->text_is('h3#op-post-pets a', 'POST /api/pets')
-    ->text_is('div.spec-description p', 'pet response')
-    ->text_is('div.spec-description code', 'markdown');
+  $t->get_ok('/api/docs.html')->status_is(200)->text_is('h3#op-post-pets a', 'POST /api/pets');
+
+SKIP: {
+    skip 'Text::Markdown is not installed', 2 unless eval 'require Text::Markdown;1';
+    $t->text_is('div.spec-description p',    'pet response')
+      ->text_is('div.spec-description code', 'markdown');
+  }
 }
 
 sub add_url_route {

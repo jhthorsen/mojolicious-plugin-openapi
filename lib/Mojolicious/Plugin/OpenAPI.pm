@@ -3,9 +3,13 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::JSON;
-use Mojo::Util 'deprecated';
-use Text::Markdown;
+use Mojo::Util;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
+
+Mojo::Util::monkey_patch(__PACKAGE__,
+  _markdown => eval 'require Text::Markdown;1'
+  ? sub { Mojo::ByteStream->new(Text::Markdown::markdown($_[0])) }
+  : sub { $_[0] });
 
 our $VERSION = '1.26';
 my $X_RE = qr{^x-};
@@ -282,10 +286,6 @@ sub _log {
     $c->req->url->path,
     Mojo::JSON::encode_json(@_)
   );
-}
-
-sub _markdown {
-  return Text::Markdown::markdown(@_);
 }
 
 sub _register_plugins {
