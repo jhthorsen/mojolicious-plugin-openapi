@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.28 Not Released
+ - Changed placeholders from () to <> to support Mojolicious 7.75 #73
+
 1.27 2018-04-09T09:05:10-0700
  - Add EXPERIMENTAL route name for OPTIONS routes #69
  - Add Text::Markdown as an optional module for rendering documentation snippets #63

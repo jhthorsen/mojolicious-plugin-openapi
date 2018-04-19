@@ -338,7 +338,7 @@ sub _route_path {
   $path =~ s/{([^}]+)}/{
     my $pname = $1;
     my $type = $parameters{$pname}{'x-mojo-placeholder'} || ':';
-    "($type$pname)";
+    "<$type$pname>";
   }/ge;
   return $path;
 }
