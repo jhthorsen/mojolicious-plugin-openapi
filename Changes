@@ -1,6 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.28 Not Released
+1.28 2018-04-21T11:03:02+0200
+ - Add support for Simple Cross-Origin Resource Sharing requests (CORS) #14
+ - Bumped JSON::Validator version
  - Changed placeholders from () to <> to support Mojolicious 7.75 #73
 
 1.27 2018-04-09T09:05:10-0700
