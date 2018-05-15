@@ -33,7 +33,7 @@ sub _build_action {
           for my $name (keys %$security_and) {
             next if exists $res{$name};
             my $scb = $handlers->{$name};
-            $res{$name} = ["No security callback for $name."] and next unless $scb;
+            $res{$name} = {message => "No security callback for $name."} and next unless $scb;
             $res{$name} = undef;
             my $dcb = $delay->begin;
             $c->$scb(

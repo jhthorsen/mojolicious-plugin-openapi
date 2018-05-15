@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.29 Not Released
+ - Fix "No security callback for $name." error object
+
 1.28 2018-04-21T11:03:02+0200
  - Add support for Simple Cross-Origin Resource Sharing requests (CORS) #14
  - Bumped JSON::Validator version
