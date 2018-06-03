@@ -141,29 +141,29 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
-  return unless $args->{exception} or ($args->{template} || '') =~ /^not_found\b/;
+  return unless $args->{template};    # This and status is set in the case of 404 and 500
+  return unless my $status = $args->{status} || $c->stash('status');
   return unless my $self = _self($c);
 
-  if ($args->{exception}) {
-    $c->stash(exception => $args->{exception});
-    $c->app->log->error($args->{exception}) if 0;    # TODO: Are exceptions eaten or not..?
+  if ($status eq '500') {
     $args->{data} = $self->_renderer->(
       $c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500}
     );
+    $args->{status} = $c->stash('status') || $status;
   }
   elsif (!$c->stash('openapi.op_path')) {
-    $args->{status} = 404;
+    $status = 404;
     $args->{data}
       = $self->_renderer->($c, {errors => [{message => 'Not found.', path => '/'}], status => 404});
+    $args->{status} = $c->stash('status') || $status;
   }
-  else {
-    $args->{status} = 501;
-    $args->{data}   = $self->_renderer->(
+  elsif ($status eq '404') {
+    $status = 501;
+    $args->{data} = $self->_renderer->(
       $c, {errors => [{message => 'Not implemented.', path => '/'}], status => 501}
     );
+    $args->{status} = $c->stash('status') || $status;
   }
-
-  $args->{status} = $c->stash('status') // $args->{status};
 }
 
 sub _build_route {

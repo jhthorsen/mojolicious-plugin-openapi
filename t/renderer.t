@@ -19,7 +19,7 @@ post '/user' => sub {
   },
   'create_user';
 
-plugin OpenAPI => {renderer => \&renderer, url => 'data://main/user.json'};
+plugin OpenAPI => {renderer => \&custom_openapi_renderer, url => 'data://main/user.json'};
 
 my $t = Test::Mojo->new;
 $t->get_ok('/api/user')->status_is(200)->json_is('/age', 43)->json_is('/t', $^T);
@@ -48,7 +48,7 @@ $t->delete_ok('/api/user')->status_is(200)->json_is('/messages/0/message', 'Not 
 
 done_testing;
 
-sub renderer {
+sub custom_openapi_renderer {
   my ($c, $data) = @_;
 
   $data->{messages}  = delete $data->{errors} if $data->{errors};
