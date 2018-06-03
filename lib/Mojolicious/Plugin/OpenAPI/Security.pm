@@ -21,33 +21,27 @@ sub _build_action {
 
     my $spec = $c->openapi->spec || {};
     my @security_or = @{$spec->{security} || $global};
-    my %res;
+    my (@promises, %res);
 
-    return 1 unless @security_or;    # Nothing to check
+    for my $security_and (@security_or) {
+      for my $name (keys %$security_and) {
+        next if exists $res{$name};
+        my $security_cb = $handlers->{$name};
+        $res{$name} = {message => "No security callback for $name."} and next unless $security_cb;
+        $res{$name} = undef;
+        push @promises, my $p = Mojo::Promise->new;
+        $c->$security_cb(
+          $definitions->{$name},
+          $security_and->{$name},
+          sub { $res{$name} //= $_[1]; $p->resolve; }
+        );
+      }
+    }
 
-    $c->delay(
+    return 1 unless @promises;
+
+    Mojo::Promise->all(@promises)->then(
       sub {
-        my ($delay) = @_;
-
-        for my $security_and (@security_or) {
-          for my $name (keys %$security_and) {
-            next if exists $res{$name};
-            my $scb = $handlers->{$name};
-            $res{$name} = {message => "No security callback for $name."} and next unless $scb;
-            $res{$name} = undef;
-            my $dcb = $delay->begin;
-            $c->$scb(
-              $definitions->{$name},
-              $security_and->{$name},
-              sub { $res{$name} //= $_[1]; $dcb->(); }
-            );
-          }
-        }
-
-        $delay->pass;    # Make sure we go to the next step
-      },
-      sub {
-        my ($delay) = @_;
         my ($i, @errors) = (0);
 
         for my $security_and (@security_or) {
@@ -64,7 +58,7 @@ sub _build_action {
         }
 
         $c->render(openapi => {errors => \@errors}, status => 401);
-      },
+      }
     );
 
     return undef;
