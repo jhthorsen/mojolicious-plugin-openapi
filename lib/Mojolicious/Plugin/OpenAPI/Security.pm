@@ -65,7 +65,7 @@ sub _build_action {
         my $e = shift;
         $c->app->log->error($e);
         $c->render(
-          openapi => {errors => [{message => 'Internal server error.', path => $error_path}]},
+          openapi => {errors => [{message => 'Internal server error.', path => '/'}]},
           status  => 500
         );
       }
