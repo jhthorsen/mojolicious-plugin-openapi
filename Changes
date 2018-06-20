@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+1.30 2018-06-06T00:20:46+0800
+ - Fix exception handling in an action, with the security plugin enabled
+
 1.29 2018-06-03T20:32:21+0800
  - Fix "No security callback for $name." error object
  - Fix "status" icompatibility with Mojolicious 7.82 #78

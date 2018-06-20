@@ -40,6 +40,7 @@ sub _build_action {
 
     return 1 unless @promises;
 
+    my $error_path = '/';
     Mojo::Promise->all(@promises)->then(
       sub {
         my ($i, @errors) = (0);
@@ -47,8 +48,8 @@ sub _build_action {
         for my $security_and (@security_or) {
           my @e;
           for my $name (sort keys %$security_and) {
-            my $path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
-            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $path}
+            $error_path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
+            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $error_path}
               if defined $res{$name};
           }
 
@@ -58,6 +59,15 @@ sub _build_action {
         }
 
         $c->render(openapi => {errors => \@errors}, status => 401);
+      }
+    )->catch(
+      sub {
+        my $e = shift;
+        $c->app->log->error($e);
+        $c->render(
+          openapi => {errors => [{message => 'Internal server error.', path => '/'}]},
+          status  => 500
+        );
       }
     );
 

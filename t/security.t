@@ -23,6 +23,7 @@ options '/options' => sub {
 
 post '/fail_or_pass' => sub {
   my $c = shift->openapi->valid_input or return;
+  die 'Could not connect to dummy database error message' if $ENV{DUMMY_DB_ERROR};
   $c->render(openapi => {ok => 1});
   },
   'fail_or_pass';
@@ -135,6 +136,13 @@ my $t = Test::Mojo->new;
   local %checks;
   $t->post_ok('/api/fail_or_pass' => json => {})->status_is(200)->json_is('/ok' => 1);
   is_deeply \%checks, {fail1 => 1, pass1 => 1}, 'expected checks occurred';
+}
+
+{
+  local $ENV{DUMMY_DB_ERROR} = 1;
+  $t->post_ok('/api/fail_or_pass' => json => {})->status_is(500)
+    ->json_is('/errors/0/message', 'Internal server error.')
+    ->json_is('/errors/0/path', '/');
 }
 
 {
