@@ -12,7 +12,10 @@ post '/invalid' => sub {
 plugin OpenAPI => {url => 'data://main/spec.json', default_response => undef};
 
 my $t = Test::Mojo->new;
-$t->post_ok('/api/invalid')->status_is(400)->content_like(qr{got null});
+$t->post_ok('/api/invalid' => {Accept => '*/*'} => '{"x":"42"}')->status_is(200)
+  ->json_is("/x" => 42);
+$t->post_ok('/api/invalid' => {Accept => '*/*'} => '{"x":42"}')->status_is(400)
+  ->content_like(qr{got null});
 
 done_testing;
 
@@ -27,7 +30,7 @@ __DATA__
       "post" : {
         "operationId" : "invalid",
         "parameters": [
-          {"in": "body", "name": "body", "required": true, "schema": {"type": "object"}}
+          {"in": "body", "name": "body", "required": false, "schema": {"type": "object"}}
         ],
         "responses" : {
           "200": {
