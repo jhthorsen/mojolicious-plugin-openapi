@@ -30,6 +30,7 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
           "operationId": "getPets",
           "x-mojo-name": "get_pets",
           "x-mojo-to": "pet#list",
+          "x-mojo-over": [ "headers", { "X-Secret-Header" : "Foo" } ],
           "summary": "Finds pets in the system",
           "parameters": [
             {"in": "body", "name": "body", "schema": {"type": "object"}},
@@ -155,6 +156,14 @@ ref will be flatten. Examples:
 
   "x-mojo-to": ["pet#list", {"foo": 123}]
   $route->to("pet#list", {foo => 123});
+
+=item * x-mojo-over
+
+Optional non-standard "x-mojo-over" must be an array with conditions for
+L<Mojolicious::Routes::Route/over> Example:
+
+  "x-mojo-over": ["headers": {"X-Secret-Header": "Foo"}]
+  $route->over( headers => { 'X-Secret-Header' => 'Foo' } );
 
 =back
 
