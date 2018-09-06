@@ -120,6 +120,10 @@ sub _add_routes {
       $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $r->to({'openapi.op_path' => [paths => $path => $http_method]});
       $r->to({'openapi.parameters' => \@parameters});
+
+      my $over = $op_spec->{'x-mojo-over'};
+      $r->over($over) if $over;
+
       warn "[OpenAPI] Add route $http_method $path (@{[$r->render]}) @{[$r->name // '']}\n"
         if DEBUG;
     }
