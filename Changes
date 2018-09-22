@@ -1,8 +1,14 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-1.31 Not Released
+2.00 Not Released
+ - Add support for "default_response_codes" #66 #80
+ - Add support for "default_response_name" #66 #80
  - Add support for plack and other servers that does not start the IOLoop #82
  - Add detection for invalid x-mojo-name on startup #87
+ - Changed "message" in JSON response for 404, 500 and 501
+ - Changed "path" is not required in default error response
+ - Removed default "default_response" #80
+ - Removed "Using default_handler to render..." warning since it was confusing
  - Bump Mojolicious version to 8.0
 
 1.30 2018-06-06T00:20:46+0800

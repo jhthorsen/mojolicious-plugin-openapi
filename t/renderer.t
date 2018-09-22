@@ -24,18 +24,17 @@ my $t = Test::Mojo->new;
 $t->get_ok('/api/user')->status_is(200)->json_is('/age', 43)->json_is('/t', $^T);
 
 $age = 'invalid output!';
+note "age = $age";
 $t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/path', '/age')->json_is('/t', $^T);
-
-$t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/path', '/age')->json_is('/t', $^T);
-
 $t->post_ok('/api/user', form => {age => 'invalid input'})->status_is(400)
   ->json_is('/messages/0/path', '/age')->json_is('/t', $^T);
 
 undef $age;
-$t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/message', 'Internal server error.')
+note 'age = undef';
+$t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/message', 'Internal Server Error.')
   ->json_is('/exception', "no age!\n")->json_is('/t', $^T);
 
-$t->get_ok('/api/nope')->status_is(404)->json_is('/messages/0/message', 'Not found.')
+$t->get_ok('/api/nope')->status_is(404)->json_is('/messages/0/message', 'Not Found.')
   ->json_is('/t', $^T);
 
 done_testing;

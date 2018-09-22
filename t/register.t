@@ -5,11 +5,11 @@ use Test::More;
 use Mojolicious::Lite;
 post('/user' => sub { shift->render(openapi => {}) }, 'User');
 my $obj = plugin OpenAPI => {route => app->routes->any('/one'), url => 'data://main/one.json'};
-plugin OpenAPI => {route => app->routes->any('/two'), url => 'data://main/two.json'};
+plugin OpenAPI => {default_response_name => 'DefErr', url => 'data://main/two.json'};
 
 plugin OpenAPI => {
-  default_response => undef,
-  spec             => {
+  default_response_codes => [],
+  spec                   => {
     swagger  => '2.0',
     info     => {version => '0.8', title => 'Test schema in perl'},
     schemes  => ['http'],
@@ -30,18 +30,26 @@ isa_ok($obj->route,     'Mojolicious::Routes::Route');
 isa_ok($obj->validator, 'JSON::Validator::OpenAPI::Mojolicious');
 
 my $t = Test::Mojo->new;
-$t->get_ok('/one')->status_is(200)->json_is('/info/title', 'Test schema one');
-$t->get_ok('/two')->status_is(200)->json_is('/info/title', 'Test schema two');
-$t->get_ok('/perl')->status_is(200)->json_is('/info/title', 'Test schema in perl');
+$t->get_ok('/one')->status_is(200)
+  ->json_is('/definitions/DefaultResponse/properties/errors/type', 'array')
+  ->json_is('/info/title',                                         'Test schema one');
 
 $t->options_ok('/one/user?method=post')->status_is(200)
-  ->json_is('/responses/default/description', 'Default response.');
+  ->json_is('/responses/200/description', 'ok')
+  ->json_is('/responses/400/description', 'Default response.')
+  ->json_is('/responses/400/schema/$ref', '#/definitions/DefaultResponse')
+  ->json_is('/responses/500/description', 'err');
 
+$t->get_ok('/two')->status_is(200)->json_is('/definitions/DefaultResponse', undef)
+  ->json_is('/definitions/DefErr/required', [qw(errors something_else)])
+  ->json_is('/info/title', 'Test schema two');
 $t->options_ok('/two/user?method=post')->status_is(200)
+  ->json_is('/responses/400/schema/$ref',     '#/definitions/DefErr')
   ->json_is('/responses/default/description', 'whatever');
 
+$t->get_ok('/perl')->status_is(200)->json_is('/info/title', 'Test schema in perl');
 $t->options_ok('/perl/user?method=post')->status_is(200)
-  ->json_is('/responses/default/description', undef);
+  ->json_is('/responses/500/description', undef);
 
 done_testing;
 
@@ -58,7 +66,8 @@ __DATA__
       "post" : {
         "operationId" : "User",
         "responses" : {
-          "200": { "description": "response", "schema": { "type": "object" } }
+          "200": { "description": "ok", "schema": { "type": "object" } },
+          "500": { "description": "err", "schema": { "type": "object" } }
         }
       }
     }
@@ -69,7 +78,7 @@ __DATA__
   "swagger" : "2.0",
   "info" : { "version": "0.8", "title" : "Test schema two" },
   "schemes" : [ "http" ],
-  "basePath" : "/api",
+  "basePath" : "/two",
   "paths" : {
     "/user" : {
       "post" : {
@@ -79,6 +88,12 @@ __DATA__
           "default": { "description": "whatever", "schema": { "type": "array" } }
         }
       }
+    }
+  },
+  "definitions": {
+    "DefErr": {
+      "type": "object",
+      "required": ["errors", "something_else"]
     }
   }
 }

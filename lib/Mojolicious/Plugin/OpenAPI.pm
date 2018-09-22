@@ -2,6 +2,7 @@ package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator::OpenAPI::Mojolicious;
+use JSON::Validator::Ref;
 use Mojo::JSON;
 use Mojo::Util;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
@@ -16,26 +17,6 @@ my $X_RE = qr{^x-};
 
 has route     => sub {undef};
 has validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
-
-has _default_response => sub {
-  return {
-    description => 'Default response.',
-    schema      => {
-      type       => 'object',
-      required   => ['errors'],
-      properties => {
-        errors => {
-          type  => 'array',
-          items => {
-            type       => 'object',
-            required   => ['message'],
-            properties => {message => {type => 'string'}, path => {type => 'string'}}
-          }
-        }
-      }
-    }
-  };
-};
 
 has _renderer => sub {
   return sub {
@@ -70,9 +51,11 @@ sub register {
     push @{$app->renderer->classes}, __PACKAGE__;
   }
 
+  # Removed in 2.00
+  die "[OpenAPI] default_response is no longer supported in config" if $config->{default_response};
+
   local $config->{_plugins};    # Ugly hack, but I want the plugins to be temporarily objects
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
-  $self->_default_response($config->{default_response}) if exists $config->{default_response};
   $self->_renderer($config->{renderer}) if $config->{renderer};
   $self->_build_route($app, $config);
   $self->_register_plugins($app, $config);
@@ -80,10 +63,21 @@ sub register {
   $self;
 }
 
+sub _add_default_response {
+  my ($self, $name, $op_spec, $code) = @_;
+  return if $op_spec->{responses}{$code};
+  my $ref = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;
+  my %schema = ('$ref' => "#/definitions/$name");
+  tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
+  $op_spec->{responses}{$code} = {description => 'Default response.', schema => \%schema};
+}
+
 sub _add_routes {
   my ($self, $app, $config) = @_;
-  my $default_response = $self->_default_response;
   my %uniq;
+
+  $config->{default_response_codes} ||= [400, 401, 404, 500, 501];
+  $config->{default_response_name} ||= 'DefaultResponse';
 
   for my $path ($self->_sorted_paths) {
     next if $path =~ $X_RE;
@@ -99,7 +93,6 @@ sub _add_routes {
       my @parameters = (@$path_parameters, @{$op_spec->{parameters} || []});
       my $r;
 
-      $op_spec->{responses}{default} ||= $default_response if $default_response;
       $has_options = 1 if lc $http_method eq 'options';
       $route_path = _route_path($path, \@parameters);
 
@@ -119,6 +112,9 @@ sub _add_routes {
         $r = $self->route->$http_method($route_path);
         $r->name("$self->{route_prefix}$name") if $name;
       }
+
+      $self->_add_default_response($config->{default_response_name}, $op_spec, $_)
+        for @{$config->{default_response_codes}};
 
       $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $r->to({'openapi.op_path' => [paths => $path => $http_method]});
@@ -144,28 +140,26 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
-  return unless $args->{template};    # This and status is set in the case of 404 and 500
-  return unless my $status = $args->{status} || $c->stash('status');
-  return unless my $self = _self($c);
+  my $handler = $args->{handler} || 'openapi';
 
-  if ($status eq '500') {
-    $args->{data} = $self->_renderer->(
-      $c, {errors => [{message => 'Internal server error.', path => '/'}], status => 500}
+  # Call _render() for response data
+  return if $handler eq 'openapi' and exists $c->stash->{openapi} or exists $args->{openapi};
+
+  # Fallback to default handler for things like render_to_string()
+  return $args->{handler} = $c->app->renderer->default_handler unless exists $args->{handler};
+
+  # Call _render() for errors
+  my $status = $args->{status} || $c->stash('status') || '200';
+  if ($handler eq 'openapi' and ($status eq '404' or $status eq '500')) {
+    $args->{handler} = 'openapi';
+    $args->{status} = ($status eq '404' and $c->stash('openapi.op_path')) ? 501 : $status;
+    $c->stash(
+      status  => $args->{status},
+      openapi => {
+        errors => [{message => $c->res->default_message($args->{status}) . '.', path => '/'}],
+        status => $args->{status},
+      }
     );
-    $args->{status} = $c->stash('status') || $status;
-  }
-  elsif (!$c->stash('openapi.op_path')) {
-    $status = 404;
-    $args->{data}
-      = $self->_renderer->($c, {errors => [{message => 'Not found.', path => '/'}], status => 404});
-    $args->{status} = $c->stash('status') || $status;
-  }
-  elsif ($status eq '404') {
-    $status = 501;
-    $args->{data} = $self->_renderer->(
-      $c, {errors => [{message => 'Not implemented.', path => '/'}], status => 501}
-    );
-    $args->{status} = $c->stash('status') || $status;
   }
 }
 
@@ -192,6 +186,23 @@ sub _build_route {
   $self->route($route);
 }
 
+sub _default_schema {
+  +{
+    type       => 'object',
+    required   => ['errors'],
+    properties => {
+      errors => {
+        type  => 'array',
+        items => {
+          type       => 'object',
+          required   => ['message'],
+          properties => {message => {type => 'string'}, path => {type => 'string'}}
+        }
+      }
+    }
+  };
+}
+
 sub _helper_get_spec {
   my ($c, $path) = @_;
   my $self = _self($c);
@@ -199,8 +210,8 @@ sub _helper_get_spec {
   return $self->validator->get($path) if defined $path;
 
   my $op_path;
-  for my $r (reverse @{$c->match->stack}) {
-    $op_path ||= $r->{'openapi.op_path'};
+  for my $s (reverse @{$c->match->stack}) {
+    $op_path ||= $s->{'openapi.op_path'};
   }
 
   return $op_path ? $self->validator->get($op_path) : undef;
@@ -308,34 +319,30 @@ sub _register_plugins {
 }
 
 sub _render {
-  my ($renderer, $c, $output, $options) = @_;
+  my ($renderer, $c, $output, $args) = @_;
+  return unless exists $c->stash->{openapi};
+  return unless my $self = _self($c);
 
-  # fallback to default renderer
-  unless (exists $c->stash->{openapi}) {
-    my $renderer = $c->app->renderer;
-    my $handler  = $renderer->handlers->{$renderer->default_handler};
-    $c->app->log->debug(
-      "Using default_handler to render data since 'openapi' was not found in stash. Set 'handler' in stash to avoid this message."
-    );
-    local $options->{handler} = $renderer->default_handler;
-    return $renderer->$handler($c, $output, $options);
-  }
+  my $res     = $c->stash('openapi');
+  my $status  = $args->{status} ||= ($c->stash('status') || 200);
+  my $op_spec = $c->openapi->spec || {responses => {$status => {schema => $self->_default_schema}}};
+  my @errors;
 
-  my $self = _self($c) or return;
-  my $status = $c->stash('status') || 200;
-  my $res = $c->stash('openapi');
-
+  delete $args->{encoding};
   $c->stash->{format} ||= 'json';
-  delete $options->{encoding};
 
-  if (my @errors = $self->validator->validate_response($c, $c->openapi->spec, $status, $res)) {
-    $self->_log($c, '>>>', \@errors);
-    $c->stash(status => 500);
-    $$output = $self->_renderer->($c, {errors => \@errors, status => 500});
+  if ($op_spec->{responses}{$status} or $op_spec->{responses}{default}) {
+    @errors = $self->validator->validate_response($c, $op_spec, $status, $res);
+    $args->{status} = 500 if @errors;
   }
   else {
-    $$output = $self->_renderer->($c, $res);
+    $args->{status} = 501;
+    @errors = ({message => qq(No response rule for "$status".)});
   }
+
+  $self->_log($c, '>>>', \@errors) if @errors;
+  $c->stash(status => $args->{status});
+  $$output = $self->_renderer->($c, @errors ? {errors => \@errors, status => $status} : $res);
 }
 
 sub _route_path {
@@ -564,33 +571,49 @@ See L<JSON::Validator/coerce> for possible values that C<coerce> can take.
 
 Default: 1
 
-=item * default_response
+=item * default_response_codes
 
-Used to set the "default" response schema, unless already specified in the
-spec. Set this argument to C<undef()> if you don't want the default to be
-added.
+A list of response codes that will get a C<"$ref"> pointing to
+"#/definitions/DefaultResponse", unless already defined in the spec.
+"DefaultResponse" can be altered by setting L</default_response_name>.
 
-Default value:
+The default response code list is the following:
+
+  400 | Bad Request           | Invalid input from client / user agent
+  401 | Unauthorized          | Used by Mojolicious::Plugin::OpenAPI::Security
+  404 | Not Found             | Route is not defined
+  500 | Internal Server Error | Internal error or failed output validation
+  501 | Not Implemented       | Route exists, but the action is not implemented
+
+Note that more default codes might be added in the future if required by the
+plugin.
+
+=item * default_response_name
+
+The name of the "definition" in the spec that will be used for
+L</default_response_codes>. The default value is "DefaultResponse". Will add
+the following part to the schema, unless already defined:
 
   {
-    description => "Default response.",
-    schema      => {
-      type       => "object",
-      required   => ["errors"],
-      properties => {
-        errors => {
-          type  => "array",
-          items => {
-            type       => "object",
-            required   => ["message", "path"],
-            properties => {message => {"type" => "string"}, path => {"type" => "string"}}
+    ...
+    "definitions": {
+      ...
+      "DefaultResponse": {
+        "type":     "object",
+        "required": ["errors"],
+        "properties": {
+          "errors": {
+            "type":  "array",
+            "items": {
+              "type":       "object",
+              "required":   ["message"],
+              "properties": {"message": {"type": "string"}, "path": {"type": "string"}}
+            }
           }
         }
       }
     }
   }
-
-Note! The default "description" might change.
 
 =item * log_level
 
