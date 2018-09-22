@@ -69,7 +69,7 @@ sub _build_action {
           status  => 500
         );
       }
-    );
+    )->wait;
 
     return undef;
   };
