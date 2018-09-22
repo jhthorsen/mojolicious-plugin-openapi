@@ -4,7 +4,6 @@ use Test::More;
 
 use Mojolicious::Lite;
 
-my $code;
 my $age = 43;
 get '/user' => sub {
   my $c = shift->openapi->valid_input or return;
@@ -36,14 +35,7 @@ undef $age;
 $t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/message', 'Internal server error.')
   ->json_is('/exception', "no age!\n")->json_is('/t', $^T);
 
-$t->delete_ok('/api/user')->status_is(501)->json_is('/messages/0/message', 'Not implemented.')
-  ->json_is('/t', $^T);
-
 $t->get_ok('/api/nope')->status_is(404)->json_is('/messages/0/message', 'Not found.')
-  ->json_is('/t', $^T);
-
-$code = 200;
-$t->delete_ok('/api/user')->status_is(200)->json_is('/messages/0/message', 'Not implemented.')
   ->json_is('/t', $^T);
 
 done_testing;
@@ -54,8 +46,6 @@ sub custom_openapi_renderer {
   $data->{messages}  = delete $data->{errors} if $data->{errors};
   $data->{t}         = $^T                    if ref $data eq 'HASH';
   $data->{exception} = $c->stash('exception') if $c->stash('exception');
-
-  $c->stash(status => $code) if $code;
 
   return Mojo::JSON::encode_json($data);
 }
@@ -69,12 +59,6 @@ __DATA__
   "basePath": "/api",
   "paths": {
     "/user": {
-      "delete": {
-        "operationId": "todo",
-        "responses": {
-          "200": { "description": "TODO", "schema": { "type": "object" } }
-        }
-      },
       "get": {
         "x-mojo-name": "get_user",
         "responses": {

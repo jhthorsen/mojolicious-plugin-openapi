@@ -5,6 +5,7 @@ use Mojo::JSON;
 
 eval {
   use Mojolicious::Lite;
+  get('/whatever', sub { shift->render(openapi => {}) }, 'whatever');
   plugin OpenAPI => {url => 'data://main/boolean_default.yml'};
   1;
 } or do {
@@ -27,9 +28,9 @@ info:
 schemes: [ http ]
 basePath: "/api"
 paths:
-  /echo:
+  /whatever:
     post:
-      x-mojo-name: echo
+      x-mojo-name: whatever
       parameters:
       - in: body
         name: body
@@ -37,7 +38,7 @@ paths:
           type: object
       responses:
         200:
-          description: Echo response
+          description: Whatever response
           schema:
             $ref: '#/definitions/data'
 

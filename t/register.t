@@ -3,6 +3,7 @@ use Test::Mojo;
 use Test::More;
 
 use Mojolicious::Lite;
+post('/user' => sub { shift->render(openapi => {}) }, 'User');
 my $obj = plugin OpenAPI => {route => app->routes->any('/one'), url => 'data://main/one.json'};
 plugin OpenAPI => {route => app->routes->any('/two'), url => 'data://main/two.json'};
 

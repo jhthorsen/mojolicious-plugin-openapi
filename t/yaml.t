@@ -4,10 +4,10 @@ use Test::More;
 use Mojolicious;
 
 my $n = 0;
-my %modules = ('YAML::XS'=>'0.67');
+my %modules = ('YAML::XS' => '0.67');
 for my $module (keys %modules) {
   unless (eval "use $module $modules{$module};1") {
-    diag "Skipping test when $module $modules{$module} is not installed"; 
+    diag "Skipping test when $module $modules{$module} is not installed";
     next;
   }
 
@@ -17,8 +17,11 @@ for my $module (keys %modules) {
   $n++;
   diag join ' ', $module, $module->VERSION || 0;
   my $app = Mojolicious->new;
+  $app->routes->get('/pets',     sub { }, 'listPets');
+  $app->routes->get('/pets/:id', sub { }, 'showPetById');
+  $app->routes->post('/pets', sub { }, 'createPets');
   eval { $app->plugin(OpenAPI => {url => 'data://main/coercion.yaml'}); 1 };
-  ok !$@, "Could not load Swagger2 plugin using $module" or diag $@;
+  ok !$@, "Could not load OpenAPI plugin using $module" or diag $@;
 }
 
 ok 1, 'no yaml modules available' unless $n;
@@ -47,7 +50,6 @@ paths:
     x-something-something:
       x-nothing-here: No, really!
     get:
-      x-mojo-controller: "t::Api"
       summary: List all pets
       operationId: listPets
       tags:
@@ -72,7 +74,6 @@ paths:
           schema:
             $ref: Error
     post:
-      x-mojo-controller: "t::Api"
       summary: Create a pet
       operationId: createPets
       tags:
@@ -86,7 +87,6 @@ paths:
             $ref: Error
   "/pets/{petId}":
     get:
-      x-mojo-controller: "t::Api"
       summary: Info for a specific pet
       operationId: showPetById
       tags:

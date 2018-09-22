@@ -29,7 +29,7 @@ $t->get_ok('/api/todo')->status_is(404)->json_is('/errors/0/message', 'Not found
 $t->post_ok('/api/todo' => json => ['invalid'])->status_is(501)
   ->json_is('/errors/0/message', 'Not implemented.');
 
-# Implemented, but still Not found
+# Implemented, but Not found
 define_controller();
 $t->get_ok('/api/todo')->status_is(404)->json_is('/errors/0/message', 'Not found.');
 $t->post_ok('/api/todo')->status_is(200)->json_is('/todo', 42);

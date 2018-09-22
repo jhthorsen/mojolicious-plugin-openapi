@@ -107,11 +107,14 @@ sub _add_routes {
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
-      if ($name and $r = $self->route->root->find($name)) {
-        warn "[OpenAPI] Found existing route for '$name'.\n" if DEBUG;
+      if (!$to and $name) {
+        $r = $self->route->root->find($name)
+          or die "[OpenAPI] Could not find route by name '$name'.";
+        warn "[OpenAPI] Found existing route by name '$name'.\n" if DEBUG;
         $self->route->add_child($r);
       }
       if (!$r) {
+        $name ||= $op_spec->{operationId};
         warn "[OpenAPI] Creating new route for '$route_path'.\n" if DEBUG;
         $r = $self->route->$http_method($route_path);
         $r->name("$self->{route_prefix}$name") if $name;

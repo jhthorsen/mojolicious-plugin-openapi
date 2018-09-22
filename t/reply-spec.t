@@ -8,9 +8,9 @@ sub VERSION {1.42}
 {
   my $app = Mojolicious->new;
   my $under = $app->routes->under('/my-api' => sub {1});
+  add_routes($app, 'cool_spec_path');
   $app->plugin(
     OpenAPI => {route => $under, url => 'data://main/reply.json', version_from_class => 'main'});
-  add_url_route($app, 'cool_spec_path');
 
   my $t = Test::Mojo->new($app);
   $t->get_ok('/url')->status_is(200)->content_is('/my-api');
@@ -21,7 +21,7 @@ sub VERSION {1.42}
 
 {
   my $app = Mojolicious->new;
-  $app->routes->get('/docs')->to(cb => sub { shift->openapi->render_spec })->name('docs');
+  add_routes($app, 'my.cool.api');
   $app->plugin(
     OpenAPI => {
       spec_route_name    => 'my.cool.api',
@@ -29,7 +29,6 @@ sub VERSION {1.42}
       version_from_class => 'main'
     }
   );
-  add_url_route($app, 'my.cool.api');
 
   my $t = Test::Mojo->new($app);
   $t->get_ok('/url')->status_is(200)->content_is('/api');
@@ -48,9 +47,12 @@ SKIP: {
   }
 }
 
-sub add_url_route {
+sub add_routes {
   my ($app, $name) = @_;
   $app->routes->get('/url' => sub { $_[0]->render(text => $_[0]->url_for($name)) });
+  $app->routes->get('/docs')->to(cb => sub { shift->openapi->render_spec })->name('docs');
+  $app->routes->post('/pets')->to(cb => sub { shift->render(openapi => {}) })->name('addPet');
+  return $app;
 }
 
 done_testing;
