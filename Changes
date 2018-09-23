@@ -1,8 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 1.31 Not Released
- - Support plack and other servers that does not start the IOLoop #82
- - Invalid x-mojo-name can be detected on startup #87
+ - Add support for plack and other servers that does not start the IOLoop #82
+ - Add detection for invalid x-mojo-name on startup #87
+ - Bump Mojolicious version to 8.0
 
 1.30 2018-06-06T00:20:46+0800
  - Fix exception handling in an action, with the security plugin enabled
