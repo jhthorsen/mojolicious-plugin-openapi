@@ -47,10 +47,6 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
                   }
                 }
               }
-            },
-            "default": {
-              "description": "Unexpected error",
-              "schema": { "$ref": "http://git.io/vcKD4#" }
             }
           }
         }
@@ -237,24 +233,43 @@ to C<plugin()|Mojolicious::Plugin::OpenAPI/register>:
     "x-mojo-name": "my_cool_api"
   }
 
-=head2 Default error document
+=head2 Default response schema
 
-The default error document rendered on invalid input and output looks like
-this:
+A default response definition will be added to the API spec, unless it's
+already defined. This schema will at least be used for invalid input (400 - Bad Request) and
+invalid output (500 - Internal Server Error), but can also be used in other cases.
+
+See L<Mojolicious::Plugin::OpenAPI/default_response_codes> and
+L<Mojolicious::Plugin::OpenAPI/default_response_name> for more details on how
+to configure these settings.
+
+The response schema will be added to your spec like this, unless already defined:
 
   {
-    "errors": [
-      {"path": "/some/json/path", "message": "Some error message"},
-      {"path": "/age", "message": "Expected integer - got string."}
-    ]
+    ...
+    "definitions": {
+      ...
+      "DefaultResponse": {
+        "type":     "object",
+        "required": ["errors"],
+        "properties": {
+          "errors": {
+            "type":  "array",
+            "items": {
+              "type":       "object",
+              "required":   ["message"],
+              "properties": {"message": {"type": "string"}, "path": {"type": "string"}}
+            }
+          }
+        }
+      }
+    }
   }
 
 The "errors" key will contain one element for all the invalid data, and not
 just the first one. The useful part for a client is mostly the "path", while
 the "message" is just to add some human readable debug information for why this
 request/response failed.
-
-The HTTP status code on invalid input is 400, and 500 for invalid output
 
 =head2 Rendering binary data
 

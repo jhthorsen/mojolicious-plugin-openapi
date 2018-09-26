@@ -556,22 +556,20 @@ the L</ATTRIBUTES> after you load the plugin.
 
 C<%config> can have:
 
-=over 2
-
-=item * allow_invalid_ref
+=head3 allow_invalid_ref
 
 The OpenAPI specification does not allow "$ref" at every level, but setting
 this flag to a true value will ignore the $ref check.
 
 Note that setting this attribute is discourage.
 
-=item * coerce
+=head3 coerce
 
 See L<JSON::Validator/coerce> for possible values that C<coerce> can take.
 
 Default: 1
 
-=item * default_response_codes
+=head3 default_response_codes
 
 A list of response codes that will get a C<"$ref"> pointing to
 "#/definitions/DefaultResponse", unless already defined in the spec.
@@ -588,44 +586,24 @@ The default response code list is the following:
 Note that more default codes might be added in the future if required by the
 plugin.
 
-=item * default_response_name
+=head3 default_response_name
 
 The name of the "definition" in the spec that will be used for
-L</default_response_codes>. The default value is "DefaultResponse". Will add
-the following part to the schema, unless already defined:
+L</default_response_codes>. The default value is "DefaultResponse". See
+L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial/"Default response schema">
+for more details.
 
-  {
-    ...
-    "definitions": {
-      ...
-      "DefaultResponse": {
-        "type":     "object",
-        "required": ["errors"],
-        "properties": {
-          "errors": {
-            "type":  "array",
-            "items": {
-              "type":       "object",
-              "required":   ["message"],
-              "properties": {"message": {"type": "string"}, "path": {"type": "string"}}
-            }
-          }
-        }
-      }
-    }
-  }
-
-=item * log_level
+=head3 log_level
 
 C<log_level> is used when logging invalid request/response error messages.
 
 Default: "warn".
 
-=item * renderer
+=head3 renderer
 
 See L</RENDERER>.
 
-=item * route
+=head3 route
 
 C<route> can be specified in case you want to have a protected API. Example:
 
@@ -634,17 +612,17 @@ C<route> can be specified in case you want to have a protected API. Example:
     url   => $app->home->rel_file("cool.api"),
   });
 
-=item * schema
+=head3 schema
 
 Can be used to set a different schema, than the default OpenAPI 2.0 spec.
 
-=item * spec_route_name
+=head3 spec_route_name
 
 Name of the route that handles the "basePath" part of the specification and
 serves the specification. Defaults to "x-mojo-name" in the specification at
 the top level.
 
-=item * url
+=head3 url
 
 See L<JSON::Validator/schema> for the different C<url> formats that is
 accepted.
@@ -652,14 +630,12 @@ accepted.
 C<spec> is an alias for "url", which might make more sense if your
 specification is written in perl, instead of JSON or YAML.
 
-=item * version_from_class
+=head3 version_from_class
 
 Can be used to overriden C</info/version> in the API specification, from the
 return value from the C<VERSION()> method in C<version_from_class>.
 
 Defaults to the current C<$app>.
-
-=back
 
 =head1 AUTHOR
 
