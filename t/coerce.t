@@ -3,19 +3,22 @@ use Mojolicious;
 use Test::Mojo;
 use Test::More;
 
-my $coerced = Test::Mojo->new(Mojolicious->new);
-$coerced->app->routes->get('/user' => \&action_user)->name('user');
-$coerced->app->plugin(OpenAPI => {url => 'data://main/user.json'});
+my $coerced = t();
 $coerced->get_ok('/api/user')->status_is(200)->json_is('/age', 34);
 
-my $strict = Test::Mojo->new(Mojolicious->new);
-$strict->app->routes->get('/user' => \&action_user)->name('user');
-$strict->app->plugin(OpenAPI => {url => 'data://main/user.json', coerce => {}});
+my $strict = t(coerce => {});
 $strict->get_ok('/api/user')->status_is(500)->json_has('/errors');
 
-sub action_user {
-  my $c = shift->openapi->valid_input or return;
-  $c->render(openapi => {age => '34'});    # '34' is not an integer
+sub t {
+  my $t = Test::Mojo->new(Mojolicious->new);
+  $t->app->routes->get(
+    '/user' => sub {
+      my $c = shift->openapi->valid_input or return;
+      $c->render(openapi => {age => '34'});    # '34' is not an integer
+    }
+  )->name('user');
+  $t->app->plugin(OpenAPI => {url => 'data://main/user.json', @_});
+  $t;
 }
 
 done_testing;

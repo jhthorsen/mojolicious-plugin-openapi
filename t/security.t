@@ -143,7 +143,7 @@ my $t = Test::Mojo->new;
 {
   local $ENV{DUMMY_DB_ERROR} = 1;
   $t->post_ok('/api/fail_or_pass' => json => {})->status_is(500)
-    ->json_is('/errors/0/message', 'Internal server error.')->json_is('/errors/0/path', '/');
+    ->json_is('/errors/0/message', 'Internal Server Error.')->json_is('/errors/0/path', '/');
 }
 
 {
