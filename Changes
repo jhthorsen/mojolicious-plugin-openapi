@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.00 Not Released
+2.00 2018-09-30T21:53:28+0900
  - Add support for "default_response_codes" #66 #80
  - Add support for "default_response_name" #66 #80
  - Add support for plack and other servers that does not start the IOLoop #82
