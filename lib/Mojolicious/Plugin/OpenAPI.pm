@@ -140,6 +140,7 @@ sub _add_routes {
 
 sub _before_render {
   my ($c, $args) = @_;
+  return unless _self($c);
   my $handler = $args->{handler} || 'openapi';
 
   # Call _render() for response data

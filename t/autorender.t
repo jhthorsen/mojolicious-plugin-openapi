@@ -16,6 +16,7 @@ my %inline;
 }
 
 my $t = Test::Mojo->new;
+$t->app->mode('development');
 
 # Exception
 $t->get_ok('/api/die')->status_is(500)->json_is('/errors/0/message', 'Internal Server Error.');
@@ -32,6 +33,9 @@ $t->post_ok('/api/todo')->status_is(200)->json_is('/todo', 42);
 
 # Custom Not Found response
 $t->get_ok('/api/not-found')->status_is(404)->json_is('/this_is_fine', 1);
+
+# Custom Not Found template (mode)
+$t->get_ok('/THIS_IS_NOT_FOUND')->status_is(404)->content_like(qr{Not found development});
 
 # Fallback to default renderer
 $inline{template} = 'inline';
@@ -101,3 +105,7 @@ __DATA__
 }
 @@ inline.html.ep
 Too cool
+@@ not_found.html.ep
+Not found
+@@ not_found.development.html.ep
+Not found development
