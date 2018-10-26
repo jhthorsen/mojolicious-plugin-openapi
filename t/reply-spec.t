@@ -61,7 +61,7 @@ __DATA__
 @@ reply.json
 {
   "swagger": "2.0",
-  "info": { "version": "0.8", "title": "Test reply spec" },
+  "info": { "version": "0", "title": "Test reply spec" },
   "consumes": [ "application/json" ],
   "produces": [ "application/json" ],
   "x-mojo-name": "cool_spec_path",
