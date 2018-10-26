@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.01 Not Released
+ - Fix default error template lookup by mode #93
+   Contributor: Doug Bell
+ - Bumped JSON::Validator version to 2.14
+
 2.00 2018-09-30T21:53:28+0900
  - Add support for "default_response_codes" #66 #80
  - Add support for "default_response_name" #66 #80
