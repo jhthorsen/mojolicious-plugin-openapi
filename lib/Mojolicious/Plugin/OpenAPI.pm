@@ -443,7 +443,11 @@ input/output validation to your L<Mojolicious> application based on a OpenAPI
 Have a look at the L</SEE ALSO> for references to more documentation, or jump
 right to the L<tutorial|Mojolicious::Plugin::OpenAPI::Guides::Tutorial>.
 
-L<Mojolicious::Plugin::OpenAPI> will replace L<Mojolicious::Plugin::Swagger2>.
+Currently v2 is very well supported, while v3 should be considered higly
+EXPERIMENTAL.
+
+Please report in L<issues|https://github.com/jhthorsen/json-validator/issues>
+or open pull requests to enhance the 3.0 support.
 
 =head1 HELPERS
 
@@ -662,8 +666,6 @@ the terms of the Artistic License version 2.0.
 =item * L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>.
 
 =item * L<OpenAPI specification|https://openapis.org/specification>
-
-=item * L<Mojolicious::Plugin::Swagger2>.
 
 =back
 
