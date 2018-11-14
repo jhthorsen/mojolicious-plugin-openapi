@@ -620,6 +620,7 @@ C<route> can be specified in case you want to have a protected API. Example:
 =head3 schema
 
 Can be used to set a different schema, than the default OpenAPI 2.0 spec.
+Example values: "http://swagger.io/v2/schema.json", "v2" or "v3".
 
 =head3 spec_route_name
 
