@@ -147,7 +147,7 @@ In this example, we have the "dummy" security handler:
     my $app = shift;
 
     $app->plugin(OpenAPI => {
-      url      => "data://main/sec.json",
+      url      => "data:///security.json",
       security => {
         dummy => sub {
           my ($c, $definition, $scopes, $cb) = @_;

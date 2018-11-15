@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.04 Not Released
+ - Use data:///file.json in SYNOPSIS to make it work with morbo
+
 2.03 2018-11-14T15:42:27+0900
  - Improved human readable documentation rendering
 
