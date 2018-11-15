@@ -12,7 +12,7 @@ Mojo::Util::monkey_patch(__PACKAGE__,
   ? sub { Mojo::ByteStream->new(Text::Markdown::markdown($_[0])) }
   : sub { $_[0] });
 
-our $VERSION = '2.03';
+our $VERSION = '2.04';
 my $X_RE = qr{^x-};
 
 has route     => sub {undef};
