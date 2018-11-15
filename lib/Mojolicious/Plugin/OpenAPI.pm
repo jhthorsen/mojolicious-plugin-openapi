@@ -432,6 +432,21 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 See L<Mojolicious::Plugin::OpenAPI::Guides::Tutorial> for a tutorial on how to
 write a "full" app with application class and controllers.
 
+=head1 DESCRIPTION
+
+L<Mojolicious::Plugin::OpenAPI> is L<Mojolicious::Plugin> that add routes and
+input/output validation to your L<Mojolicious> application based on a OpenAPI
+(Swagger) specification.
+
+Have a look at the L</SEE ALSO> for references to more documentation, or jump
+right to the L<tutorial|Mojolicious::Plugin::OpenAPI::Guides::Tutorial>.
+
+Currently v2 is very well supported, while v3 should be considered higly
+EXPERIMENTAL.
+
+Please report in L<issues|https://github.com/jhthorsen/json-validator/issues>
+or open pull requests to enhance the 3.0 support.
+
 =head1 AUTOMATIC RESOURCES
 
 This module adds some extra resources automatically.
@@ -455,21 +470,6 @@ Examples:
   OPTIONS https://api.example.com/v1/users
   OPTIONS https://api.example.com/v1/users?method=get
   OPTIONS https://api.example.com/v1/users?method=post
-
-=head1 DESCRIPTION
-
-L<Mojolicious::Plugin::OpenAPI> is L<Mojolicious::Plugin> that add routes and
-input/output validation to your L<Mojolicious> application based on a OpenAPI
-(Swagger) specification.
-
-Have a look at the L</SEE ALSO> for references to more documentation, or jump
-right to the L<tutorial|Mojolicious::Plugin::OpenAPI::Guides::Tutorial>.
-
-Currently v2 is very well supported, while v3 should be considered higly
-EXPERIMENTAL.
-
-Please report in L<issues|https://github.com/jhthorsen/json-validator/issues>
-or open pull requests to enhance the 3.0 support.
 
 =head1 HELPERS
 
