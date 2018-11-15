@@ -456,6 +456,12 @@ This module adds some extra resources automatically.
 The specification in JSON or human rendered format can be retrieved by
 requesting the C<basePath>.
 
+The human readable format focus on making the documentation printable, so you
+can easily share it with third parties as a PDF. If this documentation format
+is too basic or has missing information, then please
+L<report in|https://github.com/jhthorsen/mojolicious-plugin-openapi/issues>
+suggestions for enhancements.
+
 Examples:
 
   GET https://api.example.com/v1.json
