@@ -10,6 +10,13 @@ get '/pets' => sub {
   },
   'getPets';
 
+get '/pets/:id' => sub {
+  my $c = shift->openapi->valid_input or return;
+  $c->render(openapi => $c->validation->output);
+  },
+  'getPetsById';
+
+
 plugin OpenAPI => {url => 'data://main/discriminator.json'};
 
 my $t = Test::Mojo->new;
@@ -26,6 +33,9 @@ $t->get_ok('/api/pets?ri=3&ml=5')->status_is(400)->json_is('/errors/0/path', '/m
 # Valid
 $t->get_ok('/api/pets?ri=3&ml=4&ml=2')->status_is(200)->json_is('/ml', [4, 2])->json_is('/ri', [3]);
 
+# In path
+$t->get_ok('/api/pets/ilm,a,r,i')->status_is(200)->json_is('/id', [qw(ilm a r i)]);
+
 done_testing;
 
 __DATA__
@@ -35,6 +45,28 @@ __DATA__
   "info" : { "version": "0.8", "title" : "Test collectionFormat" },
   "basePath": "/api",
   "paths" : {
+    "/pets/{id}" : {
+      "get" : {
+        "operationId" : "getPetsById",
+        "parameters" : [
+          {
+            "name":"id",
+            "in":"path",
+            "type":"array",
+            "collectionFormat":"csv",
+            "items":{"type":"string"},
+            "minItems":0,
+            "required":true
+          }
+        ],
+        "responses" : {
+          "200": {
+            "description": "pet response",
+            "schema": { "type": "object" }
+          }
+        }
+      }
+    },
     "/pets" : {
       "get" : {
         "operationId" : "getPets",
