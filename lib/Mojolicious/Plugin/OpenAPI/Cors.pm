@@ -72,7 +72,7 @@ Mojolicious::Plugin::OpenAPI::Cors - OpenAPI plugin for Cross-Origin Resource Sh
 =head1 DESCRIPTION
 
 L<Mojolicious::Plugin::OpenAPI::Cors> is a plugin for accepting Simple
-Cross-Origin Resource Sharing requests, by looing at the "Origin" header. See
+Cross-Origin Resource Sharing requests, by looking at the "Origin" header. See
 L<https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS> for more details.
 
 This plugin is loaded by default by L<Mojolicious::Plugin::OpenAPI>.
