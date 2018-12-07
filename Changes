@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.06 Not Released
+ - Made YAML::XS and v3 optional
+
 2.05 2018-12-07T14:02:49+0900
  - Moved JSON::Validator::OpenAPI::Mojolicious from JSON-Validator
 

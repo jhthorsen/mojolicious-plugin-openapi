@@ -442,7 +442,7 @@ Have a look at the L</SEE ALSO> for references to more documentation, or jump
 right to the L<tutorial|Mojolicious::Plugin::OpenAPI::Guides::Tutorial>.
 
 Currently v2 is very well supported, while v3 should be considered higly
-EXPERIMENTAL.
+EXPERIMENTAL. Note that testing out v3 requires L<YAML::XS> to be installed.
 
 Please report in L<issues|https://github.com/jhthorsen/json-validator/issues>
 or open pull requests to enhance the 3.0 support.
