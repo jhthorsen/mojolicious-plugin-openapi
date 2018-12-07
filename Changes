@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.05 Not Released
+ - Moved JSON::Validator::OpenAPI::Mojolicious from JSON-Validator
+
 2.04 2018-11-15T16:13:55+0900
  - Use data:///file.json in SYNOPSIS to make it work with morbo
 
