@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.05 Not Released
+2.05 2018-12-07T14:02:49+0900
  - Moved JSON::Validator::OpenAPI::Mojolicious from JSON-Validator
 
 2.04 2018-11-15T16:13:55+0900
