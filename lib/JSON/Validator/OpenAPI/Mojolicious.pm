@@ -15,8 +15,6 @@ our %VERSIONS
 
 has version => 2;
 
-has _json_validator => sub { state $v = JSON::Validator->new; };
-
 sub E { JSON::Validator::Error->new(@_) }
 
 sub load_and_validate_schema {
@@ -58,6 +56,9 @@ sub validate_request {
   my ($self, $c, $schema, $input) = @_;
   my @errors;
 
+  local $self->{cache};
+
+  # v3
   if (my $body_schema = $schema->{requestBody}) {
     my $types = $self->_detect_content_type($c, 'content_type');
     my $validated;
@@ -152,7 +153,7 @@ sub validate_response {
 
   if ($blueprint->{'x-json-schema'}) {
     warn "[OpenAPI] Validate using x-json-schema\n" if DEBUG;
-    push @errors, $self->_json_validator->validate($data, $blueprint->{'x-json-schema'});
+    push @errors, $self->validate($data, $blueprint->{'x-json-schema'});
   }
   elsif ($blueprint->{schema}) {
     warn "[OpenAPI] Validate using schema\n" if DEBUG;
@@ -218,20 +219,20 @@ sub _get_request_data {
   my ($self, $c, $in) = @_;
 
   if ($in eq 'query') {
-    return $c->req->url->query->to_hash(1);
+    return $self->{cache}{$in} ||= $c->req->url->query->to_hash(1);
   }
   elsif ($in eq 'path') {
     return $c->match->stack->[-1];
   }
   elsif ($in eq 'formData') {
-    return $c->req->body_params->to_hash(1);
+    return $self->{cache}{$in} ||= $c->req->body_params->to_hash(1);
   }
   elsif ($in eq 'cookie') {
-    return {map { ($_->name, $_->value) } @{$c->req->cookies}};
+    return $self->{cache}{$in} ||= {map { ($_->name, $_->value) } @{$c->req->cookies}};
   }
   elsif ($in eq 'header') {
     my $headers = $c->req->headers->to_hash(1);
-    return {map { lc($_) => $headers->{$_} } keys %$headers};
+    return $self->{cache}{$in} ||= {map { lc($_) => $headers->{$_} } keys %$headers};
   }
   elsif ($in eq 'body') {
     return $c->req->json;
@@ -253,6 +254,7 @@ sub _get_response_data {
 }
 
 sub _is_byte_string { $_[0] =~ /^[A-Za-z0-9\+\/\=]+$/ }
+
 sub _is_date { $_[0] && JSON::Validator::_is_date_time("$_[0]T00:00:00") }
 
 sub _is_number {
@@ -291,12 +293,6 @@ sub _set_request_data {
   }
 }
 
-sub _set_response_data {
-  my ($self, $c, $in, $name => $value) = @_;
-  return $c->res->headers->header($name => ref $value ? @$value : $value) if $in eq 'header';
-  _confess_invalid_in($in);
-}
-
 sub _validate_request_value {
   my ($self, $p, $name, $value) = @_;
   my $type = $p->{type} || 'object';
@@ -313,7 +309,7 @@ sub _validate_request_value {
   if ($in eq 'body') {
     warn "[OpenAPI] Validate $in $name\n" if DEBUG;
     if ($p->{'x-json-schema'}) {
-      return $self->_json_validator->validate({$name => $value}, $schema);
+      return $self->validate({$name => $value}, $schema);
     }
     else {
       return $self->validate_input({$name => $value}, $schema);
@@ -348,7 +344,7 @@ sub _validate_response_headers {
     }
     elsif ($input->{$name}) {
       push @errors, $self->validate($input->{$name}[0], $p);
-      $self->_set_response_data($c, 'header', $name => $input->{$name}[0] ? 'true' : 'false')
+      $c->res->headers->header($name => $input->{$name}[0] ? 'true' : 'false')
         if $p->{type} eq 'boolean' and !@errors;
     }
   }
@@ -407,11 +403,32 @@ sub _validate_type_object {
 
 =head1 NAME
 
-JSON::Validator::OpenAPI::Mojolicious - Request/response adapter for Mojolicious
+JSON::Validator::OpenAPI::Mojolicious - JSON::Validator request/response adapter for Mojolicious
 
 =head1 SYNOPSIS
 
+  my $validator = JSON::Validator::OpenAPI::Mojolicious->new;
+  $validator->load_and_validate_schema("myschema.json");
+
+  my @errors = $validator->validate_request(
+                 $c,
+                 $validator->get([paths => "/wharever", "get"]),
+                 $c->validation->output,
+               );
+
+  @errors = $validator->validate_response(
+              $c,
+              $validator->get([paths => "/wharever", "get"]),
+              200,
+              {some => {response => "data"}},
+            );
+
 =head1 DESCRIPTION
+
+L<JSON::Validator::OpenAPI::Mojolicious> is a module for validating request and
+response data from/to your L<Mojolicious> application.
+
+Do not use this module directly. Use L<Mojolicious::Plugin::OpenAPI> instead.
 
 =head1 ATTRIBUTES
 
