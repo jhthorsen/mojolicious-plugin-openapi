@@ -56,12 +56,13 @@ sub validate_ok {
 }
 
 {
-  local $TODO                            = 'No idea how to test floats';
   local $schema->{properties}{v}{type}   = 'number';
   local $schema->{properties}{v}{format} = 'float';
   validate_ok {v => -1.10000002384186}, $schema;
   validate_ok {v => 1.10000002384186},  $schema;
-  validate_ok {v => 0.10000000000000},  $schema, E('/v', 'Does not match float format.');
+
+  local $TODO = 'No idea how to test floats';
+  validate_ok {v => 0.10000000000000}, $schema, E('/v', 'Does not match float format.');
 }
 
 {

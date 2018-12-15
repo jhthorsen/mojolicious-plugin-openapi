@@ -3,8 +3,8 @@ use Mojo::Base 'JSON::Validator';
 
 use Carp 'confess';
 use Mojo::Util;
-use Scalar::Util ();
-use Time::Local  ();
+use Scalar::Util 'looks_like_number';
+use Time::Local ();
 
 use constant DEBUG => $ENV{JSON_VALIDATOR_DEBUG} || 0;
 use constant IV_SIZE => eval 'require Config;$Config::Config{ivsize}';
@@ -171,13 +171,19 @@ sub _build_formats {
     $formats->{uriref} = sub {'TODO'};
   }
 
-  $formats->{byte}     = \&_is_byte_string;
-  $formats->{date}     = \&_is_date;
-  $formats->{double}   = \&Scalar::Util::looks_like_number;
-  $formats->{float}    = \&Scalar::Util::looks_like_number;
-  $formats->{int32}    = sub { _is_number($_[0], 'l'); };
-  $formats->{int64}    = IV_SIZE >= 8 ? sub { _is_number($_[0], 'q'); } : sub {1};
-  $formats->{password} = sub {1};
+  $formats->{byte}     = \&_match_byte_string;
+  $formats->{date}     = \&_match_date;
+  $formats->{double}   = sub { _match_number(double => $_[0], '') };
+  $formats->{float}    = sub { _match_number(float => $_[0], '') };
+  $formats->{int32}    = sub { _match_number(int32 => $_[0], 'l') };
+  $formats->{int64}    = sub { _match_number(int64 => $_[0], IV_SIZE >= 8 ? 'q' : '') };
+  $formats->{password} = sub {undef};
+
+  # Back compat
+  if (JSON::Validator->VERSION < 3) {
+    $formats->{$_} = _match_back_compat($formats->{$_})
+      for qw(byte date double float int32 int64 password);
+  }
 
   return $formats;
 }
@@ -253,13 +259,34 @@ sub _get_response_data {
   _confess_invalid_in($in);
 }
 
-sub _is_byte_string { $_[0] =~ /^[A-Za-z0-9\+\/\=]+$/ }
+sub _match_byte_string { $_[0] =~ /^[A-Za-z0-9\+\/\=]+$/ ? undef : 'Does not match byte format.' }
 
-sub _is_date { $_[0] && JSON::Validator::_is_date_time("$_[0]T00:00:00") }
+sub _match_date {
+  my @time = $_[0] =~ m!^(\d{4})-(\d\d)-(\d\d)$!io;
+  return 'Does not match date format.' unless @time;
+  @time = map { s/^0+//; $_ || 0 } reverse @time;
+  $time[1] -= 1;    # month are zero based
+  local $@;
+  return undef if eval { Time::Local::timegm(0, 0, 0, @time); 1 };
+  my $err = (split / at /, $@)[0];
+  $err =~ s!('-?\d+'\s|\s[\d\.]+)!!g;
+  $err .= '.';
+  return $err;
+}
 
-sub _is_number {
-  return unless $_[0] =~ /^-?\d+(\.\d+)?$/;
-  return $_[0] eq unpack $_[1], pack $_[1], $_[0];
+# Back compat
+sub _match_back_compat {
+  my $cb = shift;
+  return sub { $JSON::Validator::ERR = $cb->(@_); return $JSON::Validator::ERR ? 0 : 1 };
+}
+
+sub _match_number {
+  my ($name, $val, $format) = @_;
+  return 'Does not look like an integer' if $name =~ m!^int! and $val !~ /^-?\d+(\.\d+)?$/;
+  return 'Does not look like a number.' unless looks_like_number $val;
+  return undef unless $format;
+  return undef if $val eq unpack $format, pack $format, $val;
+  return "Does not match $name format.";
 }
 
 sub _resolve_ref {
