@@ -66,6 +66,7 @@ sub validate_ok {
 }
 
 {
+  local $TODO = eval 'require Data::Validate::IP;1' ? undef : 'Missing module';
   local $schema->{properties}{v}{format} = 'ipv4';
   validate_ok {v => '255.100.30.1'}, $schema;
   validate_ok {v => '300.0.0.0'}, $schema, E('/v', 'Does not match ipv4 format.');
