@@ -179,12 +179,6 @@ sub _build_formats {
   $formats->{int64}    = sub { _match_number(int64 => $_[0], IV_SIZE >= 8 ? 'q' : '') };
   $formats->{password} = sub {undef};
 
-  # Back compat
-  if (JSON::Validator->VERSION < 3) {
-    $formats->{$_} = _match_back_compat($formats->{$_})
-      for qw(byte date double float int32 int64 password);
-  }
-
   return $formats;
 }
 
@@ -272,12 +266,6 @@ sub _match_date {
   $err =~ s!('-?\d+'\s|\s[\d\.]+)!!g;
   $err .= '.';
   return $err;
-}
-
-# Back compat
-sub _match_back_compat {
-  my $cb = shift;
-  return sub { $JSON::Validator::ERR = $cb->(@_); return $JSON::Validator::ERR ? 0 : 1 };
 }
 
 sub _match_number {

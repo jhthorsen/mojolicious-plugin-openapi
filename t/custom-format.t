@@ -12,8 +12,7 @@ get '/cf' => sub {
 
 my $oap = plugin OpenAPI => {url => 'data://main/cf.json'};
 
-$oap->validator->formats->{need_to_be_x}
-  = JSON::Validator->VERSION < 3 ? sub { $_[0] eq 'x' } : sub { $_[0] eq 'x' ? undef : 'Not x.' };
+$oap->validator->formats->{need_to_be_x} = sub { $_[0] eq 'x' ? undef : 'Not x.' };
 
 my $t = Test::Mojo->new;
 $t->get_ok('/api/cf' => json => {str => 'x'})->status_is(200)->content_like(qr{"str":"x"});
