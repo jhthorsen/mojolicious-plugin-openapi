@@ -167,12 +167,7 @@ sub _build_formats {
   my $self    = shift;
   my $formats = $self->SUPER::_build_formats;
 
-  if ($self->version eq '3') {
-    $formats->{uriref} = sub {'TODO'};
-  }
-
   $formats->{byte}     = \&_match_byte_string;
-  $formats->{date}     = \&_match_date;
   $formats->{double}   = sub { _match_number(double => $_[0], '') };
   $formats->{float}    = sub { _match_number(float => $_[0], '') };
   $formats->{int32}    = sub { _match_number(int32 => $_[0], 'l') };
@@ -254,19 +249,6 @@ sub _get_response_data {
 }
 
 sub _match_byte_string { $_[0] =~ /^[A-Za-z0-9\+\/\=]+$/ ? undef : 'Does not match byte format.' }
-
-sub _match_date {
-  my @time = $_[0] =~ m!^(\d{4})-(\d\d)-(\d\d)$!io;
-  return 'Does not match date format.' unless @time;
-  @time = map { s/^0+//; $_ || 0 } reverse @time;
-  $time[1] -= 1;    # month are zero based
-  local $@;
-  return undef if eval { Time::Local::timegm(0, 0, 0, @time); 1 };
-  my $err = (split / at /, $@)[0];
-  $err =~ s!('-?\d+'\s|\s[\d\.]+)!!g;
-  $err .= '.';
-  return $err;
-}
 
 sub _match_number {
   my ($name, $val, $format) = @_;
