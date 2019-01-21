@@ -6,6 +6,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
  - Add the possibility to turn off automatic rendering of specification
    using OPTIONS and from /:basePath route
  - Add EXPERIMENTAL "openapi_routes_added" hook
+ - Add support for Preflight CORS requests #99
 
 2.09 2019-01-21T09:51:56+0900
  - Using formats from JSON::Validator 3.04
