@@ -109,7 +109,7 @@ other client side applications.
 
 C<parameters> and C<responses> will be used to define input and output
 validtion rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
-and when rendering the response back to the client, using C<render(openapi => ...)>.
+and when rendering the response back to the client, using C<< render(openapi => ...) >>.
 
 Have a look at L<Mojolicious::Plugin::OpenAPI/RENDERER> for more details about
 output rendering.
@@ -225,7 +225,7 @@ then all the route names will have that value as prefix:
 
 You can also set "x-mojo-name" in the spec, instead of passing
 L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name>
-to C<plugin()|Mojolicious::Plugin::OpenAPI/register>:
+to L<plugin()|Mojolicious::Plugin::OpenAPI/register>:
 
   {
     "swagger": "2.0",
