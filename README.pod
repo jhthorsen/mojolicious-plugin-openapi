@@ -1,1 +1,0 @@
-lib/Mojolicious/Plugin/OpenAPI.pm
