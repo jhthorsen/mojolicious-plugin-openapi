@@ -31,7 +31,7 @@ sub _add_documentation_routes {
     my $route_path = $route->to_string;
     next if $dups{$route_path}++;
 
-    my $openapi_path = $route->to->{'openapi.op_path'}[1];
+    my $openapi_path = $route->to->{'openapi.path'};
     my $doc_route
       = $openapi->route->options($route->pattern->unparsed, {'openapi.default_options' => 1});
     $doc_route->to(cb => sub { _render_spec(shift, $openapi_path) });

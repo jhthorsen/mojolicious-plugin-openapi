@@ -47,6 +47,8 @@ sub register {
   # Removed in 2.00
   die "[OpenAPI] default_response is no longer supported in config" if $config->{default_response};
 
+  $self->{default_response_codes} = $config->{default_response_codes} || [400, 401, 404, 500, 501];
+  $self->{default_response_name} = $config->{default_response_name} || 'DefaultResponse';
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_renderer($config->{renderer}) if $config->{renderer};
   $self->_build_route($app, $config);
@@ -63,9 +65,10 @@ sub register {
 }
 
 sub _add_default_response {
-  my ($self, $name, $op_spec, $code) = @_;
+  my ($self, $op_spec, $code) = @_;
   return if $op_spec->{responses}{$code};
-  my $ref = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;
+  my $name   = $self->{default_response_name};
+  my $ref    = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;
   my %schema = ('$ref' => "#/definitions/$name");
   tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
   $op_spec->{responses}{$code} = {description => 'Default response.', schema => \%schema};
@@ -75,23 +78,23 @@ sub _add_routes {
   my ($self, $app, $config) = @_;
   my (@routes, %uniq);
 
-  $config->{default_response_codes} ||= [400, 401, 404, 500, 501];
-  $config->{default_response_name} ||= 'DefaultResponse';
+  my @sorted_openapi_paths
+    = map { $_->[0] }
+    sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
+    map { [$_, /\{/ ? 1 : 0] } grep { !/$X_RE/ } keys %{$self->validator->get('/paths') || {}};
 
-  for my $path ($self->_sorted_paths) {
-    next if $path =~ $X_RE;
-    my $path_parameters = $self->validator->get([paths => $path => 'parameters']) || [];
-    my $route_path = $path;
+  for my $openapi_path (@sorted_openapi_paths) {
+    my $path_parameters = $self->validator->get([paths => $openapi_path => 'parameters']) || [];
 
-    for my $http_method (sort keys %{$self->validator->get([paths => $path]) || {}}) {
+    for my $http_method (sort keys %{$self->validator->get([paths => $openapi_path]) || {}}) {
       next if $http_method =~ $X_RE or $http_method eq 'parameters';
-      my $op_spec = $self->validator->get([paths => $path => $http_method]);
-      my $name       = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-      my $to         = $op_spec->{'x-mojo-to'};
-      my @parameters = (@$path_parameters, @{$op_spec->{parameters} || []});
+      my $op_spec = $self->validator->get([paths => $openapi_path => $http_method]);
+      my $name = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+      my $to = $op_spec->{'x-mojo-to'};
       my $r;
 
-      $route_path = _route_path($path, \@parameters);
+      $self->{parameters_for}{$openapi_path}{$http_method}
+        = [@$path_parameters, @{$op_spec->{parameters} || []}];
 
       die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
         if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
@@ -104,18 +107,17 @@ sub _add_routes {
         $self->route->add_child($r);
       }
       if (!$r) {
+        my $route_path = $self->_openapi_path_to_route_path($http_method, $openapi_path);
         $name ||= $op_spec->{operationId};
         warn "[OpenAPI] Creating new route for '$route_path'.\n" if DEBUG;
         $r = $self->route->$http_method($route_path);
         $r->name("$self->{route_prefix}$name") if $name;
       }
 
-      $self->_add_default_response($config->{default_response_name}, $op_spec, $_)
-        for @{$config->{default_response_codes}};
+      $self->_add_default_response($op_spec, $_) for @{$self->{default_response_codes}};
 
       $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $r->to({'openapi.op_path' => [paths => $path => $http_method]});
-      $r->to({'openapi.parameters' => \@parameters});
+      $r->to({'openapi.path' => $openapi_path});
       warn "[OpenAPI] Add route $http_method @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
       push @routes, $r;
@@ -140,7 +142,7 @@ sub _before_render {
   my $status = $args->{status} || $c->stash('status') || '200';
   if ($handler eq 'openapi' and ($status eq '404' or $status eq '500')) {
     $args->{handler} = 'openapi';
-    $args->{status} = ($status eq '404' and $c->stash('openapi.op_path')) ? 501 : $status;
+    $args->{status} = ($status eq '404' and $c->stash('openapi.path')) ? 501 : $status;
     $c->stash(
       status  => $args->{status},
       openapi => {
@@ -195,12 +197,12 @@ sub _helper_get_spec {
 
   return $self->validator->get($path) if defined $path;
 
-  my $op_path;
+  my $jp;
   for my $s (reverse @{$c->match->stack}) {
-    $op_path ||= $s->{'openapi.op_path'};
+    $jp ||= [paths => $s->{'openapi.path'}, lc $c->req->method];
   }
 
-  return $op_path ? $self->validator->get($op_path) : undef;
+  return $jp ? $self->validator->get($jp) : undef;
 }
 
 sub _helper_reply {
@@ -228,14 +230,15 @@ sub _helper_reply {
 
 sub _helper_validate {
   my ($c, $args) = @_;
-  my $self    = _self($c);
-  my $op_spec = $c->openapi->spec;
 
   # code() can be set by other methods such as $c->openapi->cors_simple()
   return [{message => 'Already rendered.'}] if $c->res->code;
 
   # Write validated data to $c->validation->output
-  local $op_spec->{parameters} = $c->stash('openapi.parameters');
+  my $self    = _self($c);
+  my $op_spec = $c->openapi->spec;
+  local $op_spec->{parameters}
+    = $self->_parameters_for($c->req->method, $c->stash('openapi.path'),);
   my @errors = $self->validator->validate_request($c, $op_spec, $c->validation->output);
 
   if (@errors) {
@@ -258,6 +261,8 @@ sub _log {
     Mojo::JSON::encode_json(@_)
   );
 }
+
+sub _parameters_for { $_[0]->{parameters_for}{$_[2]}{lc($_[1])} || [] }
 
 sub _render {
   my ($renderer, $c, $output, $args) = @_;
@@ -286,15 +291,17 @@ sub _render {
   $$output = $self->_renderer->($c, @errors ? {errors => \@errors, status => $status} : $res);
 }
 
-sub _route_path {
-  my ($path, $parameters) = @_;
-  my %parameters = map { ($_->{name}, $_) } @$parameters;
-  $path =~ s/{([^}]+)}/{
-    my $pname = $1;
-    my $type = $parameters{$pname}{'x-mojo-placeholder'} || ':';
-    "<$type$pname>";
+sub _openapi_path_to_route_path {
+  my ($self, $http_method, $openapi_path) = @_;
+  my %params = map { ($_->{name}, $_) } @{$self->_parameters_for($http_method, $openapi_path)};
+
+  $openapi_path =~ s/{([^}]+)}/{
+    my $name = $1;
+    my $type = $params{$name}{'x-mojo-placeholder'} || ':';
+    "<$type$name>";
   }/ge;
-  return $path;
+
+  return $openapi_path;
 }
 
 sub _self {
@@ -303,13 +310,6 @@ sub _self {
   return $self if $self;
   my $path = $c->req->url->path->to_string;
   return +(map { $_->[1] } grep { $path =~ /^$_->[0]/ } @{$c->stash('openapi.base_paths')})[0];
-}
-
-sub _sorted_paths {
-  return
-    map { $_->[0] }
-    sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
-    map { [$_, $_ =~ /\{/ ? 1 : 0] } keys %{$_[0]->validator->get('/paths') || {}};
 }
 
 1;

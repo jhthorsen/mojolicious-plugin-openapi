@@ -22,8 +22,8 @@ plugin OpenAPI => {url => "data://main/correct-order.json"};
 
 my $t = Test::Mojo->new;
 
-$t->post_ok('/api/foo')->json_is('/id', 'foo')->content_like(qr{id});
-$t->post_ok('/api/decode')->json_is('/decode', 1)->content_like(qr{decode});
+$t->post_ok('/api/foo')->status_is(200)->json_is('/id', 'foo')->content_like(qr{id});
+$t->post_ok('/api/decode')->status_is(200)->json_is('/decode', 1)->content_like(qr{decode});
 
 done_testing;
 
@@ -36,7 +36,7 @@ __DATA__
   "basePath" : "/api",
   "paths" : {
     "/decode": {
-      "get": {
+      "post": {
         "x-mojo-name": "decode",
         "responses": {
           "200": { "description": "Success" }
@@ -44,7 +44,7 @@ __DATA__
       }
     },
     "/{id}": {
-      "get": {
+      "post": {
         "x-mojo-name": "id",
         "parameters": [
           { "name": "id", "in": "path", "required": true, "type": "string" }
