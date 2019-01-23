@@ -3,11 +3,14 @@ use Mojo::Base -base;
 
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-# https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Simple_requests
-our @CORS_SIMPLE_METHODS = qw(GET HEAD POST);
-our @CORS_SIMPLE_CONTENT_TYPES
-  = qw(application/x-www-form-urlencoded multipart/form-data text/plain);
-our $SKIP_RENDER;
+our %SIMPLE_METHODS = map { ($_ => 1) } qw(GET HEAD POST);
+our %SIMPLE_CONTENT_TYPES
+  = map { ($_ => 1) } qw(application/x-www-form-urlencoded multipart/form-data text/plain);
+our %SIMPLE_HEADERS = map { (lc $_ => 1) }
+  qw(Accept Accept-Language Content-Language Content-Type DPR Downlink Save-Data Viewport-Width Width);
+
+our %PREFLIGHTED_CONTENT_TYPES = %SIMPLE_CONTENT_TYPES;
+our %PREFLIGHTED_METHODS = map { ($_ => 1) } qw(CONNECT DELETE OPTIONS PATCH PUT TRACE);
 
 my $X_RE = qr{^x-};
 
@@ -15,15 +18,21 @@ sub register {
   my ($self, $app, $openapi, $config) = @_;
 
   if ($config->{add_preflighted_routes}) {
-    $app->plugins->once(openapi_routes_added => sub { $self->_add_preflighted_route($app, @_) });
+    $app->plugins->once(openapi_routes_added => sub { $self->_add_preflighted_routes($app, @_) });
   }
 
-  $app->helper('openapi.cors_exchange'    => \&_helper_cors_exchange);
-  $app->helper('openapi.cors_preflighted' => \&_helper_cors_preflighted);
-  $app->helper('openapi.cors_simple'      => \&_helper_cors_simple);
+  $app->defaults(openapi_cors_default_exchange_callback => \&_default_cors_exchange_callback);
+  $app->helper('openapi.cors_exchange' => sub { $self->_exchange(@_) });
+
+  # TODO: Remove support for openapi.cors_simple
+  $app->helper(
+    'openapi.cors_simple' => sub {
+      $self->_exchange(shift->stash('openapi.cors_simple_deprecated' => 1), @_);
+    }
+  );
 }
 
-sub _add_preflighted_route {
+sub _add_preflighted_routes {
   my ($self, $app, $openapi, $routes) = @_;
   my $c = $app->build_controller;
   my $match = Mojolicious::Routes::Match->new(root => $app->routes);
@@ -34,114 +43,120 @@ sub _add_preflighted_route {
 
     # Make a given action also handle OPTIONS
     push @{$route->via}, 'OPTIONS';
+    $route->to->{'openapi.cors_preflighted'} = 1;
     warn "[OpenAPI] Add route options $route_path (@{[$route->name // '']})\n" if DEBUG;
   }
 }
 
-sub _default_cors_exchange {
+sub _default_cors_exchange_callback {
   my ($c, $req) = @_;
-
-  for my $re (@{$c->stash('openapi_cors_allow_origins') || []}) {
-    return $c->res->headers->header('Access-Control-Allow-Origin' => $req->{origin})
-      if $req->{origin} =~ $re;
-  }
+  my $allow_origins = $c->stash('openapi_cors_allow_origins') || [];
+  return scalar(grep { $req->{origin} =~ $_ } @$allow_origins) ? undef : '/Origin';
 }
 
-sub _helper_cors_exchange {
-  my ($c, $cb) = @_;
-  local $SKIP_RENDER = 1;
+sub _exchange {
+  my ($self, $c) = (shift, shift);
+  my $cb = shift || $c->stash('openapi_cors_default_exchange_callback');
 
-  # Check simple first
-  $c->openapi->cors_simple($cb);
-  return $c if $c->res->headers->header('Access-Control-Allow-Origin');
-
-  # Then go on to preflight
-  $c->openapi->cors_preflighted($cb);
-  return $c if $c->res->headers->header('Access-Control-Allow-Origin');
-
-  # Invalid request
-  return _render_bad_request($c);
-}
-
-sub _helper_cors_preflighted {
-  my $c = shift;
-  my $cb = shift || \&_default_cors_exchange;
-
-  # Run default simple CORS checks
-  my $method = uc $c->req->method;
-  return $c unless $method eq 'OPTIONS';
-
-  my $req_headers = $c->req->headers;
-  my $req         = {
-    headers => $req_headers->header('Access-Control-Request-Headers') // '',
-    method  => $req_headers->header('Access-Control-Request-Method') // $method,
-    origin  => $req_headers->header('Origin') // '',
+  my $h   = $c->req->headers;
+  my $req = {
+    headers => $h->header('Access-Control-Request-Headers') // '',
+    method  => $h->header('Access-Control-Request-Method') // $c->req->method,
+    origin  => $h->header('Origin'),
   };
 
-  $req->{type} = $req->{origin} ? 'preflighted' : '';
+  # Not a CORS request
+  unless (defined $req->{origin}) {
+    $self->_render_bad_request($c, 'OPTIONS is only for preflighted CORS requests.')
+      if $c->match->endpoint->to->{'openapi.cors_preflighted'};
+    return $c;
+  }
 
-  # Allow the callback to make up the decision if this is a valid CORS request
-  $c->$cb($req);
+  $req->{type}
+    = $self->_is_simple_request($c, $req) || $self->_is_preflighted_request($c, $req) || 'real';
 
-  # Valid CORS request if the callback set the Access-Control-Allow-Origin header
-  return _render_preflighted_response($c, $req)
-    if $c->res->headers->header('Access-Control-Allow-Origin');
+  my $errors = $c->$cb($req);
 
-  # Regular OPTIONS request
-  return $c if $c->stash('openapi_allow_options_request');
+  # TODO: Remove support for openapi.cors_simple
+  if ($c->stash('openapi.cors_simple_deprecated')) {
+    warn "\$c->openapi->cors_simple() has been replaced by \$c->openapi->cors_exchange()";
+    return $self->_render_bad_request($c, '/Origin')
+      unless $c->res->headers->header("Access-Control-Allow-Origin");
+    return $c;
+  }
 
-  # Invalid if no header is set
-  return $SKIP_RENDER ? $c : _render_bad_request($c);
+  return $self->_render_bad_request($c, $errors) if $errors;
+
+  $self->_set_default_headers($c, $req);
+  return $req->{type} eq 'preflighted' ? $c->tap(render => data => '', status => 200) : $c;
 }
 
-sub _helper_cors_simple {
-  my $c   = shift;
-  my $cb  = shift || \&_default_cors_exchange;
-  my $req = {type => 'simple'};
+sub _is_preflighted_request {
+  my ($self, $c, $req) = @_;
 
-  # Run default simple CORS checks
-  my $method = uc $c->req->method;
-  return $c unless grep { $method eq $_ } @CORS_SIMPLE_METHODS;
+  return undef unless $c->req->method eq 'OPTIONS';
+  return 'preflighted' if $req->{headers};
+  return 'preflighted' if $PREFLIGHTED_METHODS{$req->{method}};
 
-  my $req_headers = $c->req->headers;
-  my $ct = $req_headers->content_type || '';
-  return $c if $ct and !grep { $ct eq $_ } @CORS_SIMPLE_CONTENT_TYPES;
-  return $c unless $req->{origin} = $req_headers->header('Origin');
+  my $ct = lc $c->req->headers->content_type || '';
+  return 'preflighted' if $ct and $PREFLIGHTED_CONTENT_TYPES{$ct};
 
-  # Allow the callback to make up the decision if this is a valid CORS request
-  $c->$cb($req);
+  return undef;
+}
 
-  # Valid CORS request if the callback set the Access-Control-Allow-Origin header
-  return $c if $c->res->headers->header('Access-Control-Allow-Origin');
+sub _is_simple_request {
+  my ($self, $c, $req) = @_;
 
-  # Invalid if no header is set
-  return $SKIP_RENDER ? $c : _render_bad_request($c);
+  my $method = $c->req->method;
+  return undef unless $SIMPLE_METHODS{$method};
+
+  my $h = $c->req->headers;
+  my @names = grep { !$SIMPLE_HEADERS{lc($_)} } @{$h->names};
+  return undef if @names;
+
+  my $ct = lc $h->content_type || '';
+  return undef if $ct and $SIMPLE_CONTENT_TYPES{$ct};
+
+  return 'simple';
 }
 
 sub _render_bad_request {
-  my $c      = shift;
-  my $self   = $c->stash('openapi.object') or return;
-  my @errors = ({message => 'Invalid CORS request.'});
-  $self->_log($c, '<<<', \@errors);
-  $c->render(data => $self->_renderer->($c, {errors => \@errors, status => 400}), status => 400);
-  return $c;
+  my ($self, $c, $errors) = @_;
+
+  unless (ref $errors) {
+    if ($errors =~ m!^/([\w-]+)!) {
+      $errors = [{message => "Invalid $1 header.", path => $errors}];
+    }
+    else {
+      $errors = [{message => $errors, path => '/'}];
+    }
+  }
+
+  return $c->tap(render => openapi => {errors => $errors, status => 400}, status => 400);
 }
 
-sub _render_preflighted_response {
-  my ($c, $req) = @_;
+sub _set_default_headers {
+  my ($self, $c, $req) = @_;
   my $h = $c->res->headers;
+
+  $h->header('Access-Control-Allow-Origin' => $req->{origin})
+    unless $h->header('Access-Control-Allow-Origin');
+
+  return unless $req->{type} eq 'preflighted';
 
   $h->header('Access-Control-Allow-Headers' => $req->{headers})
     unless $h->header('Access-Control-Allow-Headers');
-  $h->header('Access-Control-Allow-Methods' => $req->{method})
-    unless $h->header('Access-Control-Allow-Methods');
+
+  unless ($h->header('Access-Control-Allow-Methods')) {
+    my $op_spec = $c->openapi->spec('for_path');
+    my @methods = sort grep { !/$X_RE/ } keys %{$op_spec || {}};
+    $h->header('Access-Control-Allow-Methods' => uc join ', ', @methods);
+  }
 
   unless ($h->header('Access-Control-Max-Age')) {
     my $default_max_age = $c->stash('openapi_cors_default_max_age') || 1800;
     $h->header('Access-Control-Max-Age' => $req->{age} || $default_max_age);
   }
-
-  return $c->tap(render => data => '', status => 200);
 }
 
 1;
@@ -156,104 +171,107 @@ Mojolicious::Plugin::OpenAPI::Cors - OpenAPI plugin for Cross-Origin Resource Sh
 
 =head2 Application
 
-  # Set "add_preflighted_routes" to 1, if you want "Preflighted" CORS requests
-  # to be sent to your action.
+Set L</add_preflighted_routes> to 1, if you want "Preflighted" CORS requests to
+be sent to your already existing actions.
+
   $app->plugin("OpenAPI" => {add_preflighted_routes => 1});
 
-=head2 Controller
+=head2 Simple exchange
 
-  package MyApplication::Controller::User;
+The following example will automatically set default CORS response headers
+after validating the request against L</openapi_cors_allow_origins>:
+
+  package MyApp::Controller::User;
 
   sub get_user {
-    my $c = shift;
+    my $c = shift->openapi->cors_exchange->openapi->valid_input or return;
 
-    # Choose from one of the methods below:
-
-    # 1. Validate incoming Simple CORS request with _validate_cors()
-    $c->openapi->cors_simple("_validate_cors_simple")->openapi->valid_input or return;
-
-    # 2. Validate incoming Preflighted CORS request with _validate_cors()
-    $c->openapi->cors_preflighted("_validate_cors_preflighted")->openapi->valid_input or return;
-
-    # 3. Validate any CORS request with _validate_cors()
-    $c->openapi->cors_exchange("_validate_cors_exchange")->openapi->valid_input or return;
-
+    # Will only run this part if both the cors_exchange and valid_input was
+    # successful.
     $c->render(openapi => {user => {}});
   }
 
-  sub _validate_cors_exchange {
-    my ($c, $args) = @_;
+=head2 Custom exchange
 
-    # $args->{type} is set to "simple" or "preflighted"
-    $c->app->log->debug("Got CORS $args->{type} request");
+If you need full control, you must pass a callback to
+L</openapi.cors_exchange>:
 
-    # Re-use Simple CORS logic and use default values for the rest of
-    # Preflighted response.
-    return $self->_validate_cors_simple($args);
+  package MyApp::Controller::User;
+
+  sub get_user {
+    # Validate incoming CORS request with _validate_cors()
+    my $c = shift->openapi->cors_exchange("_validate_cors")->openapi->valid_input or return;
+
+    # Will only run this part if both the cors_exchange and valid_input was
+    # successful.
+    $c->render(openapi => {user => {}});
   }
 
-  sub _validate_cors_preflighted {
-    my ($c, $args) = @_;
+  # This method must return undef on success. Any true value will be used as
+  # an error.
+  sub _validate_cors {
+    my ($c, $params) = @_;
 
-    # Need to do the following to allow regular OPTIONS request
-    # Note that $args->{type} will be "preflighted" or "simple" in case of a
-    # CORS request.
-    return $c->stash(openapi_allow_options_request => 1) unless $args->{type};
+    # $params->{type} is set to "preflighted", "real" or "simple"
+    $c->app->log->debug("Got CORS $params->{type} request");
 
-    # Check the "Origin" header
-    return unless $args->{origin} =~ m!^https?://whatever.example.com!;
+    # The following "Origin" header check is the same for both simple and
+    # preflighted.
+    return "/Origin" unless $params->{origin} =~ m!^https?://whatever.example.com!;
+
+    # The following checks are only valid if preflighted...
 
     # Check the Access-Control-Request-Headers header
-    return if $args->{headers} =~ /X-No-Can-Do/;
+    return "Bad stuff." if $params->{headers} and $params->{headers} =~ /X-No-Can-Do/;
 
     # Check the Access-Control-Request-Method header
-    return if $args->{method} eq "delete";
+    return "Not cool." if $params->{method} and $params->{method} eq "delete";
 
-    # Set required Preflighted response header
-    $c->res->headers->header("Access-Control-Allow-Origin" => $args->{origin});
+    # Set the following header for both simple and preflighted on success
+    # or just let the auto-renderer handle it.
+    $c->res->headers->header("Access-Control-Allow-Origin" => $params->{origin});
 
     # Set Preflighted response headers, instead of using the default
-    $c->res->headers->header("Access-Control-Allow-Headers" => "X-Whatever, X-Something");
-    $c->res->headers->header("Access-Control-Allow-Methods" => "POST, GET, OPTIONS");
-    $c->res->headers->header("Access-Control-Max-Age" => 86400);
-  }
-
-  sub _validate_cors_simple {
-    my ($c, $args) = @_;
-
-    # Check the "Origin" header
-    if ($args->{origin} =~ m!^https?://whatever.example.com!) {
-
-      # Setting the "Access-Control-Allow-Origin" will mark this request as valid
-      $c->res->headers->header("Access-Control-Allow-Origin" => $args->{origin});
+    if ($params->{type} eq "preflighted") {
+      $c->res->headers->header("Access-Control-Allow-Headers" => "X-Whatever, X-Something");
+      $c->res->headers->header("Access-Control-Allow-Methods" => "POST, GET, OPTIONS");
+      $c->res->headers->header("Access-Control-Max-Age" => 86400);
     }
+
+    # Return undef on success.
+    return undef;
   }
 
 =head1 DESCRIPTION
 
 L<Mojolicious::Plugin::OpenAPI::Cors> is a plugin for accepting Preflighted or
-Simple Cross-Origin Resource Sharing requests, by looking at the "Origin"
-header. See L<https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS> for more
-details.
+Simple Cross-Origin Resource Sharing requests. See
+L<https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS> for more details.
 
 This plugin is loaded by default by L<Mojolicious::Plugin::OpenAPI>.
 
-Note that this plugin currently EXPERIMENTAL! Please let me know if you have
-any feedback.
+Note that this plugin currently EXPERIMENTAL! Please comment on
+L<https://github.com/jhthorsen/mojolicious-plugin-openapi/pull/102> if
+you have any feedback or create a new issue.
 
 =head1 STASH VARIABLES
 
-Note that the following stash variables can be set in L<Mojolicious/defaults>,
+The following "stash variables" can be set in L<Mojolicious/defaults>,
 L<Mojolicious::Routes::Route/to> or L<Mojolicious::Controller/stash>.
 
 =head2 openapi_cors_allow_origins
 
 This variable should hold an array-ref of regexes that will be matched against
-the "Origin" header, unless a function is passed on to
-L</openapi.cors_preflighted> or L<openapi.cors_simple>. Examples:
+the "Origin" header in case the default
+L</openapi_cors_default_exchange_callback> is used. Examples:
 
   $app->defaults(openapi_cors_allow_origins => [qr{^https?://whatever.example.com}]);
   $c->stash(openapi_cors_allow_origins => [qr{^https?://whatever.example.com}]);
+
+=head2 openapi_cors_default_exchange_callback
+
+Instead of using the default C<$callback> provided by this module for
+L</openapi.cors_exchange>, you can set a global value.
 
 =head2 openapi_cors_default_max_age
 
@@ -267,102 +285,71 @@ set by L</openapi.cors_preflighted>. Examples:
 
 =head2 openapi.cors_exchange
 
-  $c = $c->openapi->cors_exchange($method);
-  $c = $c->openapi->cors_exchange("MyApp::cors_simple");
+  $c = $c->openapi->cors_exchange($callback);
+  $c = $c->openapi->cors_exchange("MyApp::cors_validator");
   $c = $c->openapi->cors_exchange("_some_controller_method");
   $c = $c->openapi->cors_exchange(sub { ... });
   $c = $c->openapi->cors_exchange;
 
-Used to validate either a simple or preflighted CORS request. This is the same
-as doing:
+Used to validate either a simple CORS request, preflighted CORS request or a
+real request. It will be called as soon as the "Origin" request header is seen.
 
-  $c->openapi->cors_simple($method)->openapi->cors_preflighted($method);
+The C<$callback> will be called with the following arguments:
 
-=head2 openapi.cors_preflighted
+  my $error = $callback->($c, {
+    headers => "X-Foo", # Value of Access-Control-Request-Headers or empty string
+    method  => "DELETE", # Value of Access-Control-Request-Method or empty string
+    origin  => "https://example.com", # Value of "Origin" header
+    type    => "simple", # either "preflighted", "real" or "simple"
+  });
 
-  $c = $c->openapi->cors_preflighted($preflight_callback);
-  $c = $c->openapi->cors_preflighted("MyApp::cors_simple");
-  $c = $c->openapi->cors_preflighted("_some_controller_method");
-  $c = $c->openapi->cors_preflighted(sub { ... });
-  $c = $c->openapi->cors_preflighted;
-
-Will validate a Preflighted CORS request using the C<$preflight_callback>, if
-the incoming request...
+The return value C<$error> must be in one of the following formats:
 
 =over 2
 
-=item * has HTTP method set to OPTIONS
+=item * A string starting with "/"
 
-=item * has the "Access-Control-Request-Headers" header set
+Shortcut for generating a 400 Bad Request response with a header name. Example:
 
-=item * has the "Access-Control-Request-Method" header set
+  return "/Origin"                         if $params->{origin} !~ /example.com$/;
+  return "/Access-Control-Request-Headers" if $params->{headers} =~ /^X-Foo/;
 
-=item * has the "Origin" header set
+=item * Any other string
+
+Used to generate a 400 Bad Request response with a completely custom message.
+
+=item * An array-ref
+
+Used to generate a completely custom 400 Bad Request response. Example:
+
+  return [{message => "Some error!", path => "/Whatever"}];
+  return [{message => "Some error!"}];
+  return [JSON::Validator::Error->new];
 
 =back
 
-C<openapi.cors_preflighted> will automatically generate a "400 Bad Request"
-response if the "Access-Control-Allow-Origin" response header is not set by
-C<$preflight_callback>. On success, the following headers will be set, unless
-already set by C<$preflight_callback>:
-
-C<Access-Control-Max-Age> will have the following default values if not set by
-C<$preflight_callback>:
-
-C<$preflight_callback> defaults to a function that matches "Origin" header
-against L</openapi_cors_allow_origins>.
+On success, the following headers will be set, unless already set by
+C<$callback>:
 
 =over 2
 
 =item * Access-Control-Allow-Headers
 
-Set to the value of the incoming "Access-Control-Request-Headers" header.
+Set to the header of the incoming "Access-Control-Request-Headers" header.
 
 =item * Access-Control-Allow-Methods
 
-Set to the value of the incoming "Access-Control-Request-Method" header.
+Set to the list of HTTP methods defined in the OpenAPI spec for this path.
+
+=item * Access-Control-Allow-Origin
+
+Set to the "Origin" header in the request.
 
 =item * Access-Control-Max-Age
 
-Set to "3600".
+Set to L</openapi_cors_default_max_age> or 1800.
 
 =back
-
-The C<$preflight_callback> can be a simple method name in the current
-controller, a sub ref or a FQN function name, such as
-C<MyApp::validate_simple_cors>. See L</SYNOPSIS> for example usage.
-
-=head2 openapi.cors_simple
-
-  $c = $c->openapi->cors_simple($simple_callback);
-  $c = $c->openapi->cors_simple("MyApp::cors_simple");
-  $c = $c->openapi->cors_simple("_some_controller_method");
-  $c = $c->openapi->cors_simple(sub { ... });
-  $c = $c->openapi->cors_simple;
-
-Will validate a Simple CORS request using the C<$simple_callback>, if the
-incoming request...
-
-=over 2
-
-=item * has HTTP method set to GET, HEAD or POST.
-
-=item * has the "Content-Type" header set to application/x-www-form-urlencoded, multipart/form-data or text/plain.
-
-=item * has the "Origin" header set
-
-=back
-
-C<openapi.cors_simple> will automatically generate a "400 Bad Request" response
-if the "Access-Control-Allow-Origin" response header is not set by the
-C<$simple_callback>.
-
-The C<$simple_callback> can be a simple method name in the current controller,
-a sub ref or a FQN function name, such as C<MyApp::validate_simple_cors>. See
-L</SYNOPSIS> for example usage.
-
-C<$simple_callback> defaults to a function that matches "Origin" header
-against L</openapi_cors_allow_origins>.
 
 =head1 METHODS
 

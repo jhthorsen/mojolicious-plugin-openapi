@@ -192,16 +192,18 @@ sub _default_schema {
 }
 
 sub _helper_get_spec {
-  my ($c, $path) = @_;
+  my $c    = shift;
+  my $path = shift // 'for_current';
   my $self = _self($c);
 
-  return $self->validator->get($path) if defined $path;
+  return $self->validator->get($path) if ref $path or $path =~ m!^/! or !length $path;
 
   my $jp;
   for my $s (reverse @{$c->match->stack}) {
-    $jp ||= [paths => $s->{'openapi.path'}, lc $c->req->method];
+    $jp ||= [paths => $s->{'openapi.path'}];
   }
 
+  push @$jp, lc $c->req->method if $jp and $path ne 'for_path';    # Internal for now
   return $jp ? $self->validator->get($jp) : undef;
 }
 
