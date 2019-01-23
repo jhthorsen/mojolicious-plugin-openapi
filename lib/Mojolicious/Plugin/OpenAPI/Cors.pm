@@ -38,9 +38,17 @@ sub _add_preflighted_route {
   }
 }
 
+sub _default_cors_exchange {
+  my ($c, $req) = @_;
+
+  for my $re (@{$c->stash('openapi_cors_allow_origins') || []}) {
+    return $c->res->headers->header('Access-Control-Allow-Origin' => $req->{origin})
+      if $req->{origin} =~ $re;
+  }
+}
+
 sub _helper_cors_exchange {
   my ($c, $cb) = @_;
-
   local $SKIP_RENDER = 1;
 
   # Check simple first
@@ -56,7 +64,8 @@ sub _helper_cors_exchange {
 }
 
 sub _helper_cors_preflighted {
-  my ($c, $cb) = @_;
+  my $c = shift;
+  my $cb = shift || \&_default_cors_exchange;
 
   # Run default simple CORS checks
   my $method = uc $c->req->method;
@@ -86,7 +95,8 @@ sub _helper_cors_preflighted {
 }
 
 sub _helper_cors_simple {
-  my ($c, $cb) = @_;
+  my $c   = shift;
+  my $cb  = shift || \&_default_cors_exchange;
   my $req = {type => 'simple'};
 
   # Run default simple CORS checks
@@ -125,8 +135,11 @@ sub _render_preflighted_response {
     unless $h->header('Access-Control-Allow-Headers');
   $h->header('Access-Control-Allow-Methods' => $req->{method})
     unless $h->header('Access-Control-Allow-Methods');
-  $h->header('Access-Control-Max-Age' => $req->{age} || '3600')
-    unless $h->header('Access-Control-Max-Age');
+
+  unless ($h->header('Access-Control-Max-Age')) {
+    my $default_max_age = $c->stash('openapi_cors_default_max_age') || 1800;
+    $h->header('Access-Control-Max-Age' => $req->{age} || $default_max_age);
+  }
 
   return $c->tap(render => data => '', status => 200);
 }
@@ -228,6 +241,28 @@ This plugin is loaded by default by L<Mojolicious::Plugin::OpenAPI>.
 Note that this plugin currently EXPERIMENTAL! Please let me know if you have
 any feedback.
 
+=head1 STASH VARIABLES
+
+Note that the following stash variables can be set in L<Mojolicious/defaults>,
+L<Mojolicious::Routes::Route/to> or L<Mojolicious::Controller/stash>.
+
+=head2 openapi_cors_allow_origins
+
+This variable should hold an array-ref of regexes that will be matched against
+the "Origin" header, unless a function is passed on to
+L</openapi.cors_preflighted> or L<openapi.cors_simple>. Examples:
+
+  $app->defaults(openapi_cors_allow_origins => [qr{^https?://whatever.example.com}]);
+  $c->stash(openapi_cors_allow_origins => [qr{^https?://whatever.example.com}]);
+
+=head2 openapi_cors_default_max_age
+
+Holds the default value for the "Access-Control-Max-Age" response header
+set by L</openapi.cors_preflighted>. Examples:
+
+  $app->defaults(openapi_cors_default_max_age => 3600);
+  $c->stash(openapi_cors_default_max_age => 3600);
+
 =head1 HELPERS
 
 =head2 openapi.cors_exchange
@@ -236,6 +271,7 @@ any feedback.
   $c = $c->openapi->cors_exchange("MyApp::cors_simple");
   $c = $c->openapi->cors_exchange("_some_controller_method");
   $c = $c->openapi->cors_exchange(sub { ... });
+  $c = $c->openapi->cors_exchange;
 
 Used to validate either a simple or preflighted CORS request. This is the same
 as doing:
@@ -248,6 +284,7 @@ as doing:
   $c = $c->openapi->cors_preflighted("MyApp::cors_simple");
   $c = $c->openapi->cors_preflighted("_some_controller_method");
   $c = $c->openapi->cors_preflighted(sub { ... });
+  $c = $c->openapi->cors_preflighted;
 
 Will validate a Preflighted CORS request using the C<$preflight_callback>, if
 the incoming request...
@@ -271,6 +308,9 @@ already set by C<$preflight_callback>:
 
 C<Access-Control-Max-Age> will have the following default values if not set by
 C<$preflight_callback>:
+
+C<$preflight_callback> defaults to a function that matches "Origin" header
+against L</openapi_cors_allow_origins>.
 
 =over 2
 
@@ -298,6 +338,7 @@ C<MyApp::validate_simple_cors>. See L</SYNOPSIS> for example usage.
   $c = $c->openapi->cors_simple("MyApp::cors_simple");
   $c = $c->openapi->cors_simple("_some_controller_method");
   $c = $c->openapi->cors_simple(sub { ... });
+  $c = $c->openapi->cors_simple;
 
 Will validate a Simple CORS request using the C<$simple_callback>, if the
 incoming request...
@@ -319,6 +360,9 @@ C<$simple_callback>.
 The C<$simple_callback> can be a simple method name in the current controller,
 a sub ref or a FQN function name, such as C<MyApp::validate_simple_cors>. See
 L</SYNOPSIS> for example usage.
+
+C<$simple_callback> defaults to a function that matches "Origin" header
+against L</openapi_cors_allow_origins>.
 
 =head1 METHODS
 

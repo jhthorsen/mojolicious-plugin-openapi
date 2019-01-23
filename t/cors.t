@@ -5,8 +5,9 @@ use Test::More;
 use Mojolicious::Lite;
 my $cors_method = '';
 get '/user' => sub {
-  my $c = shift->openapi->$cors_method("main::$cors_method")->openapi->valid_input or return;
-  $c->render(json => {cors => $cors_method, origin => $c->stash('origin')});
+  my $openapi_cors_method = $cors_method && $cors_method =~ /::(\w+)$/ ? $1 : 'cors_exchange';
+  my $c = shift->openapi->$openapi_cors_method($cors_method)->openapi->valid_input or return;
+  $c->render(json => {cors => $openapi_cors_method, origin => $c->stash('origin')});
   },
   'User';
 
@@ -14,7 +15,7 @@ plugin OpenAPI => {url => 'data://main/cors.json', add_preflighted_routes => 1};
 
 my $t = Test::Mojo->new;
 
-note $cors_method = 'cors_simple';
+note $cors_method = 'main::cors_simple';
 $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
   ->status_is(400)->json_is('/errors/0/message', 'Invalid CORS request.');
 $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.example'})
@@ -23,7 +24,7 @@ $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.e
 $t->get_ok('/api/user', {Origin => 'http://foo.example'})->status_is(200)
   ->header_is('Access-Control-Allow-Origin' => 'http://foo.example');
 
-note $cors_method = 'cors_preflighted';
+note $cors_method = 'main::cors_preflighted';
 $t->options_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
   ->status_is(400)->json_is('/errors/0/message', 'Invalid CORS request.');
 $t->options_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.example'})
@@ -32,7 +33,7 @@ $t->options_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://f
   ->header_is('Access-Control-Allow-Methods' => 'POST, GET, OPTIONS')
   ->header_is('Access-Control-Max-Age'       => 86400)->content_is('');
 
-note $cors_method = 'cors_exchange';
+note $cors_method = 'main::cors_exchange';
 $t->options_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
   ->status_is(400)->json_is('/errors/0/message', 'Invalid CORS request.');
 $t->options_ok(
@@ -43,16 +44,24 @@ $t->options_ok(
     'Content-Type'                   => 'text/plain',
     'Origin'                         => 'http://foo.example'
   }
-)->header_is('Access-Control-Allow-Origin' => 'http://foo.example')
+)->status_is(200)->header_is('Access-Control-Allow-Origin' => 'http://foo.example')
   ->header_is('Access-Control-Allow-Headers' => 'X-Foo, X-Bar')
   ->header_is('Access-Control-Allow-Methods' => 'POST')
-  ->header_is('Access-Control-Max-Age'       => 3600)->content_is('');
+  ->header_is('Access-Control-Max-Age'       => 1800)->content_is('');
 
 $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
   ->status_is(400)->json_is('/errors/0/message', 'Invalid CORS request.');
 $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.example'})
   ->status_is(200)->header_is('Access-Control-Allow-Origin' => 'http://foo.example')
   ->json_is('/cors', 'cors_exchange')->json_is('/origin', 'http://foo.example');
+
+note 'default_cors_exchange';
+$cors_method = '';
+$t->app->defaults(openapi_cors_allow_origins   => [qr{bar\.example}]);
+$t->app->defaults(openapi_cors_default_max_age => 42);
+$t->options_ok('/api/user', {'Origin' => 'http://bar.example'})->status_is(200)
+  ->header_is('Access-Control-Allow-Origin' => 'http://bar.example')
+  ->header_is('Access-Control-Max-Age'      => 42)->content_is('');
 
 done_testing;
 
