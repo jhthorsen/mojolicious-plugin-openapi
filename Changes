@@ -1,5 +1,12 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.10 Not Released
+ - Add "plugins" as a documented feature for register()
+ - Add Mojolicious::Plugin::OpenAPI::SpecRenderer
+ - Add the possibility to turn off automatic rendering of specification
+   using OPTIONS and from /:basePath route
+ - Add EXPERIMENTAL "openapi_routes_added" hook
+
 2.09 2019-01-21T09:51:56+0900
  - Using formats from JSON::Validator 3.04
 

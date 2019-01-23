@@ -10,7 +10,7 @@ get '/spec' => sub {
   },
   'Spec';
 
-get('/user' => sub { shift->render(openapi => {}) }, 'user');
+get('/user/:id' => sub { shift->render(openapi => {}) }, 'user');
 
 plugin OpenAPI => {url => 'data://main/spec.json'};
 
