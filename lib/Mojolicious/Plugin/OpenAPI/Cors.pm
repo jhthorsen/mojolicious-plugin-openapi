@@ -30,7 +30,7 @@ sub _add_preflighted_route {
 
   for my $route (@$routes) {
     my $route_path = $route->to_string;
-    next if $match->find($c, {method => 'options', path => $route_path, websocket => 0});
+    next if $match->find($c, {method => 'options', path => $route_path});
 
     # Make a given action also handle OPTIONS
     push @{$route->via}, 'OPTIONS';
@@ -95,7 +95,7 @@ sub _helper_cors_simple {
 
   my $req_headers = $c->req->headers;
   my $ct = $req_headers->content_type || '';
-  return $c unless grep { $ct eq $_ } @CORS_SIMPLE_CONTENT_TYPES;
+  return $c if $ct and !grep { $ct eq $_ } @CORS_SIMPLE_CONTENT_TYPES;
   return $c unless $req->{origin} = $req_headers->header('Origin');
 
   # Allow the callback to make up the decision if this is a valid CORS request

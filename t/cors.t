@@ -20,6 +20,8 @@ $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.e
 $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.example'})
   ->status_is(200)->header_is('Access-Control-Allow-Origin' => 'http://foo.example')
   ->json_is('/cors', 'cors_simple')->json_is('/origin', 'http://foo.example');
+$t->get_ok('/api/user', {Origin => 'http://foo.example'})->status_is(200)
+  ->header_is('Access-Control-Allow-Origin' => 'http://foo.example');
 
 note $cors_method = 'cors_preflighted';
 $t->options_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
