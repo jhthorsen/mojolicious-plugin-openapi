@@ -45,6 +45,7 @@ sub _add_preflighted_routes {
 
   for my $route (@$routes) {
     my $route_path = $route->to_string;
+    next if $self->_takeover_exchange_route($route);
     next if $match->find($c, {method => 'options', path => $route_path});
 
     # Make a given action also handle OPTIONS
@@ -68,7 +69,7 @@ sub _exchange {
 
   # Not a CORS request
   unless (defined $c->req->headers->origin) {
-    $self->_render_bad_request($c, 'OPTIONS is only for preflighted CORS requests.')
+    _render_bad_request($c, 'OPTIONS is only for preflighted CORS requests.')
       if $c->match->endpoint->to->{'openapi.cors_preflighted'};
     return $c;
   }
@@ -81,14 +82,13 @@ sub _exchange {
   # TODO: Remove support for openapi.cors_simple
   if ($c->stash('openapi.cors_simple_deprecated')) {
     warn "\$c->openapi->cors_simple() has been replaced by \$c->openapi->cors_exchange()";
-    return $self->_render_bad_request($c, '/Origin')
-      unless $c->res->headers->access_control_allow_origin;
+    return _render_bad_request($c, '/Origin') unless $c->res->headers->access_control_allow_origin;
     return $c;
   }
 
-  return $self->_render_bad_request($c, $errors) if $errors;
+  return _render_bad_request($c, $errors) if $errors;
 
-  $self->_set_default_headers($c);
+  _set_default_headers($c);
   return $type eq 'preflighted' ? $c->tap('render', data => '', status => 200) : $c;
 }
 
@@ -121,7 +121,7 @@ sub _is_simple_request {
 }
 
 sub _render_bad_request {
-  my ($self, $c, $errors) = @_;
+  my ($c, $errors) = @_;
 
   $errors = [{message => "Invalid $1 header.", path => $errors}]
     if !ref $errors and $errors =~ m!^/([\w-]+)!;
@@ -131,7 +131,7 @@ sub _render_bad_request {
 }
 
 sub _set_default_headers {
-  my ($self, $c) = @_;
+  my $c     = shift;
   my $req_h = $c->req->headers;
   my $res_h = $c->res->headers;
 
@@ -155,6 +155,26 @@ sub _set_default_headers {
   unless ($res_h->header('Access-Control-Max-Age')) {
     $res_h->header('Access-Control-Max-Age' => $c->stash('openapi_cors_default_max_age'));
   }
+}
+
+sub _takeover_exchange_route {
+  my ($self, $route) = @_;
+  my $defaults = $route->to;
+
+  return 0 if $defaults->{controller};
+  return 0 unless $defaults->{action} and $defaults->{action} eq 'openapi_plugin_cors_exchange';
+  return 0 unless grep { $_ eq 'OPTIONS' } @{$route->via};
+
+  $defaults->{cb} = sub {
+    my $c = shift;
+    $c->openapi->valid_input or return;
+    $c->req->headers->origin or return _render_bad_request($c, '/Origin');
+    $c->stash(openapi_cors_type => 'preflighted');
+    _set_default_headers($c);
+    $c->render(data => '', status => 200);
+  };
+
+  return 1;
 }
 
 1;
@@ -186,6 +206,49 @@ after validating the request against L</openapi_cors_allowed_origins>:
 
     # Will only run this part if both the cors_exchange and valid_input was successful.
     $c->render(openapi => {user => {}});
+  }
+
+=head2 Using the specification
+
+It's possible to enable preflight and simple CORS support directly in the
+specification. Here is one example:
+
+  "/user/{id}/posts": {
+    "parameters": [
+      { "in": "header", "name": "Origin", "type": "string", "pattern": "https?://example.com" }
+    ],
+    "options": {
+      "x-mojo-to": "#openapi_plugin_cors_exchange",
+      "responses": {
+        "200": { "description": "Cors exchange", "schema": { "type": "string" } }
+      }
+    },
+    "put": {
+      "x-mojo-to": "user#add_post",
+      "responses": {
+        "200": { "description": "Add a new post.", "schema": { "type": "object" } }
+      }
+    }
+  }
+
+The special part can be found in the "OPTIONS" request It has the C<x-mojo-to>
+key set to "#openapi_plugin_cors_exchange". This will enable
+L<Mojolicious::Plugin::OpenAPI::Cors> to take over the route and add a custom
+callback to validate the input headers using regular OpenAPI rules and respond
+with a "200 OK" and the default headers as listed under
+L</openapi.cors_exchange> if the input is valid. The only extra part that needs
+to be done in the C<add_post()> action is this:
+
+  sub add_post {
+    my $c = shift->openapi->valid_input or return;
+
+    # Need to respond with a "Access-Control-Allow-Origin" header if
+    # the input "Origin" header was validated
+    $c->res->headers->access_control_allow_origin($c->req->headers->origin)
+      if $c->req->headers->origin;
+
+    # Do the rest of your custom logic
+    $c->respond(openapi => {});
   }
 
 =head2 Custom exchange

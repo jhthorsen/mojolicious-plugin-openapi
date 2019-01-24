@@ -10,13 +10,23 @@ get '/user' => sub {
   my $c = shift->openapi->$cors_method($cors_callback)->openapi->valid_input or return;
   $c->render(json => {cors => $cors_method, origin => $c->stash('origin')});
   },
-  'GetUser';
+  'getUser';
 
 put '/user' => sub {
   my $c = shift->openapi->cors_exchange->openapi->valid_input or return;
   $c->render(json => {created => time});
   },
-  'AddUser';
+  'addUser';
+
+put '/headers' => sub {
+  my $c = shift->openapi->valid_input or return;
+
+  $c->res->headers->access_control_allow_origin($c->req->headers->origin)
+    if $c->req->headers->origin;
+
+  $c->render(json => {h => 42});
+  },
+  'headerValidation';
 
 plugin OpenAPI => {url => 'data://main/cors.json', add_preflighted_routes => 1};
 
@@ -75,6 +85,21 @@ $t->options_ok('/api/user')->status_is(400)
 $t->put_ok('/api/user', {'Origin' => 'http://bar.example'})->status_is(200)
   ->header_is('Access-Control-Allow-Origin' => 'http://bar.example')->json_has('/created');
 
+note 'Using the spec';
+$t->options_ok('/api/headers')->status_is(400)->json_is('/errors/0/path' => '/Origin');
+$t->put_ok('/api/headers', {'Origin' => 'https://foo.example'})->status_is(400)
+  ->json_is('/errors/0/path' => '/Origin');
+
+$t->options_ok('/api/headers', {'Origin' => 'http://foo.example'})->status_is(400)
+  ->json_is('/errors/0/path' => '/Origin');
+
+$t->options_ok('/api/headers', {'Origin' => 'http://bar.example'})->status_is(200)
+  ->header_is('Access-Control-Allow-Origin' => 'http://bar.example')
+  ->header_is('Access-Control-Max-Age'      => 42)->content_is('');
+
+$t->put_ok('/api/headers', {'Origin' => 'https://bar.example'})->status_is(200)
+  ->header_is('Access-Control-Allow-Origin' => 'https://bar.example')->json_is('/h' => 42);
+
 done_testing;
 
 sub cors_exchange {
@@ -113,15 +138,32 @@ __DATA__
   "paths": {
     "/user": {
       "get": {
-        "operationId": "GetUser",
+        "operationId": "getUser",
         "responses": {
-          "200": { "description": "Whatever", "schema": { "type": "object" } }
+          "200": { "description": "Get user", "schema": { "type": "object" } }
         }
       },
       "put": {
-        "operationId": "AddUser",
+        "operationId": "addUser",
         "responses": {
-          "200": { "description": "Whatever", "schema": { "type": "object" } }
+          "200": { "description": "Create user", "schema": { "type": "object" } }
+        }
+      }
+    },
+    "/headers": {
+      "parameters": [
+        { "in": "header", "name": "Origin", "type": "string", "pattern": "https?://bar.example" }
+      ],
+      "options": {
+        "x-mojo-to": "#openapi_plugin_cors_exchange",
+        "responses": {
+          "200": { "description": "Cors exchange", "schema": { "type": "object" } }
+        }
+      },
+      "put": {
+        "operationId": "headerValidation",
+        "responses": {
+          "200": { "description": "Cors put", "schema": { "type": "object" } }
         }
       }
     }
