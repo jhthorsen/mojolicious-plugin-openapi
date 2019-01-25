@@ -283,7 +283,7 @@ sub _set_request_data {
     $c->req->cookie($name => $value);
   }
   elsif ($in eq 'header') {
-    $c->req->headers->header($name => $value);
+    $c->req->headers->header($name => ref $value eq 'ARRAY' ? @$value : $value);
   }
   elsif ($in ne 'body') {    # no need to write body back
     _confess_invalid_in($in);

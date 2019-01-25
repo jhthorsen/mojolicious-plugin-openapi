@@ -1,8 +1,15 @@
 use Mojo::Base -strict;
+use Mojo::JSON 'true';
 use Test::Mojo;
 use Test::More;
 
 use Mojolicious::Lite;
+get(
+  '/no-default-options/:id' => sub { $_[0]->render(openapi => {id => $_[0]->stash('id')}) },
+  'Dummy'
+);
+options(
+  '/perl/no-default-options/:id' => sub { $_[0]->render(json => {options => $_[0]->stash('id')}) });
 post('/user' => sub { shift->render(openapi => {}) }, 'User');
 my $obj = plugin OpenAPI => {route => app->routes->any('/one'), url => 'data://main/one.json'};
 plugin OpenAPI => {default_response_name => 'DefErr', url => 'data://main/two.json'};
@@ -15,6 +22,13 @@ plugin OpenAPI => {
     schemes  => ['http'],
     basePath => '/perl',
     paths    => {
+      '/no-default-options/{id}' => {
+        get => {
+          operationId => 'Dummy',
+          parameters  => [{in => 'path', name => 'id', type => 'string', required => true}],
+          responses   => {200 => {description => 'response', schema => {type => 'object'}}}
+        }
+      },
       '/user' => {
         post => {
           operationId => 'User',
@@ -50,6 +64,10 @@ $t->options_ok('/two/user?method=post')->status_is(200)
 $t->get_ok('/perl')->status_is(200)->json_is('/info/title', 'Test schema in perl');
 $t->options_ok('/perl/user?method=post')->status_is(200)
   ->json_is('/responses/500/description', undef);
+
+note 'Override options';
+$t->get_ok('/perl/no-default-options/42')->status_is(200)->json_is('/id', 42);
+$t->options_ok('/perl/no-default-options/42')->status_is(200)->json_is('/options', 42);
 
 done_testing;
 
