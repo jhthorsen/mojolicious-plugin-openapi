@@ -67,36 +67,6 @@ EXPERIMENTAL. Note that testing out v3 requires [YAML::XS](https://metacpan.org/
 Please report in [issues](https://github.com/jhthorsen/json-validator/issues)
 or open pull requests to enhance the 3.0 support.
 
-# AUTOMATIC RESOURCES
-
-This module adds some extra resources automatically.
-
-## Specification renderer
-
-The specification in JSON or human rendered format can be retrieved by
-requesting the `basePath`.
-
-The human readable format focus on making the documentation printable, so you
-can easily share it with third parties as a PDF. If this documentation format
-is too basic or has missing information, then please
-[report in](https://github.com/jhthorsen/mojolicious-plugin-openapi/issues)
-suggestions for enhancements.
-
-Examples:
-
-    GET https://api.example.com/v1.json
-    GET https://api.example.com/v1.html
-
-## OPTIONS
-
-Using the HTTP method "OPTIONS" will render the specification for a given path.
-
-Examples:
-
-    OPTIONS https://api.example.com/v1/users
-    OPTIONS https://api.example.com/v1/users?method=get
-    OPTIONS https://api.example.com/v1/users?method=post
-
 # HELPERS
 
 ## openapi.spec
@@ -118,18 +88,6 @@ be relative to the current operation. Example:
         }
       }
     }
-
-## openapi.render\_spec
-
-    $c = $c->openapi->render_spec;
-
-Used to render the specification as either "html" or "json". Set the
-["stash" in Mojolicious](https://metacpan.org/pod/Mojolicious#stash) variable "format" to change the format to render.
-
-This helper is called by default, when accessing the "basePath" resource.
-
-The "html" rendering needs improvement. Any help or feedback is much
-appreciated.
 
 ## openapi.validate
 
@@ -159,6 +117,25 @@ Returns the [Mojolicious::Controller](https://metacpan.org/pod/Mojolicious::Cont
 automatically render an error document if not and return false. See
 ["SYNOPSIS"](#synopsis) for example usage.
 
+# HOOKS
+
+[Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI) will emit the following hooks on the
+[application](https://metacpan.org/pod/Mojolicious) object.
+
+## openapi\_routes\_added
+
+Emitted after all routes have been added by this plugin.
+
+    $app->hook(openapi_routes_added => sub {
+      my ($openapi, $routes) = @_;
+
+      for my $route (@$routes) {
+        ...
+      }
+    });
+
+This hook is EXPERIMENTAL and subject for change.
+
 # RENDERER
 
 This plugin register a new handler called `openapi`. The special thing about
@@ -184,13 +161,13 @@ below shows the default ["renderer"](#renderer) which generates JSON data:
 
 ## route
 
-    $route = $self->route;
+    $route = $openapi->route;
 
 The parent [Mojolicious::Routes::Route](https://metacpan.org/pod/Mojolicious::Routes::Route) object for all the OpenAPI endpoints.
 
 ## validator
 
-    $jv = $self->validator;
+    $jv = $openapi->validator;
 
 Holds a [JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON::Validator::OpenAPI::Mojolicious) object.
 
@@ -198,8 +175,8 @@ Holds a [JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON::V
 
 ## register
 
-    $self = $self->register($app, \%config);
-    $self = $app->plugin(OpenAPI => \%config);
+    $openapi = $openapi->register($app, \%config);
+    $openapi = $app->plugin(OpenAPI => \%config);
 
 Loads the OpenAPI specification, validates it and add routes to
 [$app](https://metacpan.org/pod/Mojolicious). It will also set up ["HELPERS"](#helpers) and adds a
@@ -251,6 +228,19 @@ for more details.
 `log_level` is used when logging invalid request/response error messages.
 
 Default: "warn".
+
+### plugins
+
+A list of OpenAPI classes to extend the functionality. Default is:
+[Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Cors),
+[Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::SpecRenderer) and
+[Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Security).
+
+    $app->plugin(OpenAPI => {plugins => [qw(+Cors +SpecRenderer +Security)]});
+
+You can load your own plugins by doing:
+
+    $app->plugin(OpenAPI => {plugins => [qw(+SpecRenderer My::Cool::OpenAPI::Plugin)]});
 
 ### renderer
 
@@ -307,6 +297,8 @@ the terms of the Artistic License version 2.0.
 # SEE ALSO
 
 - [Mojolicious::Plugin::OpenAPI::Guides::Tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial)
+- [Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Cors)
 - [Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Security)
+- [Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::SpecRenderer)
 - [http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html](http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html).
 - [OpenAPI specification](https://openapis.org/specification)

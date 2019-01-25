@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.10 Not Released
+2.10 2019-01-25T12:49:55+0900
  - Add "plugins" as a documented feature for register()
  - Add Mojolicious::Plugin::OpenAPI::SpecRenderer
  - Add the possibility to turn off automatic rendering of specification
