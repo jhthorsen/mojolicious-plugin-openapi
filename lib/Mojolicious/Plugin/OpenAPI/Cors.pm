@@ -330,16 +330,26 @@ L</openapi_cors_default_exchange_callback> is used. Examples:
 
 =head2 openapi_cors_default_exchange_callback
 
-Instead of using the default C<$callback> provided by this module for
-L</openapi.cors_exchange>, you can set a global value.
+This value holds a default callback that will be used by
+L</openapi.cors_exchange>, unless you pass on a C<$callback>. The default
+provided by this plugin will simply validate the C<Origin> header against
+L</openapi_cors_allowed_origins>.
+
+Here is an example to allow every "Origin"
+
+  $app->defaults(openapi_cors_default_exchange_callback => sub {
+    my $c = shift;
+    $c->res->headers->header("Access-Control-Allow-Origin" => "*");
+    return undef;
+  });
 
 =head2 openapi_cors_default_max_age
 
 Holds the default value for the "Access-Control-Max-Age" response header
 set by L</openapi.cors_preflighted>. Examples:
 
-  $app->defaults(openapi_cors_default_max_age => 3600);
-  $c->stash(openapi_cors_default_max_age => 3600);
+  $app->defaults(openapi_cors_default_max_age => 86400);
+  $c->stash(openapi_cors_default_max_age => 86400);
 
 Default value is 1800.
 
