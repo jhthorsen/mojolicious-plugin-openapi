@@ -21,7 +21,13 @@ sub register {
     $app->plugins->once(openapi_routes_added => sub { $self->_add_preflighted_routes($app, @_) });
   }
 
-  $app->defaults(openapi_cors_default_exchange_callback => \&_default_cors_exchange_callback);
+  my %defaults = (
+    openapi_cors_allowed_origins           => [],
+    openapi_cors_default_exchange_callback => \&_default_cors_exchange_callback,
+    openapi_cors_default_max_age           => 1800,
+  );
+
+  $app->defaults($_ => $defaults{$_}) for grep { !$app->defaults($_) } keys %defaults;
   $app->helper('openapi.cors_exchange' => sub { $self->_exchange(@_) });
 
   # TODO: Remove support for openapi.cors_simple
@@ -49,72 +55,66 @@ sub _add_preflighted_routes {
 }
 
 sub _default_cors_exchange_callback {
-  my ($c, $req) = @_;
-  my $allow_origins = $c->stash('openapi_cors_allow_origins') || [];
-  return scalar(grep { $req->{origin} =~ $_ } @$allow_origins) ? undef : '/Origin';
+  my $c       = shift;
+  my $allowed = $c->stash('openapi_cors_allowed_origins') || [];
+  my $origin  = $c->req->headers->origin // '';
+
+  return scalar(grep { $origin =~ $_ } @$allowed) ? undef : '/Origin';
 }
 
 sub _exchange {
   my ($self, $c) = (shift, shift);
   my $cb = shift || $c->stash('openapi_cors_default_exchange_callback');
 
-  my $h   = $c->req->headers;
-  my $req = {
-    headers => $h->header('Access-Control-Request-Headers') // '',
-    method  => $h->header('Access-Control-Request-Method') // $c->req->method,
-    origin  => $h->header('Origin'),
-  };
-
   # Not a CORS request
-  unless (defined $req->{origin}) {
+  unless (defined $c->req->headers->origin) {
     $self->_render_bad_request($c, 'OPTIONS is only for preflighted CORS requests.')
       if $c->match->endpoint->to->{'openapi.cors_preflighted'};
     return $c;
   }
 
-  $req->{type}
-    = $self->_is_simple_request($c, $req) || $self->_is_preflighted_request($c, $req) || 'real';
+  my $type = $self->_is_simple_request($c) || $self->_is_preflighted_request($c) || 'real';
+  $c->stash(openapi_cors_type => $type);
 
-  my $errors = $c->$cb($req);
+  my $errors = $c->$cb;
 
   # TODO: Remove support for openapi.cors_simple
   if ($c->stash('openapi.cors_simple_deprecated')) {
     warn "\$c->openapi->cors_simple() has been replaced by \$c->openapi->cors_exchange()";
     return $self->_render_bad_request($c, '/Origin')
-      unless $c->res->headers->header("Access-Control-Allow-Origin");
+      unless $c->res->headers->access_control_allow_origin;
     return $c;
   }
 
   return $self->_render_bad_request($c, $errors) if $errors;
 
-  $self->_set_default_headers($c, $req);
-  return $req->{type} eq 'preflighted' ? $c->tap(render => data => '', status => 200) : $c;
+  $self->_set_default_headers($c);
+  return $type eq 'preflighted' ? $c->tap('render', data => '', status => 200) : $c;
 }
 
 sub _is_preflighted_request {
-  my ($self, $c, $req) = @_;
+  my ($self, $c) = @_;
+  my $req_h = $c->req->headers;
 
   return undef unless $c->req->method eq 'OPTIONS';
-  return 'preflighted' if $req->{headers};
-  return 'preflighted' if $PREFLIGHTED_METHODS{$req->{method}};
+  return 'preflighted' if $req_h->header('Access-Control-Request-Headers');
+  return 'preflighted' if $req_h->header('Access-Control-Request-Method');
 
-  my $ct = lc $c->req->headers->content_type || '';
+  my $ct = lc($req_h->content_type || '');
   return 'preflighted' if $ct and $PREFLIGHTED_CONTENT_TYPES{$ct};
 
   return undef;
 }
 
 sub _is_simple_request {
-  my ($self, $c, $req) = @_;
+  my ($self, $c) = @_;
+  return undef unless $SIMPLE_METHODS{$c->req->method};
 
-  my $method = $c->req->method;
-  return undef unless $SIMPLE_METHODS{$method};
-
-  my $h = $c->req->headers;
-  my @names = grep { !$SIMPLE_HEADERS{lc($_)} } @{$h->names};
+  my $req_h = $c->req->headers;
+  my @names = grep { !$SIMPLE_HEADERS{lc($_)} } @{$req_h->names};
   return undef if @names;
 
-  my $ct = lc $h->content_type || '';
+  my $ct = lc $req_h->content_type || '';
   return undef if $ct and $SIMPLE_CONTENT_TYPES{$ct};
 
   return 'simple';
@@ -123,39 +123,37 @@ sub _is_simple_request {
 sub _render_bad_request {
   my ($self, $c, $errors) = @_;
 
-  unless (ref $errors) {
-    if ($errors =~ m!^/([\w-]+)!) {
-      $errors = [{message => "Invalid $1 header.", path => $errors}];
-    }
-    else {
-      $errors = [{message => $errors, path => '/'}];
-    }
-  }
+  $errors = [{message => "Invalid $1 header.", path => $errors}]
+    if !ref $errors and $errors =~ m!^/([\w-]+)!;
+  $errors = [{message => $errors, path => '/'}] unless ref $errors;
 
-  return $c->tap(render => openapi => {errors => $errors, status => 400}, status => 400);
+  return $c->tap('render', openapi => {errors => $errors, status => 400}, status => 400);
 }
 
 sub _set_default_headers {
-  my ($self, $c, $req) = @_;
-  my $h = $c->res->headers;
+  my ($self, $c) = @_;
+  my $req_h = $c->req->headers;
+  my $res_h = $c->res->headers;
 
-  $h->header('Access-Control-Allow-Origin' => $req->{origin})
-    unless $h->header('Access-Control-Allow-Origin');
-
-  return unless $req->{type} eq 'preflighted';
-
-  $h->header('Access-Control-Allow-Headers' => $req->{headers})
-    unless $h->header('Access-Control-Allow-Headers');
-
-  unless ($h->header('Access-Control-Allow-Methods')) {
-    my $op_spec = $c->openapi->spec('for_path');
-    my @methods = sort grep { !/$X_RE/ } keys %{$op_spec || {}};
-    $h->header('Access-Control-Allow-Methods' => uc join ', ', @methods);
+  unless ($res_h->access_control_allow_origin) {
+    $res_h->access_control_allow_origin($req_h->origin);
   }
 
-  unless ($h->header('Access-Control-Max-Age')) {
-    my $default_max_age = $c->stash('openapi_cors_default_max_age') || 1800;
-    $h->header('Access-Control-Max-Age' => $req->{age} || $default_max_age);
+  return unless $c->stash('openapi_cors_type') eq 'preflighted';
+
+  unless ($res_h->header('Access-Control-Allow-Headers')) {
+    $res_h->header(
+      'Access-Control-Allow-Headers' => $req_h->header('Access-Control-Request-Headers') // '');
+  }
+
+  unless ($res_h->header('Access-Control-Allow-Methods')) {
+    my $op_spec = $c->openapi->spec('for_path');
+    my @methods = sort grep { !/$X_RE/ } keys %{$op_spec || {}};
+    $res_h->header('Access-Control-Allow-Methods' => uc join ', ', @methods);
+  }
+
+  unless ($res_h->header('Access-Control-Max-Age')) {
+    $res_h->header('Access-Control-Max-Age' => $c->stash('openapi_cors_default_max_age'));
   }
 }
 
@@ -179,15 +177,14 @@ be sent to your already existing actions.
 =head2 Simple exchange
 
 The following example will automatically set default CORS response headers
-after validating the request against L</openapi_cors_allow_origins>:
+after validating the request against L</openapi_cors_allowed_origins>:
 
   package MyApp::Controller::User;
 
   sub get_user {
     my $c = shift->openapi->cors_exchange->openapi->valid_input or return;
 
-    # Will only run this part if both the cors_exchange and valid_input was
-    # successful.
+    # Will only run this part if both the cors_exchange and valid_input was successful.
     $c->render(openapi => {user => {}});
   }
 
@@ -207,32 +204,32 @@ L</openapi.cors_exchange>:
     $c->render(openapi => {user => {}});
   }
 
-  # This method must return undef on success. Any true value will be used as
-  # an error.
+  # This method must return undef on success. Any true value will be used as an error.
   sub _validate_cors {
-    my ($c, $params) = @_;
-
-    # $params->{type} is set to "preflighted", "real" or "simple"
-    $c->app->log->debug("Got CORS $params->{type} request");
+    my $c     = shift;
+    my $req_h = $c->req->headers;
+    my $res_h = $c->res->headers;
 
     # The following "Origin" header check is the same for both simple and
     # preflighted.
-    return "/Origin" unless $params->{origin} =~ m!^https?://whatever.example.com!;
+    return "/Origin" unless $req_h->origin =~ m!^https?://whatever.example.com!;
 
     # The following checks are only valid if preflighted...
 
     # Check the Access-Control-Request-Headers header
-    return "Bad stuff." if $params->{headers} and $params->{headers} =~ /X-No-Can-Do/;
+    my $headers = $req_h->header('Access-Control-Request-Headers');
+    return "Bad stuff." if $headers and $headers =~ /X-No-Can-Do/;
 
     # Check the Access-Control-Request-Method header
-    return "Not cool." if $params->{method} and $params->{method} eq "delete";
+    my $method = $req_h->header('Access-Control-Request-Methods');
+    return "Not cool." if $method and $method eq "DELETE";
 
     # Set the following header for both simple and preflighted on success
     # or just let the auto-renderer handle it.
-    $c->res->headers->header("Access-Control-Allow-Origin" => $params->{origin});
+    $c->res->headers->access_control_allow_origin($req_h->origin);
 
     # Set Preflighted response headers, instead of using the default
-    if ($params->{type} eq "preflighted") {
+    if ($c->stash("openapi_cors_type") eq "preflighted") {
       $c->res->headers->header("Access-Control-Allow-Headers" => "X-Whatever, X-Something");
       $c->res->headers->header("Access-Control-Allow-Methods" => "POST, GET, OPTIONS");
       $c->res->headers->header("Access-Control-Max-Age" => 86400);
@@ -259,14 +256,14 @@ you have any feedback or create a new issue.
 The following "stash variables" can be set in L<Mojolicious/defaults>,
 L<Mojolicious::Routes::Route/to> or L<Mojolicious::Controller/stash>.
 
-=head2 openapi_cors_allow_origins
+=head2 openapi_cors_allowed_origins
 
 This variable should hold an array-ref of regexes that will be matched against
 the "Origin" header in case the default
 L</openapi_cors_default_exchange_callback> is used. Examples:
 
-  $app->defaults(openapi_cors_allow_origins => [qr{^https?://whatever.example.com}]);
-  $c->stash(openapi_cors_allow_origins => [qr{^https?://whatever.example.com}]);
+  $app->defaults(openapi_cors_allowed_origins => [qr{^https?://whatever.example.com}]);
+  $c->stash(openapi_cors_allowed_origins => [qr{^https?://whatever.example.com}]);
 
 =head2 openapi_cors_default_exchange_callback
 
@@ -281,6 +278,15 @@ set by L</openapi.cors_preflighted>. Examples:
   $app->defaults(openapi_cors_default_max_age => 3600);
   $c->stash(openapi_cors_default_max_age => 3600);
 
+Default value is 1800.
+
+=head2 openapi_cors_type
+
+This stash varible is available inside the callback passed on to
+L</openapi.cors_exchange>. It will be either "preflighted", "real" or "simple".
+"real" is the type that comes after "preflighted" when the actual request
+is sent to the server, but with "Origin" header set.
+
 =head1 HELPERS
 
 =head2 openapi.cors_exchange
@@ -294,25 +300,24 @@ set by L</openapi.cors_preflighted>. Examples:
 Used to validate either a simple CORS request, preflighted CORS request or a
 real request. It will be called as soon as the "Origin" request header is seen.
 
-The C<$callback> will be called with the following arguments:
+The C<$callback> will be called with the current L<Mojolicious::Controller>
+object and must return an error or C<undef()> on success:
 
-  my $error = $callback->($c, {
-    headers => "X-Foo", # Value of Access-Control-Request-Headers or empty string
-    method  => "DELETE", # Value of Access-Control-Request-Method or empty string
-    origin  => "https://example.com", # Value of "Origin" header
-    type    => "simple", # either "preflighted", "real" or "simple"
-  });
+  my $error = $callback->($c);
 
-The return value C<$error> must be in one of the following formats:
+The C<$error> must be in one of the following formats:
 
 =over 2
+
+=item * C<undef()>
+
+Returning C<undef()> means that the CORS request is valid.
 
 =item * A string starting with "/"
 
 Shortcut for generating a 400 Bad Request response with a header name. Example:
 
-  return "/Origin"                         if $params->{origin} !~ /example.com$/;
-  return "/Access-Control-Request-Headers" if $params->{headers} =~ /^X-Foo/;
+  return "/Access-Control-Request-Headers";
 
 =item * Any other string
 
@@ -347,7 +352,7 @@ Set to the "Origin" header in the request.
 
 =item * Access-Control-Max-Age
 
-Set to L</openapi_cors_default_max_age> or 1800.
+Set to L</openapi_cors_default_max_age>.
 
 =back
 

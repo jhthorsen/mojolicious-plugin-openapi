@@ -61,9 +61,10 @@ $t->options_ok(
 
 note 'Default cors exchange';
 $cors_callback = undef;
-$t->app->defaults(openapi_cors_allow_origins   => [qr{bar\.example}]);
+$t->app->defaults(openapi_cors_allowed_origins => [qr{bar\.example}]);
 $t->app->defaults(openapi_cors_default_max_age => 42);
-$t->options_ok('/api/user', {'Origin' => 'http://bar.example'})->status_is(200)
+$t->options_ok('/api/user',
+  {'Origin' => 'http://bar.example', 'Access-Control-Request-Method' => 'GET'})->status_is(200)
   ->header_is('Access-Control-Allow-Origin' => 'http://bar.example')
   ->header_is('Access-Control-Max-Age'      => 42)->content_is('');
 
@@ -77,16 +78,20 @@ $t->put_ok('/api/user', {'Origin' => 'http://bar.example'})->status_is(200)
 done_testing;
 
 sub cors_exchange {
-  my ($c, $params) = @_;
+  my $c       = shift;
+  my $req_h   = $c->req->headers;
+  my $headers = $req_h->header('Access-Control-Request-Headers');
+  my $method  = $req_h->header('Access-Control-Request-Methods');
+  my $origin  = $req_h->header('Origin');
 
-  return '/Origin' unless $params->{origin} eq 'http://foo.example';
-  return '/X-No-Can-Do' if $params->{headers} and $params->{headers} =~ /X-No-Can-Do/;
-  return '/Access-Control-Request-Method' if $params->{method} and $params->{method} eq 'DELETE';
+  return '/Origin' unless $origin eq 'http://foo.example';
+  return '/X-No-Can-Do' if $headers and $headers =~ /X-No-Can-Do/;
+  return '/Access-Control-Request-Method' if $method and $method eq 'DELETE';
 
-  $c->stash(origin => $params->{origin});
+  $c->stash(origin => $origin);
 
   # Set required Preflighted response header
-  $c->res->headers->header('Access-Control-Allow-Origin' => $params->{origin});
+  $c->res->headers->header('Access-Control-Allow-Origin' => $origin);
 
   # Set Preflighted response headers, instead of using the default
   $c->res->headers->header('Access-Control-Allow-Headers' => 'X-Whatever, X-Something')
