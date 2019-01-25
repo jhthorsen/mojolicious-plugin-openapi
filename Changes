@@ -8,6 +8,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
  - Add EXPERIMENTAL "openapi_routes_added" hook
  - Add support for Preflight CORS requests #99
  - Fix Simple CORS requests with "GET" and no Content-Type #99
+ - Fix writing a list of headers back after validated
  - Marked $c->openapi->simple_cors as DEPRECATED
 
 2.09 2019-01-21T09:51:56+0900
