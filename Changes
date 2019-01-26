@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.11 Not Released
+ - Fix allowing regular requests with "openapi_cors_allowed_origins" #103
+
 2.10 2019-01-25T12:49:55+0900
  - Add "plugins" as a documented feature for register()
  - Add Mojolicious::Plugin::OpenAPI::SpecRenderer

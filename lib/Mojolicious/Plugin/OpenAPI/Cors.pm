@@ -69,8 +69,9 @@ sub _exchange {
 
   # Not a CORS request
   unless (defined $c->req->headers->origin) {
+    my $method = $c->req->method;
     _render_bad_request($c, 'OPTIONS is only for preflighted CORS requests.')
-      if $c->match->endpoint->to->{'openapi.cors_preflighted'};
+      if $method eq 'OPTIONS' and $c->match->endpoint->to->{'openapi.cors_preflighted'};
     return $c;
   }
 

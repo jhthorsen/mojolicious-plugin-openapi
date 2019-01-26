@@ -85,6 +85,15 @@ $t->options_ok('/api/user')->status_is(400)
 $t->put_ok('/api/user', {'Origin' => 'http://bar.example'})->status_is(200)
   ->header_is('Access-Control-Allow-Origin' => 'http://bar.example')->json_has('/created');
 
+$t->get_ok('/api/user')->status_is(200)->header_is('Access-Control-Allow-Origin' => undef)
+  ->json_is('/origin', undef);
+
+$t->put_ok('/api/user')->status_is(200)->header_is('Access-Control-Allow-Origin' => undef)
+  ->json_has('/created');
+
+$t->put_ok('/api/headers')->status_is(200)->header_is('Access-Control-Allow-Origin' => undef)
+  ->json_is('/h' => 42);
+
 note 'Using the spec';
 $t->options_ok('/api/headers')->status_is(400)->json_is('/errors/0/path' => '/Origin');
 $t->put_ok('/api/headers', {'Origin' => 'https://foo.example'})->status_is(400)
