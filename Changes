@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.11 Not Released
+2.11 2019-01-26T11:37:15+0900
  - Fix allowing regular requests with "openapi_cors_allowed_origins" #103
 
 2.10 2019-01-25T12:49:55+0900
