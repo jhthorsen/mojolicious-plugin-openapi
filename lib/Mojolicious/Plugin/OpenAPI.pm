@@ -203,7 +203,8 @@ sub _helper_get_spec {
     $jp ||= [paths => $s->{'openapi.path'}];
   }
 
-  push @$jp, lc $c->req->method if $jp and $path ne 'for_path';    # Internal for now
+  my $method = lc $c->req->method;
+  push @$jp, ( $method eq 'head' ? 'get' : $method ) if $jp and $path ne 'for_path';    # Internal for now
   return $jp ? $self->validator->get($jp) : undef;
 }
 
