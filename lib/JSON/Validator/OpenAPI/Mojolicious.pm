@@ -60,21 +60,7 @@ sub validate_request {
 
   # v3 Content-Type
   if (my $body_schema = $schema->{requestBody}) {
-    my $types = $self->_detect_content_type($c, 'content_type');
-    my $validated;
-    for my $type (@$types) {
-      next unless my $type_spec = $body_schema->{content}{$type};
-      my $body = $self->_get_request_data($c, $type =~ /\bform\b/ ? 'formData' : 'body');
-      push @errors, $self->_validate_request_value($type_spec, body => $body);
-      $validated = 1;
-    }
-
-    if (!$validated and $body_schema->{required}) {
-      push @errors,
-        JSON::Validator::E('/' => @$types
-        ? "No requestBody rules defined for type @$types."
-        : "Invalid Content-Type.");
-    }
+    push @errors, $self->_validate_request_body($c, $body_schema);
   }
 
   for my $p (@{$schema->{parameters} || []}) {
@@ -199,14 +185,6 @@ sub _confess_invalid_in {
   confess "Unsupported \$in: $_[0]. Please report at https://github.com/jhthorsen/json-validator";
 }
 
-sub _detect_content_type {
-  my ($self, $c, $header) = @_;
-  my %types;
-  /^\s*([^,; ]+)(?:\s*\;\s*q\s*=\s*(\d+(?:\.\d+)?))?\s*$/i and $types{lc $1} = $2 // 1
-    for split ',', $c->req->headers->$header // '';
-  return [sort { $types{$b} <=> $types{$a} } sort keys %types];
-}
-
 sub _get_request_data {
   my ($self, $c, $in) = @_;
 
@@ -316,6 +294,20 @@ sub _set_request_data {
   elsif ($in ne 'body') {    # no need to write body back
     _confess_invalid_in($in);
   }
+}
+
+sub _validate_request_body {
+  my ($self, $c, $body_schema) = @_;
+  my $ct = $c->req->headers->content_type // '';
+
+  $ct =~ s!;.*$!!;
+  if ($body_schema = $body_schema->{content}{$ct}) {
+    my $body = $self->_get_request_data($c, $ct =~ /\bform\b/ ? 'formData' : 'body');
+    return $self->_validate_request_value($body_schema, body => $body);
+  }
+
+  return JSON::Validator::E('/' => "No requestBody rules defined for Content-Type $ct.") if $ct;
+  return JSON::Validator::E('/', 'Invalid Content-Type.');
 }
 
 sub _validate_request_value {
