@@ -20,12 +20,22 @@ get '/pets' => sub {
 
 post '/pets' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->render(text => '', status => 201);
+  $c->render(openapi => '', status => 201);
   },
   'createPets';
 
-eval { plugin OpenAPI => {url => 'data:///petstore.json', schema => 'v3'} };
-ok !$@, 'valid openapi v3 schema' or diag $@;
+plugin OpenAPI => {
+  url      => 'data:///petstore.json',
+  schema   => 'v3',
+  renderer => sub {
+    my ($c, $data) = @_;
+    my $ct = $c->stash('openapi_negotiated_content_type') || 'application/json';
+    return '' if $c->stash('status') == 201;
+    $c->res->headers->content_type($ct);
+    return '<xml></xml>' if $ct =~ m!^application/xml!;
+    return Mojo::JSON::encode_json($data);
+  }
+};
 
 my $t = Test::Mojo->new;
 $t->get_ok('/pets?limit=invalid', {Accept => 'application/json'})->status_is(400)
@@ -33,12 +43,19 @@ $t->get_ok('/pets?limit=invalid', {Accept => 'application/json'})->status_is(400
 
 # TODO: Should probably be 400
 $t->get_ok('/pets?limit=10', {Accept => 'not/supported'})->status_is(500)
-  ->json_is('/errors/0/message', 'No responses rules defined for type not/supported.');
+  ->json_is('/errors/0/message', 'No responses rules defined for Accept not/supported.');
 
 $t->get_ok('/pets?limit=0', {Accept => 'application/json'})->status_is(500)
   ->json_is('/errors/0/message', 'Expected array - got object.');
 
-$t->get_ok('/pets?limit=10', {Accept => 'application/json'})->status_is(200)->content_is('[]');
+$t->get_ok('/pets?limit=10', {Accept => 'application/json'})->status_is(200)
+  ->header_like('Content-Type' => qr{^application/json})->content_is('[]');
+$t->get_ok('/pets?limit=10', {Accept => 'application/*'})->status_is(200)
+  ->header_like('Content-Type' => qr{^application/json})->content_is('[]');
+$t->get_ok('/pets?limit=10', {Accept => 'text/html,application/xml;q=0.9,*/*;q=0.8'})
+  ->status_is(200)->header_like('Content-Type' => qr{^application/xml})->content_is('<xml></xml>');
+$t->get_ok('/pets?limit=10', {Accept => 'text/html,*/*;q=0.8'})->status_is(200)
+  ->header_like('Content-Type' => qr{^application/json})->content_is('[]');
 
 $t->get_ok('/pets?limit=10', {Accept => 'application/json'})->status_is(200)->content_is('[]');
 
@@ -85,24 +102,26 @@ __DATA__
         ],
         "responses": {
           "default": {
+            "description": "unexpected error",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
+                "schema": { "$ref": "#/components/schemas/Error" }
+              },
+              "application/xml": {
+                "schema": { "$ref": "#/components/schemas/Error" }
               }
-            },
-            "description": "unexpected error"
+            }
           },
           "200": {
+            "description": "Expected response to a valid request",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Pets"
-                }
+                "schema": { "$ref": "#/components/schemas/Pets" }
+              },
+              "application/xml": {
+                "schema": { "$ref": "#/components/schemas/Pets" }
               }
-            },
-            "description": "Expected response to a valid request"
+            }
           }
         }
       }
@@ -133,6 +152,9 @@ __DATA__
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Pets" }
+              },
+              "application/xml": {
+                "schema": { "$ref": "#/components/schemas/Pets" }
               }
             }
           },
@@ -140,6 +162,9 @@ __DATA__
             "description": "unexpected error",
             "content": {
               "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              },
+              "application/xml": {
                 "schema": { "$ref": "#/components/schemas/Error" }
               }
             }
@@ -174,15 +199,18 @@ __DATA__
         },
         "responses": {
           "201": {
-            "description": "Null response"
+            "description": "Null response",
+            "content": {
+              "*/*": {
+                "schema": { "type": "string" }
+              }
+            }
           },
           "default": {
             "description": "unexpected error",
             "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/Error" }
               }
             }
           }

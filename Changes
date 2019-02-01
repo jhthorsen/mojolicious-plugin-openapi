@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.12 Not Released
+ - Improved handling of Accept header in OpenAPI v3 #104
+   Can now handle wildcards, such as application/* and */*, even though not
+   defined in the specification.
+
 2.11 2019-01-26T11:37:15+0900
  - Fix allowing regular requests with "openapi_cors_allowed_origins" #103
 

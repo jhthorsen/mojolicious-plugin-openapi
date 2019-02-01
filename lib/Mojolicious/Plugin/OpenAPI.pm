@@ -17,7 +17,8 @@ has _renderer => sub {
   return sub {
     my $c = shift;
     return $_[0]->slurp if UNIVERSAL::isa($_[0], 'Mojo::Asset');
-    $c->res->headers->content_type('application/json;charset=UTF-8');
+    $c->res->headers->content_type('application/json;charset=UTF-8')
+      unless $c->res->headers->content_type;
     return Mojo::JSON::encode_json($_[0]);
   };
 };
@@ -48,7 +49,7 @@ sub register {
   die "[OpenAPI] default_response is no longer supported in config" if $config->{default_response};
 
   $self->{default_response_codes} = $config->{default_response_codes} || [400, 401, 404, 500, 501];
-  $self->{default_response_name} = $config->{default_response_name} || 'DefaultResponse';
+  $self->{default_response_name}  = $config->{default_response_name}  || 'DefaultResponse';
   $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_renderer($config->{renderer}) if $config->{renderer};
   $self->_build_route($app, $config);
@@ -90,7 +91,7 @@ sub _add_routes {
       next if $http_method =~ $X_RE or $http_method eq 'parameters';
       my $op_spec = $self->validator->get([paths => $openapi_path => $http_method]);
       my $name = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-      my $to = $op_spec->{'x-mojo-to'};
+      my $to   = $op_spec->{'x-mojo-to'};
       my $r;
 
       $self->{parameters_for}{$openapi_path}{$http_method}
@@ -142,7 +143,7 @@ sub _before_render {
   my $status = $args->{status} || $c->stash('status') || '200';
   if ($handler eq 'openapi' and ($status eq '404' or $status eq '500')) {
     $args->{handler} = 'openapi';
-    $args->{status} = ($status eq '404' and $c->stash('openapi.path')) ? 501 : $status;
+    $args->{status}  = ($status eq '404' and $c->stash('openapi.path')) ? 501 : $status;
     $c->stash(
       status  => $args->{status},
       openapi => {
@@ -156,7 +157,7 @@ sub _before_render {
 sub _build_route {
   my ($self, $app, $config) = @_;
   my $base_path = $self->validator->get('/basePath') || '/';
-  my $route = $config->{route};
+  my $route     = $config->{route};
 
   $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route = $app->routes->any($base_path) unless $route;
@@ -220,7 +221,7 @@ sub _helper_reply {
     my $h = $c->res->headers;
     if (!$h->content_type and $output->isa('Mojo::Asset::File')) {
       my $types = $c->app->types;
-      my $type = $output->path =~ /\.(\w+)$/ ? $types->type($1) : undef;
+      my $type  = $output->path =~ /\.(\w+)$/ ? $types->type($1) : undef;
       $h->content_type($type || $types->type('bin'));
     }
     return $c->reply->asset($output);

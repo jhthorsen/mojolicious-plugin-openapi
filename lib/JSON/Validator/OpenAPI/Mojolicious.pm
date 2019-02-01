@@ -6,7 +6,7 @@ use Mojo::Util;
 use Scalar::Util 'looks_like_number';
 use Time::Local ();
 
-use constant DEBUG => $ENV{JSON_VALIDATOR_DEBUG} || 0;
+use constant DEBUG   => $ENV{JSON_VALIDATOR_DEBUG} || 0;
 use constant IV_SIZE => eval 'require Config;$Config::Config{ivsize}';
 
 our %COLLECTION_RE = (pipes => qr{\|}, csv => qr{,}, ssv => qr{\s}, tsv => qr{\t});
@@ -58,7 +58,7 @@ sub validate_request {
 
   local $self->{cache};
 
-  # v3
+  # v3 Content-Type
   if (my $body_schema = $schema->{requestBody}) {
     my $types = $self->_detect_content_type($c, 'content_type');
     my $validated;
@@ -133,31 +133,28 @@ sub validate_request {
 
 sub validate_response {
   my ($self, $c, $schema, $status, $data) = @_;
-  my ($blueprint, @errors);
+
+  return JSON::Validator::E('/' => "No responses rules defined for status $status.")
+    unless my $res_schema = $schema->{responses}{$status} || $schema->{responses}{default};
 
   if ($self->version eq '3') {
-    my $accept = $self->_detect_content_type($c, 'accept');
-    my $for_status = $schema->{responses}{$status} || $schema->{responses}{default}
-      or return JSON::Validator::E('/' => "No responses rules defined for status $status.");
-    $blueprint = $for_status if $status eq '201';
-    $blueprint ||= $for_status->{content}{$_} and last for @$accept;
-    $blueprint or return JSON::Validator::E('/' => "No responses rules defined for type @$accept.");
-  }
-  else {
-    $blueprint = $schema->{responses}{$status} || $schema->{responses}{default}
-      or return JSON::Validator::E('/' => "No responses rules defined for status $status.");
+    my $accept = $self->_negotiate_accept_header($c, $res_schema);
+    return JSON::Validator::E('/' => "No responses rules defined for Accept $accept.")
+      unless $res_schema = $res_schema->{content}{$accept};
+    $c->stash(openapi_negotiated_content_type => $accept);
   }
 
-  push @errors, $self->_validate_response_headers($c, $blueprint->{headers})
-    if $blueprint->{headers};
+  my @errors;
+  push @errors, $self->_validate_response_headers($c, $res_schema->{headers})
+    if $res_schema->{headers};
 
-  if ($blueprint->{'x-json-schema'}) {
+  if ($res_schema->{'x-json-schema'}) {
     warn "[OpenAPI] Validate using x-json-schema\n" if DEBUG;
-    push @errors, $self->validate($data, $blueprint->{'x-json-schema'});
+    push @errors, $self->validate($data, $res_schema->{'x-json-schema'});
   }
-  elsif ($blueprint->{schema}) {
+  elsif ($res_schema->{schema}) {
     warn "[OpenAPI] Validate using schema\n" if DEBUG;
-    push @errors, $self->validate($data, $blueprint->{schema});
+    push @errors, $self->validate($data, $res_schema->{schema});
   }
 
   return @errors;
@@ -259,6 +256,37 @@ sub _match_number {
   return "Does not match $name format.";
 }
 
+sub _negotiate_accept_header {
+  my ($self, $c, $schema) = @_;
+  my $accept    = $c->req->headers->accept || '*/*';
+  my @in_schema = sort { length $b <=> length $a } keys %{$schema->{content}};
+  my (@from_req, %from_req);
+
+  /^\s*([^,; ]+)(?:\s*\;\s*q\s*=\s*(\d+(?:\.\d+)?))?\s*$/i and $from_req{lc $1} = $2 // 1
+    for split /,/, $accept;
+  @from_req = sort { $from_req{$b} <=> $from_req{$a} } sort keys %from_req;
+
+  # Check for exact match
+  for my $ct (@from_req) {
+    return $ct if $schema->{content}{$ct};
+  }
+
+  # Check for closest match
+  for my $re (map { s!\*!.*!g; qr{$_} } grep {/\*/} @in_schema) {
+    for my $ct (@from_req) {
+      return $ct if $ct =~ $re;
+    }
+  }
+  for my $re (map { s!\*!.*!g; qr{$_} } grep {/\*/} @from_req) {
+    for my $ct (@in_schema) {
+      return $ct if $ct =~ $re;
+    }
+  }
+
+  # Could not find any valid content type
+  return $accept;
+}
+
 sub _resolve_ref {
   my ($self, $topic, $url) = @_;
   $topic->{'$ref'} = "#/definitions/$topic->{'$ref'}" if $topic->{'$ref'} =~ /^\w+$/;
@@ -326,7 +354,7 @@ sub _validate_request_value {
 
 sub _validate_response_headers {
   my ($self, $c, $schema) = @_;
-  my $input = $self->_get_response_data($c, 'header');
+  my $input   = $self->_get_response_data($c, 'header');
   my $version = $self->version;
   my @errors;
 
@@ -370,7 +398,7 @@ sub _validate_type_object {
   return shift->SUPER::_validate_type_object(@_) unless $_[0]->{validate_input};
 
   my ($self, $data, $path, $schema) = @_;
-  my $properties = $schema->{properties} || {};
+  my $properties    = $schema->{properties} || {};
   my $discriminator = $schema->{discriminator};
   my (%ro, @e);
 
@@ -426,6 +454,24 @@ L<JSON::Validator::OpenAPI::Mojolicious> is a module for validating request and
 response data from/to your L<Mojolicious> application.
 
 Do not use this module directly. Use L<Mojolicious::Plugin::OpenAPI> instead.
+
+=head1 STASH VARIABLES
+
+=head2 openapi_negotiated_content_type
+
+  $str = %c->stash("openapi_negotiated_content_type");
+
+This value will be set when the Accept header has been validated successfully
+against an OpenAPI v3 schema. Note that this could have the value of "*/*" or
+other invalid "Content-Header" values. It will be C<undef> if the "Accept"
+header is not accepteed.
+
+Unfortunately, this variable is not set until you call
+L<Mojolicious::Controller/render>, since we need a status code to figure out
+which types are accepted.
+
+This means that if you want to validate the "Accept" header on input, then you
+have to specify that as a parameter in the spec.
 
 =head1 ATTRIBUTES
 
