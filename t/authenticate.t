@@ -33,6 +33,7 @@ plugin OpenAPI => {route => $auth, url => 'data://main/api.json'};
 my $t = Test::Mojo->new;
 
 $t->get_ok('/api/login')->status_is(200)->json_is('/id', 123);
+$t->get_ok('/api')->status_is(401)->json_is('/errors/0/message', 'not logged in');
 $t->get_ok('/api/protected')->status_is(401)->json_is('/errors/0/message', 'not logged in');
 $t->get_ok('/api/protected?unsafe_token=1')->status_is(200)->json_is('/protected', 'secret');
 

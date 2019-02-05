@@ -199,13 +199,11 @@ sub _helper_get_spec {
 
   return $self->validator->get($path) if ref $path or $path =~ m!^/! or !length $path;
 
-  my $jp;
-  for my $s (reverse @{$c->match->stack}) {
-    $jp ||= [paths => $s->{'openapi.path'}];
-  }
-
-  push @$jp, lc $c->req->method if $jp and $path ne 'for_path';    # Internal for now
-  return $jp ? $self->validator->get($jp) : undef;
+  my ($op_path) = grep $_, map $_->{'openapi.path'}, reverse @{$c->match->stack};
+  return undef if !$op_path;
+  my $jp = [paths => $op_path];
+  push @$jp, lc $c->req->method if $path ne 'for_path';    # Internal for now
+  return $self->validator->get($jp);
 }
 
 sub _helper_reply {
