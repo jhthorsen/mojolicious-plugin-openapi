@@ -184,7 +184,7 @@ the action simply won't be called if you fail to pass the security tests.
 =head2 Exempted routes
 
 All of the routes created by the plugin are protected by the security
-defintions with the following exemptions.  The base route that renders the
+definitions with the following exemptions.  The base route that renders the
 spec/documentation is exempted.  Additionally, when a route does not define its
 own C<OPTIONS> handler a documentation endpoint is generated which is exempt as
 well.
