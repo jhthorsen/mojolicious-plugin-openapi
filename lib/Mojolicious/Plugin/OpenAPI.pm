@@ -597,7 +597,7 @@ specification is written in perl, instead of JSON or YAML.
 
 =head3 version_from_class
 
-Can be used to overriden C</info/version> in the API specification, from the
+Can be used to overridden C</info/version> in the API specification, from the
 return value from the C<VERSION()> method in C<version_from_class>.
 
 This will only have an effect if "version" is "0".
