@@ -356,7 +356,7 @@ Default value is 1800.
 
 =head2 openapi_cors_type
 
-This stash varible is available inside the callback passed on to
+This stash variable is available inside the callback passed on to
 L</openapi.cors_exchange>. It will be either "preflighted", "real" or "simple".
 "real" is the type that comes after "preflighted" when the actual request
 is sent to the server, but with "Origin" header set.
