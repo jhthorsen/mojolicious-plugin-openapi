@@ -15,7 +15,7 @@ my $auth = app->routes->under('/api')->to(
     return 1 if $c->param('unsafe_token');
 
     # not authenticated
-    $c->render(openapi => {message => 'not logged in'}, status => 401);
+    $c->render(openapi => {errors => [{message => 'not logged in'}]}, status => 401);
     return;
   }
 );
@@ -33,7 +33,7 @@ plugin OpenAPI => {route => $auth, url => 'data://main/api.json'};
 my $t = Test::Mojo->new;
 
 $t->get_ok('/api/login')->status_is(200)->json_is('/id', 123);
-$t->get_ok('/api/protected')->status_is(401)->json_is('/message', 'not logged in');
+$t->get_ok('/api/protected')->status_is(401)->json_is('/errors/0/message', 'not logged in');
 $t->get_ok('/api/protected?unsafe_token=1')->status_is(200)->json_is('/protected', 'secret');
 
 done_testing;
@@ -58,8 +58,7 @@ __DATA__
       "get": {
         "x-mojo-name": "protected",
         "responses": {
-          "200": { "description": "response", "schema": { "type": "object" } },
-          "401": { "description": "response", "schema": { "type": "object" } }
+          "200": { "description": "response", "schema": { "type": "object" } }
         }
       }
     }
