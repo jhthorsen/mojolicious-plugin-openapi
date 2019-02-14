@@ -276,7 +276,7 @@ specification is written in perl, instead of JSON or YAML.
 
 ### version\_from\_class
 
-Can be used to overriden `/info/version` in the API specification, from the
+Can be used to overridden `/info/version` in the API specification, from the
 return value from the `VERSION()` method in `version_from_class`.
 
 This will only have an effect if "version" is "0".

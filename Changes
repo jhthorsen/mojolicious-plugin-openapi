@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.12 Not Released
+2.12 2019-02-14T20:12:16+0100
  - Fix HEAD requests #105
  - Fix using /servers/0/url as basePath for OpenAPI v3 #110
    Note: This could be breaking change

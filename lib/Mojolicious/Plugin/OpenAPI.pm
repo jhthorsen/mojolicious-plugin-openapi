@@ -7,7 +7,7 @@ use Mojo::JSON;
 use Mojo::Util;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '2.11';
+our $VERSION = '2.12';
 my $X_RE = qr{^x-};
 
 has route     => sub {undef};
