@@ -296,6 +296,10 @@ sub _set_request_data {
   }
 }
 
+sub _to_list {
+  return ref $_[0] eq 'ARRAY' ? @{$_[0]} : $_[0] ? ($_[0]) : ();
+}
+
 sub _validate_request_body {
   my ($self, $c, $body_schema) = @_;
   my $ct = $c->req->headers->content_type // '';
@@ -387,19 +391,32 @@ sub _validate_type_file {
 }
 
 sub _validate_type_object {
-  return shift->SUPER::_validate_type_object(@_) unless $_[0]->{validate_input};
-
   my ($self, $data, $path, $schema) = @_;
-  my $properties    = $schema->{properties} || {};
-  my $discriminator = $schema->{discriminator};
-  my (%ro, @e);
+  return shift->SUPER::_validate_type_object(@_) unless ref $data eq 'HASH';
 
-  for my $p (keys %$properties) {
-    next unless $properties->{$p}{readOnly};
+  # Support "nullable" in v3
+  # "nullable" is the same as "type":["null", ...], which is supported by many
+  # tools, even though not officially supported by OpenAPI.
+  my %properties = %{$schema->{properties} || {}};
+  local $schema->{properties} = \%properties;
+  if ($self->version eq '3') {
+    for my $key (keys %properties) {
+      next unless $properties{$key}{nullable};
+      $properties{$key} = {%{$properties{$key}}};
+      $properties{$key}{type} = ['null', _to_list($properties{$key}{type})];
+    }
+  }
+
+  return shift->SUPER::_validate_type_object(@_) unless $self->{validate_input};
+
+  my (@e, %ro);
+  for my $p (keys %properties) {
+    next unless $properties{$p}{readOnly};
     push @e, JSON::Validator::E("$path/$p", "Read-only.") if exists $data->{$p};
     $ro{$p} = 1;
   }
 
+  my $discriminator = $schema->{discriminator};
   if ($discriminator and !$self->{inside_discriminator}) {
     my $name = $data->{$discriminator}
       or return JSON::Validator::E($path, "Discriminator $discriminator has no value.");

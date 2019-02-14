@@ -68,7 +68,6 @@ $t->post_ok('/pets', {Cookie => 'debug=1'}, json => {id => 1, name => 'Supercow'
 
 $t->post_ok('/pets', form => {id => 1, name => 'Supercow'})->status_is(201)->content_is('');
 
-
 done_testing;
 
 __DATA__

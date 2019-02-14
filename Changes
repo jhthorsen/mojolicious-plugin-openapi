@@ -2,10 +2,11 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 2.12 Not Released
  - Fix HEAD requests #105
- - Bump JSON::Validator to 3.06
+ - Add support for "nullable" in OpenAPI 3.0 #106
  - Improved handling of Accept header in OpenAPI v3 #104
    Can now handle wildcards, such as application/* and */*, even though not
    defined in the specification.
+ - Bump JSON::Validator to 3.06
 
 2.11 2019-01-26T11:37:15+0900
  - Fix allowing regular requests with "openapi_cors_allowed_origins" #103
