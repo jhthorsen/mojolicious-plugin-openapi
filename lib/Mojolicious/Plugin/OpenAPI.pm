@@ -118,7 +118,8 @@ sub _add_routes {
       $self->_add_default_response($op_spec, $_) for @{$self->{default_response_codes}};
 
       $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-      $r->to({'openapi.path' => $openapi_path});
+      $r->to({'openapi.method' => $http_method});
+      $r->to({'openapi.path'   => $openapi_path});
       warn "[OpenAPI] Add route $http_method @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
       push @routes, $r;
@@ -197,15 +198,16 @@ sub _helper_get_spec {
   my $path = shift // 'for_current';
   my $self = _self($c);
 
+  # Get spec by valid JSON pointer
   return $self->validator->get($path) if ref $path or $path =~ m!^/! or !length $path;
 
-  my $jp;
-  for my $s (reverse @{$c->match->stack}) {
-    $jp ||= [paths => $s->{'openapi.path'}];
-  }
+  # Find spec by current request
+  my ($stash) = grep { $_->{'openapi.path'} } reverse @{$c->match->stack};
+  return undef unless $stash;
 
-  push @$jp, lc $c->req->method if $jp and $path ne 'for_path';    # Internal for now
-  return $jp ? $self->validator->get($jp) : undef;
+  my $jp = [paths => $stash->{'openapi.path'}];
+  push @$jp, $stash->{'openapi.method'} if $path ne 'for_path';    # Internal for now
+  return $self->validator->get($jp);
 }
 
 sub _helper_reply {

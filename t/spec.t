@@ -20,6 +20,8 @@ $t->get_ok('/api/spec')->status_is(200)
   ->json_is('/op_spec/responses/200/description', 'Spec response.')
   ->json_is('/info/version',                      '0.8');
 
+$t->get_ok('/api/user/1')->status_is(200)->content_is('{}');
+
 $t->options_ok('/api/spec')->status_is(200)->json_is('/get/operationId', 'Spec');
 $t->options_ok('/api/spec?method=get')->status_is(200)->json_is('/operationId', 'Spec');
 $t->options_ok('/api/spec?method=post')->status_is(404);
@@ -27,6 +29,9 @@ $t->options_ok('/api/spec?method=post')->status_is(404);
 $t->options_ok('/api/user/1')->status_is(200)->json_is('/get/operationId', 'user');
 
 $t->get_ok('/api')->status_is(200)->json_is('/basePath', '/api');
+
+$t->head_ok('/api')->status_is(200);
+$t->head_ok('/api/user/1')->status_is(200)->content_is('');
 
 hook before_dispatch => sub {
   my $c = shift;
