@@ -2,6 +2,8 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 2.12 Not Released
  - Fix HEAD requests #105
+ - Fix using /servers/0/url as basePath for OpenAPI v3 #110
+   Note: This could be breaking change
  - Fix getting basePath when using under #107
  - Add support for "nullable" in OpenAPI 3.0 #106
  - Improved handling of Accept header in OpenAPI v3 #104

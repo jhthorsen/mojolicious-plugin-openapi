@@ -157,8 +157,12 @@ sub _before_render {
 
 sub _build_route {
   my ($self, $app, $config) = @_;
-  my $base_path = $self->validator->get('/basePath') || '/';
-  my $route     = $config->{route};
+  my $route = $config->{route};
+
+  my $base_path
+    = $self->validator->version eq '3'
+    ? Mojo::URL->new($self->validator->get('/servers/0/url') || '/')->path->to_string
+    : $self->validator->get('/basePath') || '/';
 
   $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route = $app->routes->any($base_path) unless $route;
@@ -248,7 +252,8 @@ sub _helper_validate {
 
   if (@errors) {
     $self->_log($c, '<<<', \@errors);
-    $c->render(data => $self->_renderer->($c, {errors => \@errors, status => 400}), status => 400)
+    $c->stash(status => 400)
+      ->render(data => $self->_renderer->($c, {errors => \@errors, status => 400}))
       if $args->{auto_render} // 1;
   }
 

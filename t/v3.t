@@ -38,35 +38,35 @@ plugin OpenAPI => {
 };
 
 my $t = Test::Mojo->new;
-$t->get_ok('/pets?limit=invalid', {Accept => 'application/json'})->status_is(400)
+$t->get_ok('/v1/pets?limit=invalid', {Accept => 'application/json'})->status_is(400)
   ->json_is('/errors/0/message', 'Expected integer - got string.');
 
 # TODO: Should probably be 400
-$t->get_ok('/pets?limit=10', {Accept => 'not/supported'})->status_is(500)
+$t->get_ok('/v1/pets?limit=10', {Accept => 'not/supported'})->status_is(500)
   ->json_is('/errors/0/message', 'No responses rules defined for Accept not/supported.');
 
-$t->get_ok('/pets?limit=0', {Accept => 'application/json'})->status_is(500)
+$t->get_ok('/v1/pets?limit=0', {Accept => 'application/json'})->status_is(500)
   ->json_is('/errors/0/message', 'Expected array - got object.');
 
-$t->get_ok('/pets?limit=10', {Accept => 'application/json'})->status_is(200)
+$t->get_ok('/v1/pets?limit=10', {Accept => 'application/json'})->status_is(200)
   ->header_like('Content-Type' => qr{^application/json})->content_is('[]');
-$t->get_ok('/pets?limit=10', {Accept => 'application/*'})->status_is(200)
+$t->get_ok('/v1/pets?limit=10', {Accept => 'application/*'})->status_is(200)
   ->header_like('Content-Type' => qr{^application/json})->content_is('[]');
-$t->get_ok('/pets?limit=10', {Accept => 'text/html,application/xml;q=0.9,*/*;q=0.8'})
+$t->get_ok('/v1/pets?limit=10', {Accept => 'text/html,application/xml;q=0.9,*/*;q=0.8'})
   ->status_is(200)->header_like('Content-Type' => qr{^application/xml})->content_is('<xml></xml>');
-$t->get_ok('/pets?limit=10', {Accept => 'text/html,*/*;q=0.8'})->status_is(200)
+$t->get_ok('/v1/pets?limit=10', {Accept => 'text/html,*/*;q=0.8'})->status_is(200)
   ->header_like('Content-Type' => qr{^application/json})->content_is('[]');
 
-$t->get_ok('/pets?limit=10', {Accept => 'application/json'})->status_is(200)->content_is('[]');
+$t->get_ok('/v1/pets?limit=10', {Accept => 'application/json'})->status_is(200)->content_is('[]');
 
-$t->post_ok('/pets', {Accept => 'application/json', Cookie => 'debug=foo'})->status_is(400)
+$t->post_ok('/v1/pets', {Accept => 'application/json', Cookie => 'debug=foo'})->status_is(400)
   ->json_is('/errors/0/message', 'Invalid Content-Type.')
   ->json_is('/errors/1/message', 'Expected integer - got string.');
 
-$t->post_ok('/pets', {Cookie => 'debug=1'}, json => {id => 1, name => 'Supercow'})->status_is(201)
-  ->content_is('');
+$t->post_ok('/v1/pets', {Cookie => 'debug=1'}, json => {id => 1, name => 'Supercow'})
+  ->status_is(201)->content_is('');
 
-$t->post_ok('/pets', form => {id => 1, name => 'Supercow'})->status_is(201)->content_is('');
+$t->post_ok('/v1/pets', form => {id => 1, name => 'Supercow'})->status_is(201)->content_is('');
 
 done_testing;
 

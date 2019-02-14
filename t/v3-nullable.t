@@ -16,13 +16,13 @@ get '/nullable-data' => sub {
 plugin OpenAPI => {url => 'data:///nullable.json', schema => 'v3'};
 
 my $t = Test::Mojo->new;
-$t->get_ok('/nullable-data')->status_is(500);
+$t->get_ok('/v1/nullable-data')->status_is(500);
 
 $data{name} = undef;
-$t->get_ok('/nullable-data')->status_is(200);
+$t->get_ok('/v1/nullable-data')->status_is(200);
 
 $data{name} = 'batgirl';
-$t->get_ok('/nullable-data')->status_is(200);
+$t->get_ok('/v1/nullable-data')->status_is(200);
 
 done_testing;
 
