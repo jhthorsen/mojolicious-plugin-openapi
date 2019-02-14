@@ -1,6 +1,6 @@
 # You can install this project with curl -L http://cpanmin.us | perl - https://github.com/jhthorsen/mojolicious-plugin-openapi/archive/master.tar.gz
 requires "Mojolicious"     => "7.70";
-requires "JSON::Validator" => "3.04";
+requires "JSON::Validator" => "3.06";
 
 recommends "Text::Markdown" => "1.0.31";
 recommends "YAML::XS"       => "0.75";
