@@ -3,7 +3,7 @@ use Mojo::Base -base;
 
 use Mojo::JSON;
 
-use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
+use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 use constant MARKDOWN => eval 'require Text::Markdown;1';
 
 sub register {
@@ -53,7 +53,11 @@ sub _render_spec {
 
   if (defined $path) {
     $spec = $spec->{paths}{$path};
-    return $c->render(json => $spec) unless $method;
+    unless (defined $method) {
+      my $path_spec = $self->validator->get([paths => $path]);
+      return $c->render(json => $path_spec) if $path_spec;
+      return $c->render(json => undef, status => 404);
+    }
     my $method_spec = $self->validator->get([paths => $path => $method]);
     return $c->render(json => undef, status => 404) unless $method_spec;
     local $method_spec->{parameters}
@@ -61,6 +65,7 @@ sub _render_spec {
     return $c->render(json => $method_spec);
   }
 
+  $spec = $self->validator->get([]);
   local $spec->{basePath} = $c->url_for($spec->{basePath});
   local $spec->{host}     = $c->req->url->to_abs->host_port;
 
