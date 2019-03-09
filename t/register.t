@@ -46,7 +46,15 @@ isa_ok($obj->validator, 'JSON::Validator::OpenAPI::Mojolicious');
 my $t = Test::Mojo->new;
 $t->get_ok('/one')->status_is(200)
   ->json_is('/definitions/DefaultResponse/properties/errors/type', 'array')
-  ->json_is('/info/title',                                         'Test schema one');
+  ->json_is('/info/title',                                         'Test schema one')
+  ->json_is('/paths/~1user/post/responses/400/description',        'Default response.')
+  ->json_is('/paths/~1user/post/responses/400/schema/$ref',        '#/definitions/DefaultResponse');
+
+$t->options_ok('/one/user')->status_is(200)
+  ->json_is('/post/responses/200/description', 'ok')
+  ->json_is('/post/responses/400/description', 'Default response.')
+  ->json_is('/post/responses/400/schema/$ref', '#/definitions/DefaultResponse')
+  ->json_is('/post/responses/500/description', 'err');
 
 $t->options_ok('/one/user?method=post')->status_is(200)
   ->json_is('/responses/200/description', 'ok')
