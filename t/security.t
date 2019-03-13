@@ -78,7 +78,7 @@ plugin OpenAPI => {
       my ($c, $def, $scopes, $cb) = @_;
       $checks{fail1}++;
 
-      # this deferrment causes multiple_and_fail to report
+      # This deferment causes multiple_and_fail to report
       # out of order unless order is carefully maintained
       Mojo::IOLoop->next_tick(sub { $c->$cb('Failed fail1') });
     },

@@ -12,7 +12,7 @@ sub register {
 
 sub _build_action {
   my ($self, $openapi, $handlers) = @_;
-  my $global = $openapi->validator->get('/security') || [];
+  my $global      = $openapi->validator->get('/security') || [];
   my $definitions = $openapi->validator->get('/securityDefinitions');
 
   return sub {
@@ -21,57 +21,73 @@ sub _build_action {
 
     my $spec = $c->openapi->spec || {};
     my @security_or = @{$spec->{security} || $global};
-    my (@promises, %res);
+    my ($sync_mode, $n_checks, %res) = (1, 0);
+
+    my $security_completed = sub {
+      my ($i, $status, @errors) = (0, 401);
+
+    SECURITY_AND:
+      for my $security_and (@security_or) {
+        my @e;
+
+        for my $name (sort keys %$security_and) {
+          my $error_path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
+          push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $error_path}
+            if defined $res{$name};
+        }
+
+        # Authenticated
+        # Cannot call $c->continue() in case this callback was called
+        # synchronously, since it will result in an infinite loop.
+        unless (@e) {
+          return if eval { $sync_mode || $c->continue || 1 };
+          chomp $@;
+          $c->app->log->error($@);
+          @errors = ({message => 'Internal Server Error.', path => '/'});
+          $status = 500;
+          last SECURITY_AND;
+        }
+
+        # Not authenticated
+        push @errors, @e;
+        $i++;
+      }
+
+      $c->render(openapi => {errors => \@errors}, status => $status);
+      $n_checks = -1;    # Make sure we don't render twice
+    };
 
     for my $security_and (@security_or) {
-      for my $name (keys %$security_and) {
-        next if exists $res{$name};
+      for my $name (sort keys %$security_and) {
         my $security_cb = $handlers->{$name};
-        $res{$name} = {message => "No security callback for $name."} and next unless $security_cb;
-        $res{$name} = undef;
-        push @promises, my $p = Mojo::Promise->new;
-        $c->$security_cb(
-          $definitions->{$name},
-          $security_and->{$name},
-          sub { $res{$name} //= $_[1]; $p->resolve; }
-        );
+
+        if (!$security_cb) {
+          $res{$name} = {message => "No security callback for $name."} unless exists $res{$name};
+        }
+        elsif (!exists $res{$name}) {
+          $res{$name} = undef;
+          $n_checks++;
+
+          # $security_cb is obviously called synchronously, but the callback
+          # might also be called synchronously. We need the $sync_mode guard
+          # to make sure that we do not call continue() if that is the case.
+          $c->$security_cb(
+            $definitions->{$name},
+            $security_and->{$name},
+            sub {
+              $res{$name} //= $_[1];
+              $security_completed->() if --$n_checks == 0;
+            }
+          );
+        }
       }
     }
 
-    return 1 unless @promises;
-
-    my $error_path = '/';
-    Mojo::Promise->all(@promises)->then(
-      sub {
-        my ($i, @errors) = (0);
-
-        for my $security_and (@security_or) {
-          my @e;
-          for my $name (sort keys %$security_and) {
-            $error_path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
-            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $error_path}
-              if defined $res{$name};
-          }
-
-          return $c->continue unless @e;    # Success!
-          push @errors, @e;
-          $i++;
-        }
-
-        $c->render(openapi => {errors => \@errors}, status => 401);
-      }
-    )->catch(
-      sub {
-        my $e = shift;
-        $c->app->log->error($e);
-        $c->render(
-          openapi => {errors => [{message => 'Internal Server Error.', path => '/'}]},
-          status  => 500
-        );
-      }
-    )->wait;
-
-    return undef;
+    # If $security_completed was called already, then $n_checks will zero and
+    # we return "1" which means we are in synchronous mode. When running async,
+    # we need to asign undef() to $sync_mode, since it is used inside
+    # $security_completed to call $c->continue()
+    return $sync_mode = $n_checks ? undef : 1;
   };
 }
 
