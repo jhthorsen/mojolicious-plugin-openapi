@@ -1,5 +1,11 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.13 2019-03-13T17:12:52+0800
+ - Fix issue in OpenAPI::Security when used from OpenAPI::Client, or another
+   UserAgent with an IOLoop that is not the singleton. #121
+ - Fix issue in SYNOPSIS that gave confusing output for /api
+   Contributor: Bernhard Graf
+
 2.12 2019-02-14T20:12:16+0100
  - Fix HEAD requests #105
  - Fix using /servers/0/url as basePath for OpenAPI v3 #110

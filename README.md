@@ -21,14 +21,14 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     }, "echo";
 
     # Load specification and start web server
-    plugin OpenAPI => {url => "data:///api.json"};
+    plugin OpenAPI => {url => "data:///spec.json"};
     app->start;
 
     __DATA__
-    @@ api.json
+    @@ spec.json
     {
       "swagger" : "2.0",
-      "info" : { "version": "0.8", "title" : "Pets" },
+      "info" : { "version": "0.8", "title" : "Echo Service" },
       "schemes" : [ "http" ],
       "basePath" : "/api",
       "paths" : {
