@@ -86,6 +86,8 @@ sub validate_request {
       $value = $self->_coerce_by_collection_format($value, $p);
     }
 
+    # v3 Content-Type
+    ($exists, $value) = (1, $p->{schema}{default}) if !$exists and exists $p->{schema};
     ($exists, $value) = (1, $p->{default}) if !$exists and exists $p->{default};
 
     if ($type and defined $value) {
