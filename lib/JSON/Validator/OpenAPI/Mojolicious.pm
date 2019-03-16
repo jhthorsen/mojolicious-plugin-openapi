@@ -60,7 +60,7 @@ sub validate_request {
 
   # v3 Content-Type
   if (my $body_schema = $schema->{requestBody}) {
-    push @errors, $self->_validate_request_body($c, $body_schema);
+    push @errors, $self->_validate_request_body($c, $body_schema, $input);
   }
 
   for my $p (@{$schema->{parameters} || []}) {
@@ -86,6 +86,8 @@ sub validate_request {
       $value = $self->_coerce_by_collection_format($value, $p);
     }
 
+    # v3 Content-Type
+    ($exists, $value) = (1, $p->{schema}{default}) if !$exists and exists $p->{schema};
     ($exists, $value) = (1, $p->{default}) if !$exists and exists $p->{default};
 
     if ($type and defined $value) {
@@ -300,19 +302,32 @@ sub _to_list {
   return ref $_[0] eq 'ARRAY' ? @{$_[0]} : $_[0] ? ($_[0]) : ();
 }
 
+# v3 only
 sub _validate_request_body {
-  my ($self, $c, $body_schema) = @_;
+  my ($self, $c, $body_schema, $input) = @_;
   my $ct = $c->req->headers->content_type // '';
 
   $ct =~ s!;.*$!!;
   if ($body_schema = $body_schema->{content}{$ct}) {
     my $body = $self->_get_request_data($c, $ct =~ /\bform\b/ ? 'formData' : 'body');
-    return $self->_validate_request_value($body_schema, body => $body);
+
+    if ($body_schema->{schema}{type} // '' eq 'object') {
+      while(my ($p, $v) = each %{$body_schema->{schema}{properties} || {}}) {
+        if (!exists($body->{$p}) and exists($v->{default})) {
+          $body->{$p} = $v->{default};
+        }
+      }
+    }
+
+    warn "[OpenAPI] Validate body\n" if DEBUG;
+    $input->{body} = $body;
+    return $self->validate({body => $body}, $body_schema);
   }
 
   return JSON::Validator::E('/' => "No requestBody rules defined for Content-Type $ct.") if $ct;
   return JSON::Validator::E('/', 'Invalid Content-Type.');
 }
+
 
 sub _validate_request_value {
   my ($self, $p, $name, $value) = @_;
