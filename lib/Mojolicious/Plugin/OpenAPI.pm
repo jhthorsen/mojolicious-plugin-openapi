@@ -68,14 +68,15 @@ sub register {
 sub _add_default_response {
   my ($self, $op_spec, $code) = @_;
   return if $op_spec->{responses}{$code};
-  my $name   = $self->{default_response_name};
+  my $name = $self->{default_response_name};
 
   if ($self->validator->version eq '3') {
-    my $ref = $self->validator->schema->data->{components}{schemas}{$name} ||= $self->_default_schema;
+    my $ref = $self->validator->schema->data->{components}{schemas}{$name}
+      ||= $self->_default_schema;
     my %schema = ('$ref' => "#/components/schemas/$name");
     tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
-    $op_spec->{responses}{$code} = {description => 'Default response.',
-                                    content => {'*/*' => {schema => \%schema}}};
+    $op_spec->{responses}{$code}
+      = {description => 'Default response.', content => {'*/*' => {schema => \%schema}}};
   }
   else {
     my $ref = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;

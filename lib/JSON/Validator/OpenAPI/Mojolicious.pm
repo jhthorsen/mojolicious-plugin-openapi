@@ -58,7 +58,7 @@ sub validate_request {
 
   local $self->{cache};
 
-  # v3 Content-Type
+  # v3 only
   if (my $body_schema = $schema->{requestBody}) {
     push @errors, $self->_validate_request_body($c, $body_schema, $input);
   }
@@ -66,6 +66,14 @@ sub validate_request {
   for my $p (@{$schema->{parameters} || []}) {
     my ($in, $name, $type) = @$p{qw(in name type)};
     my ($exists, $value) = (0, undef);
+
+    my $ps = $p;
+
+    # Correct for v3 - schema is in dedicated schema container and type is in there
+    if ($self->version eq '3') {
+      $ps   = $p->{schema};
+      $type = $ps->{type};
+    }
 
     if ($in eq 'body') {
       $value = $self->_get_request_data($c, $in);
@@ -82,13 +90,11 @@ sub validate_request {
       $value  = $value->{$key};
     }
 
-    if (defined $value and ref $p->{items} eq 'HASH' and $p->{collectionFormat}) {
-      $value = $self->_coerce_by_collection_format($value, $p);
+    if (defined $value and ref $ps->{items} eq 'HASH' and $ps->{collectionFormat}) {
+      $value = $self->_coerce_by_collection_format($value, $ps);
     }
 
-    # v3 Content-Type
-    ($exists, $value) = (1, $p->{schema}{default}) if !$exists and exists $p->{schema};
-    ($exists, $value) = (1, $p->{default}) if !$exists and exists $p->{default};
+    ($exists, $value) = (1, $ps->{default}) if !$exists and exists $ps->{default};
 
     if ($type and defined $value) {
       if ($type ne 'array' and ref $value eq 'ARRAY') {
@@ -326,17 +332,28 @@ sub _validate_request_body {
 sub _instantiate_defaults {
   my ($data, $schema) = @_;
 
-  # bottom of recursion
-  return $data unless $schema->{type} // '' eq 'object';
+  my $type = $schema->{type} // '';
+  if ($type eq 'object') {
+    while (my ($p, $v) = each %{$schema->{properties} || {}}) {
+      if (!exists($data->{$p}) and exists($v->{default})) {
+        $data->{$p} = $v->{default};
+      }
 
-  while(my ($p, $v) = each %{$schema->{properties} || {}}) {
-    if (!exists($data->{$p}) and exists($v->{default})) {
-      $data->{$p} = $v->{default};
+      # recurse
+      $data->{$p} = _instantiate_defaults($data->{$p}, $v);
     }
-
-    # recurse
-    $data->{$p} = _instantiate_defaults($data->{$p}, $v);
   }
+  elsif ($type eq 'array') {
+    for (my $i = 0; $i <= $#$data; $i++) {
+
+      # recurse
+      @$data[$i] = _instantiate_defaults(@$data[$i], $schema->{items});
+    }
+  }
+  else {    # bottom of recursion
+    return $data;
+  }
+
   return $data;
 }
 

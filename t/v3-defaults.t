@@ -9,9 +9,11 @@ plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
 post '/test' => sub {
   my $c = shift->openapi->valid_input or return;
 
-  my $return_obj = {query  => $c->validation->param('querydefault'),
-                    body   => $c->validation->param('body'),
-                    header => $c->req->headers->header('headerdefault')};
+  my $return_obj = {querydefault    => $c->validation->param('querydefault'),
+                    querynodefault  => $c->validation->param('querynodefault'),
+                    headerdefault   => $c->req->headers->header('headerdefault'),
+                    headernodefault => $c->req->headers->header('headernodefault'),
+                    body            => $c->validation->param('body')};
 
   $c->render(status => 200, openapi => $return_obj);
   },
@@ -21,12 +23,23 @@ plugin OpenAPI => {schema => 'v3', url => 'data://main/file.yaml'};
 
 my $t = Test::Mojo->new;
 
-$t->post_ok('/api/test', json => {})->status_is(200)
-  ->json_is('/query'  => '2')
+$t->post_ok('/api/test?querynodefault=1' => {headernodefault => 'b'},
+            json => {bodynodefault => 9,
+                     subobject => {subsubobject => {subarray => [{arraynodefault => 'z'},
+                                                                 {arraynodefault => 'x'}]}}})
+  ->status_is(200)
+  ->json_is('/querydefault'  => '2')
+  ->json_is('/querynodefault'  => '1')
   ->json_is('/body/bodydefault'  => '7')
+  ->json_is('/body/bodynodefault'  => '9')
   ->json_is('/body/subobject/bodydefault'  => Mojo::JSON->true)
   ->json_is('/body/subobject/subsubobject/bodydefault'  => 'astring')
-  ->json_is('/header' => 'a');
+  ->json_is('/body/subobject/subsubobject/subarray/0/arraynodefault'  => 'z')
+  ->json_is('/body/subobject/subsubobject/subarray/1/arraynodefault'  => 'x')
+  ->json_is('/body/subobject/subsubobject/subarray/0/arraydefault'  => 'arraystring')
+  ->json_is('/body/subobject/subsubobject/subarray/1/arraydefault'  => 'arraystring')
+  ->json_is('/headerdefault' => 'a')
+  ->json_is('/headernodefault' => 'b');
 
 done_testing;
 
@@ -44,7 +57,9 @@ paths:
     post:
       operationId: File
       parameters:
+        - $ref: "#/components/parameters/querynodefault"
         - $ref: "#/components/parameters/querydefault"
+        - $ref: "#/components/parameters/headernodefault"
         - $ref: "#/components/parameters/headerdefault"
       requestBody:
         content:
@@ -59,13 +74,19 @@ paths:
               schema:
                 type: object
                 required:
-                  - query
-                  - header
+                  - querydefault
+                  - headerdefault
+                  - querynodefault
+                  - headernodefault
                   - body
                 properties:
-                  query:
+                  querydefault:
+                    type: integer
+                  querynodefault:
+                    type: integer
+                  headerdefault:
                     type: string
-                  header:
+                  headernodefault:
                     type: string
                   body:
                     type: object
@@ -77,16 +98,31 @@ components:
       properties:
         message:
           type: string
+    arrayelem:
+      description: description
+      type: object
+      required:
+        - arraydefault
+        - arraynodefault
+      properties:
+        arraydefault:
+          type: string
+          default: arraystring
+        arraynodefault:
+          type: string
     bodydefault:
       description: description
       type: object
       required:
         - bodydefault
+        - bodynodefault
         - subobject
       properties:
         bodydefault:
           type: integer
           default: 7
+        bodynodefault:
+          type: integer
         subobject:
           type: object
           required:
@@ -100,11 +136,24 @@ components:
               type: object
               required:
                 - bodydefault
+                - subarray
               properties:
                 bodydefault:
                   type: string
                   default: astring
+                subarray:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/arrayelem"
   parameters:
+    querynodefault:
+      name: querynodefault
+      in: query
+      schema:
+        type: string
+        enum:
+          - 1
+          - 2
     querydefault:
       name: querydefault
       in: query
@@ -114,6 +163,14 @@ components:
           - 1
           - 2
         default: 2
+    headernodefault:
+      name: headernodefault
+      in: header
+      schema:
+        type: string
+        enum:
+          - a
+          - b
     headerdefault:
       name: headerdefault
       in: header
