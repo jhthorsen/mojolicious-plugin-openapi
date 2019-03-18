@@ -350,10 +350,8 @@ sub _instantiate_defaults {
       @$data[$i] = _instantiate_defaults(@$data[$i], $schema->{items});
     }
   }
-  else {    # bottom of recursion
-    return $data;
-  }
 
+  # bottom of recursion
   return $data;
 }
 
