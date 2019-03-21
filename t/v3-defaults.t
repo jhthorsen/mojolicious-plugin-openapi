@@ -9,11 +9,13 @@ plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
 post '/test' => sub {
   my $c = shift->openapi->valid_input or return;
 
-  my $return_obj = {querydefault    => $c->validation->param('querydefault'),
-                    querynodefault  => $c->validation->param('querynodefault'),
-                    headerdefault   => $c->req->headers->header('headerdefault'),
-                    headernodefault => $c->req->headers->header('headernodefault'),
-                    body            => $c->validation->param('body')};
+  my $return_obj = {
+    querydefault    => $c->validation->param('querydefault'),
+    querynodefault  => $c->validation->param('querynodefault'),
+    headerdefault   => $c->req->headers->header('headerdefault'),
+    headernodefault => $c->req->headers->header('headernodefault'),
+    body            => $c->validation->param('body')
+  };
 
   $c->render(status => 200, openapi => $return_obj);
   },
@@ -23,23 +25,21 @@ plugin OpenAPI => {schema => 'v3', url => 'data://main/file.yaml'};
 
 my $t = Test::Mojo->new;
 
-$t->post_ok('/api/test?querynodefault=1' => {headernodefault => 'b'},
-            json => {bodynodefault => 9,
-                     subobject => {subsubobject => {subarray => [{arraynodefault => 'z'},
-                                                                 {arraynodefault => 'x'}]}}})
-  ->status_is(200)
-  ->json_is('/querydefault'  => '2')
-  ->json_is('/querynodefault'  => '1')
-  ->json_is('/body/bodydefault'  => '7')
-  ->json_is('/body/bodynodefault'  => '9')
-  ->json_is('/body/subobject/bodydefault'  => Mojo::JSON->true)
-  ->json_is('/body/subobject/subsubobject/bodydefault'  => 'astring')
-  ->json_is('/body/subobject/subsubobject/subarray/0/arraynodefault'  => 'z')
-  ->json_is('/body/subobject/subsubobject/subarray/1/arraynodefault'  => 'x')
-  ->json_is('/body/subobject/subsubobject/subarray/0/arraydefault'  => 'arraystring')
-  ->json_is('/body/subobject/subsubobject/subarray/1/arraydefault'  => 'arraystring')
-  ->json_is('/headerdefault' => 'a')
-  ->json_is('/headernodefault' => 'b');
+$t->post_ok(
+  '/api/test?querynodefault=1' => {headernodefault => 'b'},
+  json                         => {
+    bodynodefault => 9,
+    subobject => {subsubobject => {subarray => [{arraynodefault => 'z'}, {arraynodefault => 'x'}]}}
+  }
+)->status_is(200)->json_is('/querydefault' => '2')->json_is('/querynodefault' => '1')
+  ->json_is('/body/bodydefault'           => '7')->json_is('/body/bodynodefault' => '9')
+  ->json_is('/body/subobject/bodydefault' => Mojo::JSON->true)
+  ->json_is('/body/subobject/subsubobject/bodydefault'               => 'astring')
+  ->json_is('/body/subobject/subsubobject/subarray/0/arraynodefault' => 'z')
+  ->json_is('/body/subobject/subsubobject/subarray/1/arraynodefault' => 'x')
+  ->json_is('/body/subobject/subsubobject/subarray/0/arraydefault'   => 'arraystring')
+  ->json_is('/body/subobject/subsubobject/subarray/1/arraydefault'   => 'arraystring')
+  ->json_is('/headerdefault' => 'a')->json_is('/headernodefault' => 'b');
 
 done_testing;
 
