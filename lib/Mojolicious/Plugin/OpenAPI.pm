@@ -65,14 +65,34 @@ sub register {
   $self;
 }
 
-sub _add_default_response {
-  my ($self, $op_spec, $code) = @_;
-  return if $op_spec->{responses}{$code};
-  my $name   = $self->{default_response_name};
-  my $ref    = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;
-  my %schema = ('$ref' => "#/definitions/$name");
+sub _add_default_response_2 {
+  my ($self, $op_spec) = @_;
+  for my $code (@{$self->{default_response_codes}}) {
+    next if $op_spec->{responses}{$code};
+
+    my $name   = $self->{default_response_name};
+    my $ref    = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;
+    my %schema = ('$ref' => "#/definitions/$name");
+    tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
+    $op_spec->{responses}{$code} = {description => 'Default response.', schema => \%schema};
+  }
+}
+
+sub _add_default_response_3 {
+  my ($self, $op_spec) = @_;
+  my $root_spec    = $self->validator->get(['/']);
+  my $default_name = $self->{default_response_name};
+  my $ref          = $root_spec->{components}{responses}{$default_name} ||= {
+      description => 'default Mojolicious::Plugin::OpenAPI response',
+      content     => {'application/json' => {schema => $self->_default_schema}},
+  };
+  my %schema = ('$ref' => "#/components/responses/$default_name");
   tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
-  $op_spec->{responses}{$code} = {description => 'Default response.', schema => \%schema};
+
+  for my $code (@{$self->{default_response_codes}}) {
+    next if $op_spec->{responses}{$code};
+    $op_spec->{responses}{$code} = \%schema;
+  }
 }
 
 sub _add_routes {
@@ -115,7 +135,9 @@ sub _add_routes {
         $r->name("$self->{route_prefix}$name") if $name;
       }
 
-      $self->_add_default_response($op_spec, $_) for @{$self->{default_response_codes}};
+      my $add_default_response_method = sprintf "_add_default_response_%s",
+        $self->validator->version;
+      $self->$add_default_response_method($op_spec, $_) for @{$self->{default_response_codes}};
 
       $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $r->to({'openapi.method' => $http_method});
