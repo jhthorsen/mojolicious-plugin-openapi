@@ -16,17 +16,47 @@ plugin OpenAPI => {url => 'data://main/spec.json'};
 
 my $t = Test::Mojo->new;
 
+$t->get_ok('/api')->status_is(200)->json_is('/swagger', '2.0')
+  ->json_is('/definitions/DefaultResponse/properties/errors/items/properties/message/type',
+  'string')->json_is('/definitions/SpecResponse/type', 'object')
+  ->json_is('/paths/~1spec/get/operationId', 'Spec');
+
 $t->get_ok('/api/spec')->status_is(200)
   ->json_is('/op_spec/responses/200/description', 'Spec response.')
   ->json_is('/info/version',                      '0.8');
 
 $t->get_ok('/api/user/1')->status_is(200)->content_is('{}');
 
-$t->options_ok('/api/spec')->status_is(200)->json_is('/get/operationId', 'Spec');
-$t->options_ok('/api/spec?method=get')->status_is(200)->json_is('/operationId', 'Spec');
-$t->options_ok('/api/spec?method=post')->status_is(404);
+$t->options_ok('/api/spec')->status_is(200)
+  ->json_is('/$schema',                       'http://json-schema.org/draft-04/schema#')
+  ->json_is('/title',                         'Test spec response')->json_is('/description', '')
+  ->json_is('/get/operationId',               'Spec')
+  ->json_is('/get/responses/200/schema/$ref', '#/definitions/SpecResponse')
+  ->json_is('/definitions/DefaultResponse/properties/errors/items/properties/message/type',
+  'string')->json_is('/definitions/SpecResponse/type', 'object');
 
-$t->options_ok('/api/user/1')->status_is(200)->json_is('/get/operationId', 'user');
+$t->options_ok('/api/spec?method=get')->status_is(200)
+  ->json_is('/$schema',     'http://json-schema.org/draft-04/schema#')
+  ->json_is('/title',       'Test spec response')->json_is('/description', '')
+  ->json_is('/operationId', 'Spec')->json_is('/definitions/SpecResponse/type', 'object');
+
+eval {
+  my $jv = JSON::Validator->new(version => undef);
+  is $jv->version, undef, 'no version before load_and_validate_schema';
+  $jv->load_and_validate_schema($t->tx->res->json);
+  is $jv->version, 4, 'valid schema';
+} or do {
+  ok 0, "api/spec did not return a valid schema: $@";
+};
+
+$t->options_ok('/api/spec?method=post')->status_is(404)
+  ->json_is('/errors/0/message', 'No spec defined.');
+
+$t->options_ok('/api/user/1')->status_is(200)
+  ->json_is('/$schema', 'http://json-schema.org/draft-04/schema#')
+  ->json_is('/title', 'Test spec response')->json_is('/get/operationId', 'user')
+  ->json_is('/definitions/DefaultResponse/properties/errors/items/properties/message/type',
+  'string');
 
 $t->get_ok('/api')->status_is(200)->json_is('/basePath', '/api');
 
@@ -56,10 +86,7 @@ __DATA__
           { "in": "body", "name": "body", "schema": { "type" : "object" } }
         ],
         "responses" : {
-          "200": {
-            "description": "Spec response.",
-            "schema": { "type": "object" }
-          }
+          "200": { "description": "Spec response.", "schema": { "$ref": "#/definitions/SpecResponse" } }
         }
       }
     },
@@ -71,10 +98,21 @@ __DATA__
         "operationId" : "user",
         "responses" : {
           "200": {
-            "description": "Spec response.",
+            "description": "User response.",
             "schema": { "type": "object" }
           }
         }
+      }
+    }
+  },
+  "definitions": {
+    "Object": {
+      "type": "object"
+    },
+    "SpecResponse": {
+      "type": "object",
+      "properties": {
+        "get": { "$ref": "#/definitions/Object" }
       }
     }
   }
