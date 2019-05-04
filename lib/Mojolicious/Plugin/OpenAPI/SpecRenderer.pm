@@ -3,7 +3,7 @@ use Mojo::Base -base;
 
 use Mojo::JSON;
 
-use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
+use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 use constant MARKDOWN => eval 'require Text::Markdown;1';
 
 sub register {
@@ -44,22 +44,43 @@ sub _markdown {
   return Mojo::ByteStream->new(MARKDOWN ? Text::Markdown::markdown($_[0]) : $_[0]);
 }
 
-sub _render_spec {
+sub _render_partial_spec {
   my ($c, $path) = @_;
   my $self   = Mojolicious::Plugin::OpenAPI::_self($c);
-  my $spec   = $self->{bundled} ||= $self->validator->bundle;
-  my $format = $c->stash('format') || 'json';
   my $method = $c->param('method');
 
-  if (defined $path) {
-    $spec = $spec->{paths}{$path};
-    return $c->render(json => $spec) unless $method;
-    my $method_spec = $self->validator->get([paths => $path => $method]);
-    return $c->render(json => undef, status => 404) unless $method_spec;
-    local $method_spec->{parameters}
-      = [@{$spec->{parameters} || []}, @{$method_spec->{parameters} || []}];
-    return $c->render(json => $method_spec);
+  my $bundled = $self->validator->get([paths => $path]);
+  $bundled = $self->validator->bundle({schema => $bundled}) if $bundled;
+  my $definitions = $bundled->{definitions} || {} if $bundled;
+  my $parameters  = $bundled->{parameters}  || [];
+
+  if ($method and $bundled = $bundled->{$method}) {
+    push @$parameters, @{$bundled->{parameters} || []};
   }
+
+  return $c->render(json => {errors => [{message => 'No spec defined.'}]}, status => 404)
+    unless $bundled;
+
+  delete $bundled->{$_} for qw(definitions parameters);
+  return $c->render(
+    json => {
+      '$schema'   => 'http://json-schema.org/draft-04/schema#',
+      title       => $self->validator->get([qw(info title)]) || '',
+      description => $self->validator->get([qw(info description)]) || '',
+      definitions => $definitions,
+      parameters  => $parameters,
+      %$bundled,
+    }
+  );
+}
+
+sub _render_spec {
+  return _render_partial_spec(@_) if $_[1];
+
+  my $c      = shift;
+  my $self   = Mojolicious::Plugin::OpenAPI::_self($c);
+  my $format = $c->stash('format') || 'json';
+  my $spec   = $self->{bundled} ||= $self->validator->bundle;
 
   local $spec->{basePath} = $c->url_for($spec->{basePath});
   local $spec->{host}     = $c->req->url->to_abs->host_port;
