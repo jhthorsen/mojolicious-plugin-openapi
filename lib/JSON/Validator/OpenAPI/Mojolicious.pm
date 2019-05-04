@@ -305,9 +305,10 @@ sub _validate_request_body {
   my $ct = $c->req->headers->content_type // '';
 
   $ct =~ s!;.*$!!;
-  if ($body_schema = $body_schema->{content}{$ct}) {
+  if (my $schema = $body_schema->{content}{$ct}) {
     my $body = $self->_get_request_data($c, $ct =~ /\bform\b/ ? 'formData' : 'body');
-    return $self->_validate_request_value($body_schema, body => $body);
+    local $schema->{required} //= $body_schema->{required};
+    return $self->_validate_request_value($schema, body => $body);
   }
 
   return JSON::Validator::E('/' => "No requestBody rules defined for Content-Type $ct.") if $ct;
