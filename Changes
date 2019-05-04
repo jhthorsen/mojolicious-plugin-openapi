@@ -5,6 +5,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
  - Changed OPTIONS response to be a draft-04 response
  - Need to bundle all responses from SpecRenderer to make OPTIONS render
    in a more human friendly way.
+ - Require Mojolicious 8.00 #122
 
 2.13 2019-03-13T17:12:52+0800
  - Fix issue in OpenAPI::Security when used from OpenAPI::Client, or another
