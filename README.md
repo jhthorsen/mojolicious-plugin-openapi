@@ -197,7 +197,9 @@ Note that setting this attribute is discourage.
 
 See ["coerce" in JSON::Validator](https://metacpan.org/pod/JSON::Validator#coerce) for possible values that `coerce` can take.
 
-Default: 1
+Default: booleans,numbers,strings
+
+The default value will include "defaults" in the future, once that is stable enough.
 
 ### default\_response\_codes
 

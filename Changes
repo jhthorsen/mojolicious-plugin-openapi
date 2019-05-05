@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.14 Not Released
+2.14 2019-05-05T14:11:06+0700
  - Fix "coerce(1) will be deprecated" #130
  - Changed OPTIONS response to be a draft-04 response
  - Need to bundle all responses from SpecRenderer to make OPTIONS render
