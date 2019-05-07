@@ -4,8 +4,6 @@ use Test::More;
 
 use Mojolicious::Lite;
 
-plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
-
 my %data = (id => 42);
 get '/nullable-data' => sub {
   my $c = shift->openapi->valid_input or return;

@@ -4,8 +4,6 @@ use Test::More;
 
 use Mojolicious::Lite;
 
-plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
-
 get '/pets/:petId' => sub {
   my $c = shift->openapi->valid_input or return;
   $c->render(openapi => {});

@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.15 Not Released
+ - Add support for v3 schema from https://spec.openapis.org/oas/3.0/schema/2019-04-02
+
 2.14 2019-05-05T14:11:06+0700
  - Fix "coerce(1) will be deprecated" #130
  - Changed OPTIONS response to be a draft-04 response

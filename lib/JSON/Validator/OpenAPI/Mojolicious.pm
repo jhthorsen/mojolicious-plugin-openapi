@@ -10,8 +10,10 @@ use constant DEBUG   => $ENV{JSON_VALIDATOR_DEBUG} || 0;
 use constant IV_SIZE => eval 'require Config;$Config::Config{ivsize}';
 
 our %COLLECTION_RE = (pipes => qr{\|}, csv => qr{,}, ssv => qr{\s}, tsv => qr{\t});
-our %VERSIONS
-  = (v2 => 'http://swagger.io/v2/schema.json', v3 => 'http://swagger.io/v3/schema.yaml');
+our %VERSIONS      = (
+  v2 => 'http://swagger.io/v2/schema.json',
+  v3 => 'https://spec.openapis.org/oas/3.0/schema/2019-04-02'
+);
 
 has version => 2;
 
@@ -24,7 +26,7 @@ sub load_and_validate_schema {
   local $args->{schema}
     = $args->{schema} ? $VERSIONS{$args->{schema}} || $args->{schema} : $VERSIONS{v2};
 
-  $self->version($1) if !$self->{version} and $args->{schema} =~ m!/v(\d+)/!;
+  $self->version($1) if !$self->{version} and $args->{schema} =~ m!(?:/v||/oas/)(\d)!;
 
   my @errors;
   my $gather = sub {
