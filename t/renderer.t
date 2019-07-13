@@ -44,7 +44,7 @@ sub custom_openapi_renderer {
 
   $data->{messages}  = delete $data->{errors} if $data->{errors};
   $data->{t}         = $^T                    if ref $data eq 'HASH';
-  $data->{exception} = $c->stash('exception') if $c->stash('exception');
+  $data->{exception} = $c->stash('exception')->message if $c->stash('exception');
 
   return Mojo::JSON::encode_json($data);
 }
