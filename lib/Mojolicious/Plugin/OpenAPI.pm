@@ -90,8 +90,8 @@ sub _add_routes {
     for my $http_method (sort keys %{$self->validator->get([paths => $openapi_path]) || {}}) {
       next if $http_method =~ $X_RE or $http_method eq 'parameters';
       my $op_spec = $self->validator->get([paths => $openapi_path => $http_method]);
-      my $name = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-      my $to   = $op_spec->{'x-mojo-to'};
+      my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+      my $to      = $op_spec->{'x-mojo-to'};
       my $r;
 
       $self->{parameters_for}{$openapi_path}{$http_method}
@@ -164,8 +164,8 @@ sub _build_route {
     ? Mojo::URL->new($self->validator->get('/servers/0/url') || '/')->path->to_string
     : $self->validator->get('/basePath') || '/';
 
-  $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
-  $route = $app->routes->any($base_path) unless $route;
+  $route     = $route->any($base_path) if $route and !$route->pattern->unparsed;
+  $route     = $app->routes->any($base_path) unless $route;
   $base_path = $self->validator->schema->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
@@ -635,8 +635,6 @@ the terms of the Artistic License version 2.0.
 =item * L<Mojolicious::Plugin::OpenAPI::Security>
 
 =item * L<Mojolicious::Plugin::OpenAPI::SpecRenderer>
-
-=item * L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>.
 
 =item * L<OpenAPI specification|https://openapis.org/specification>
 

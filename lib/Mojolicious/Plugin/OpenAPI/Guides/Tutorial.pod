@@ -7,11 +7,6 @@ Mojolicious::Plugin::OpenAPI::Guides::Tutorial - Mojolicious <3 Open API (Swagge
 This guide will give you an introduction to how to use
 L<Mojolicious::Plugin::OpenAPI>.
 
-You can also have a look at
-L<http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html>,
-which includes reasons for why you want to use Open API - also known as
-L<Swagger|Swagger2>.
-
 =head1 TUTORIAL
 
 =head2 Specification

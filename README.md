@@ -61,8 +61,8 @@ input/output validation to your [Mojolicious](https://metacpan.org/pod/Mojolicio
 Have a look at the ["SEE ALSO"](#see-also) for references to more documentation, or jump
 right to the [tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial).
 
-Currently v2 is very well supported, while v3 should be considered higly
-EXPERIMENTAL. Note that testing out v3 requires [YAML::XS](https://metacpan.org/pod/YAML::XS) to be installed.
+Currently v2 is very well supported, while v3 should be considered
+EXPERIMENTAL.
 
 Please report in [issues](https://github.com/jhthorsen/json-validator/issues)
 or open pull requests to enhance the 3.0 support.
@@ -302,5 +302,4 @@ the terms of the Artistic License version 2.0.
 - [Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Cors)
 - [Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Security)
 - [Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::SpecRenderer)
-- [http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html](http://thorsen.pm/perl/programming/2015/07/05/mojolicious-swagger2.html).
 - [OpenAPI specification](https://openapis.org/specification)
