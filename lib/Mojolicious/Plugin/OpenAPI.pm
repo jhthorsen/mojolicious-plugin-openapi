@@ -65,33 +65,29 @@ sub register {
   $self;
 }
 
-sub _add_default_response_2 {
+sub _add_default_response {
   my ($self, $op_spec) = @_;
-  for my $code (@{$self->{default_response_codes}}) {
-    next if $op_spec->{responses}{$code};
+  my $name        = $self->{default_response_name};
+  my $schema_data = $self->validator->schema->data;
 
-    my $name   = $self->{default_response_name};
-    my $ref    = $self->validator->schema->data->{definitions}{$name} ||= $self->_default_schema;
-    my %schema = ('$ref' => "#/definitions/$name");
-    tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
-    $op_spec->{responses}{$code} = {description => 'Default response.', schema => \%schema};
-  }
-}
+  my $ref
+    = $self->validator->version ge '3'
+    ? ($schema_data->{components}{responses}{$name} ||= $self->_default_schema)
+    : ($schema_data->{definitions}{$name} ||= $self->_default_schema);
 
-sub _add_default_response_3 {
-  my ($self, $op_spec) = @_;
-  my $root_spec    = $self->validator->get(['/']);
-  my $default_name = $self->{default_response_name};
-  my $ref          = $root_spec->{components}{responses}{$default_name} ||= {
-      description => 'default Mojolicious::Plugin::OpenAPI response',
-      content     => {'application/json' => {schema => $self->_default_schema}},
-  };
-  my %schema = ('$ref' => "#/components/responses/$default_name");
+  my %schema
+    = $self->validator->version ge '3'
+    ? ('$ref' => "#/components/responses/$name")
+    : ('$ref' => "#/definitions/$name");
+
   tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
-
   for my $code (@{$self->{default_response_codes}}) {
-    next if $op_spec->{responses}{$code};
-    $op_spec->{responses}{$code} = \%schema;
+    if ($self->validator->version ge '3') {
+      $op_spec->{responses}{$code} ||= $self->_default_schema_v3(\%schema);
+    }
+    else {
+      $op_spec->{responses}{$code} ||= $self->_default_schema_v2(\%schema);
+    }
   }
 }
 
@@ -110,8 +106,8 @@ sub _add_routes {
     for my $http_method (sort keys %{$self->validator->get([paths => $openapi_path]) || {}}) {
       next if $http_method =~ $X_RE or $http_method eq 'parameters';
       my $op_spec = $self->validator->get([paths => $openapi_path => $http_method]);
-      my $name = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-      my $to   = $op_spec->{'x-mojo-to'};
+      my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+      my $to      = $op_spec->{'x-mojo-to'};
       my $r;
 
       $self->{parameters_for}{$openapi_path}{$http_method}
@@ -135,9 +131,7 @@ sub _add_routes {
         $r->name("$self->{route_prefix}$name") if $name;
       }
 
-      my $add_default_response_method = sprintf "_add_default_response_%s",
-        $self->validator->version;
-      $self->$add_default_response_method($op_spec, $_) for @{$self->{default_response_codes}};
+      $self->_add_default_response($op_spec);
 
       $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
       $r->to({'openapi.method' => $http_method});
@@ -186,8 +180,8 @@ sub _build_route {
     ? Mojo::URL->new($self->validator->get('/servers/0/url') || '/')->path->to_string
     : $self->validator->get('/basePath') || '/';
 
-  $route = $route->any($base_path) if $route and !$route->pattern->unparsed;
-  $route = $app->routes->any($base_path) unless $route;
+  $route     = $route->any($base_path) if $route and !$route->pattern->unparsed;
+  $route     = $app->routes->any($base_path) unless $route;
   $base_path = $self->validator->schema->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
@@ -216,6 +210,19 @@ sub _default_schema {
         }
       }
     }
+  };
+}
+
+sub _default_schema_v2 {
+  my ($self, $schema) = @_;
+  +{description => 'Default response.', schema => $schema};
+}
+
+sub _default_schema_v3 {
+  my ($self, $schema) = @_;
+  +{
+    description => 'default Mojolicious::Plugin::OpenAPI response',
+    content     => {'application/json' => {schema => $schema}},
   };
 }
 
