@@ -39,6 +39,44 @@ plugin OpenAPI => {
   }
 };
 
+plugin OpenAPI => {
+  schema => 'v3',
+  spec   => {
+    openapi => '3.0.0',
+    info    => {
+      title => 'Sample API',
+      description =>
+        'Optional multiline or single-line description in [CommonMark](http://commonmark.org/help/) or HTML.',
+      version => '0.1.9'
+    },
+    servers => [
+      {
+        url         => 'http://api.example.com/oa3',
+        description => 'Optional server description, e.g. Main (production) server'
+      },
+      {
+        url         => 'http://staging-api.example.com',
+        description => 'Optional server description, e.g. Internal staging server for testing'
+      }
+    ],
+    paths => {
+      '/users' => {
+        get => {
+          summary     => 'Returns a list of users.',
+          description => 'Optional extended description in CommonMark or HTML.',
+          responses   => {
+            '200' => {
+              description => 'A JSON array of user names',
+              content =>
+                {'application/json' => {schema => {type => 'array', items => {type => 'string'}}}}
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
 ok $obj->route->find('cool_api'), 'found api endpoint';
 isa_ok($obj->route,     'Mojolicious::Routes::Route');
 isa_ok($obj->validator, 'JSON::Validator::OpenAPI::Mojolicious');
@@ -47,6 +85,11 @@ my $t = Test::Mojo->new;
 $t->get_ok('/one')->status_is(200)
   ->json_is('/definitions/DefaultResponse/properties/errors/type', 'array')
   ->json_is('/info/title',                                         'Test schema one');
+
+$t->options_ok('/oa3/users?method=get')->status_is(200)
+  ->json_is('/responses/200/description', 'A JSON array of user names')
+  ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
+  ->json_is('/responses/400/content/application~1json/schema/$ref', '#/components/responses/DefaultResponse');
 
 $t->options_ok('/one/user?method=post')->status_is(200)
   ->json_is('/responses/200/description', 'ok')

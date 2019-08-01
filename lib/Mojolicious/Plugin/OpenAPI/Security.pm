@@ -1,11 +1,13 @@
 package Mojolicious::Plugin::OpenAPI::Security;
 use Mojo::Base -base;
 
+my %DEF_PATH = (2 => '/securityDefinitions', 3 => '/components/securitySchemes');
+
 sub register {
   my ($self, $app, $openapi, $config) = @_;
   my $handlers = $config->{security} or return;
 
-  return unless $openapi->validator->get('/securityDefinitions');
+  return unless $openapi->validator->get($DEF_PATH{$openapi->validator->version});
   return $openapi->route(
     $openapi->route->under('/')->to(cb => $self->_build_action($openapi, $handlers)));
 }
@@ -13,7 +15,7 @@ sub register {
 sub _build_action {
   my ($self, $openapi, $handlers) = @_;
   my $global      = $openapi->validator->get('/security') || [];
-  my $definitions = $openapi->validator->get('/securityDefinitions');
+  my $definitions = $openapi->validator->get($DEF_PATH{$openapi->validator->version});
 
   return sub {
     my $c = shift;

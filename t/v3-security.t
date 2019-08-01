@@ -2,7 +2,12 @@ use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
 
+BEGIN {
+  plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
+}
+
 use Mojolicious::Lite;
+
 post '/global' => sub {
   my $c = shift->openapi->valid_input or return;
   $c->render(openapi => {ok => 1});
@@ -63,6 +68,7 @@ post '/die' => sub {
 our %checks;
 plugin OpenAPI => {
   url      => 'data://main/sec.json',
+  schema   => 'v3',
   security => {
     pass1 => sub {
       my ($c, $def, $scopes, $cb) = @_;
@@ -204,46 +210,79 @@ done_testing;
 __DATA__
 @@ sec.json
 {
-  "swagger": "2.0",
+  "openapi": "3.0.0",
   "info": { "version": "0.8", "title": "Pets" },
-  "schemes": [ "http" ],
-  "basePath": "/api",
-  "securityDefinitions": {
-    "pass1": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "pass1"
+  "servers": [
+    { "url": "http://petstore.swagger.io/api" }
+  ],
+  "components": {
+    "responses": {
+      "defaultResponse": {
+        "description": "default response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["message"]
+                  }
+                }
+              },
+              "required": ["errors"]
+            }
+          }
+        }
+      }
     },
-    "pass2": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "pass2"
-    },
-    "fail1": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "fail1"
-    },
-    "fail2": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "fail2"
-    },
-    "~fail/escape": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "dummy"
-    },
-    "die": {
-      "type": "apiKey",
-      "name": "Authorization",
-      "in": "header",
-      "description": "die"
+    "securitySchemes": {
+      "pass1": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "pass1"
+      },
+      "pass2": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "pass2"
+      },
+      "fail1": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "fail1"
+      },
+      "fail2": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "fail2"
+      },
+      "~fail/escape": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "dummy"
+      },
+      "die": {
+        "type": "apiKey",
+        "name": "Authorization",
+        "in": "header",
+        "description": "die"
+      }
     }
   },
   "security": [{"pass1": []}],
@@ -251,11 +290,19 @@ __DATA__
     "/global": {
       "post": {
         "x-mojo-name": "global",
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -263,11 +310,19 @@ __DATA__
       "post": {
         "x-mojo-name": "simple",
         "security": [{"pass2": []}],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -275,11 +330,19 @@ __DATA__
       "options": {
         "x-mojo-name": "options",
         "security": [{"pass1": []}],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -290,11 +353,19 @@ __DATA__
           {"fail1": []},
           {"pass1": []}
         ],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -307,11 +378,19 @@ __DATA__
             "pass1": []
           }
         ],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -322,11 +401,19 @@ __DATA__
           { "fail1": [] },
           { "fail2": [] }
         ],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -339,11 +426,19 @@ __DATA__
             "fail2": []
           }
         ],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -351,11 +446,19 @@ __DATA__
       "post": {
         "x-mojo-name": "fail_escape",
         "security": [{"~fail/escape": []}],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -372,11 +475,19 @@ __DATA__
             "pass2": []
           }
         ],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     },
@@ -387,11 +498,19 @@ __DATA__
           {"die": []},
           {"pass1": []}
         ],
-        "parameters": [
-          { "in": "body", "name": "body", "schema": { "type": "object" } }
-        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }
+        },
         "responses": {
-          "200": {"description": "Echo response", "schema": { "type": "object" }}
+          "200": {"description": "Echo response", "content": {
+            "application/json": {
+              "schema": { "type": "object" }
+            }
+          }}
         }
       }
     }
