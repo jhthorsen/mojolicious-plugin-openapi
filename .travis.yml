@@ -6,7 +6,7 @@ perl:
 env:
   - "HARNESS_OPTIONS=j6"
 install:
-  - "cpanm -n Test::Pod Test::Pod::Coverage Data::Validate::Domain Data::Validate::IP YAML"
+  - "cpanm -n Test::Pod Test::Pod::Coverage Data::Validate::Domain Data::Validate::IP YAML::LibYAML"
   - "cpanm -n https://github.com/mojolicious/json-validator/archive/master.tar.gz"
   - "cpanm -n --installdeps ."
 notifications:
