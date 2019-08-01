@@ -10,7 +10,7 @@ my %WriteMakefileArgs = (
   EXE_FILES      => [qw()],
   BUILD_REQUIRES => {},
   TEST_REQUIRES  => {'Test::More' => '0.88'},
-  PREREQ_PM      => {'JSON::Validator' => '3.09', 'Mojolicious' => '8.00'},
+  PREREQ_PM      => {'JSON::Validator' => '3.11', 'Mojolicious' => '8.00'},
   META_MERGE     => {
     'dynamic_config' => 0,
     'meta-spec'      => {version => 2},

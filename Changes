@@ -1,7 +1,13 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.15 Not Released
+2.15 2019-08-01T20:18:05+0200
  - Add support for v3 schema from https://spec.openapis.org/oas/3.0/schema/2019-04-02
+ - Add support for handling of securitySchemes in OpenAPI v3 #129
+   Contributor: Ilya Rassadin
+ - Fix default responses for OpenAPI v3 #129
+   Contributor: Ilya Rassadin
+ - Compatible with new Mojo::Exception # 133
+   Contributor: Roy Storey
 
 2.14 2019-05-05T14:11:06+0700
  - Fix "coerce(1) will be deprecated" #130

@@ -89,7 +89,10 @@ $t->get_ok('/one')->status_is(200)
 $t->options_ok('/oa3/users?method=get')->status_is(200)
   ->json_is('/responses/200/description', 'A JSON array of user names')
   ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
-  ->json_is('/responses/400/content/application~1json/schema/$ref', '#/components/responses/DefaultResponse');
+  ->json_is(
+  '/responses/400/content/application~1json/schema/$ref',
+  '#/definitions/__components_responses_DefaultResponse'
+  );
 
 $t->options_ok('/one/user?method=post')->status_is(200)
   ->json_is('/responses/200/description', 'ok')
