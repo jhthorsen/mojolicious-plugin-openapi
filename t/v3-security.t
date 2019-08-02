@@ -2,9 +2,7 @@ use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
 
-BEGIN {
-  plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
-}
+plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
 
 use Mojolicious::Lite;
 

@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.16 2019-08-02T09:07:24+0200
+ - Fix t/v3-body.t when YAML::XS is not available
+
 2.15 2019-08-01T20:18:05+0200
  - Add support for v3 schema from https://spec.openapis.org/oas/3.0/schema/2019-04-02
  - Add support for handling of securitySchemes in OpenAPI v3 #129
