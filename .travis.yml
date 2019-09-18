@@ -1,8 +1,14 @@
 language: perl
-perl:
-  - "5.20"
-  - "5.16"
-  - "5.10"
+matrix:
+  include:
+    - perl: "5.28"
+      dist: xenial
+    - perl: "5.20"
+      dist: trusty
+    - perl: "5.16"
+      dist: trusty
+    - perl: "5.10"
+      dist: trusty
 env:
   - "HARNESS_OPTIONS=j6"
 install:
