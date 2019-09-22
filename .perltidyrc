@@ -10,3 +10,4 @@
 -bt=2    # High brace tightness
 -sbt=2   # High square bracket tightness
 -isbc    # Don't indent comments without leading space
+-nst     # undo -st from -pbp, to allow for command line use
