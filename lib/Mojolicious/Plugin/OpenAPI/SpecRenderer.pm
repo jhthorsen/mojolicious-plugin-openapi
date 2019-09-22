@@ -85,6 +85,8 @@ sub _render_spec {
   local $spec->{basePath} = $c->url_for($spec->{basePath});
   local $spec->{host}     = $c->req->url->to_abs->host_port;
 
+  delete @$spec{qw(basePath host)} if $self->validator->version ge '3';
+
   return $c->render(json => $spec) unless $format eq 'html';
   return $c->render(
     handler   => 'ep',

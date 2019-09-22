@@ -74,12 +74,12 @@ sub _add_default_response {
 
   my $ref
     = $self->validator->version ge '3'
-    ? ($schema_data->{components}{responses}{$name} ||= $self->_default_schema)
+    ? ($schema_data->{components}{schemas}{$name} ||= $self->_default_schema)
     : ($schema_data->{definitions}{$name} ||= $self->_default_schema);
 
   my %schema
     = $self->validator->version ge '3'
-    ? ('$ref' => "#/components/responses/$name")
+    ? ('$ref' => "#/components/schemas/$name")
     : ('$ref' => "#/definitions/$name");
 
   tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
