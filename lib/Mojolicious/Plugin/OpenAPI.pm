@@ -69,6 +69,8 @@ sub _add_default_response {
   my ($self, $op_spec) = @_;
   my $name        = $self->{default_response_name};
   my $schema_data = $self->validator->schema->data;
+  # turn off with config { default_response_codes => [] }
+  return unless @{$self->{default_response_codes}};
 
   my $ref
     = $self->validator->version ge '3'
