@@ -99,14 +99,6 @@ These three sections are required to make the specification valid. Check out
 L<https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md>
 for a complete reference to the specification.
 
-=item * XXX host, schemes, consumes, produces, security and securityDefinitions
-
-These keys are currently not in use. "host" will be replaced by the "Host"
-header in the request. The rest of the keys are currently not in use.
-
-Submit an L<issue|https://github.com/jhthorsen/mojolicious-plugin-openapi/issues>
-if you have ideas on what to use these keys for.
-
 =item * parameters, requestBody and responses
 
 C<parameters>, C<requestBody> and C<responses> will be used to define input and output
@@ -156,6 +148,68 @@ ref will be flatten. Examples:
 
   "x-mojo-to": ["pet#list", {"foo": 123}]
   $route->to("pet#list", {foo => 123});
+
+=item * security and securitySchemes
+
+The securityScheme is added under components, where on way is to have the client
+place an apiKey in the header of the request
+
+  {
+    ...
+    "components": {
+      "securitySchemes": {
+        "apiKey": {
+          "name": "X-Api-Key",
+          "in": "header",
+          "type": "apiKey"
+        }
+      }
+    }
+  }
+
+Its then referenced under the path object as security like this
+
+  {
+    ...
+    "paths": {
+      "/pets": {
+        "get": {
+          "operationId": "getPets",
+          ...
+          "security": [
+            {
+              "apiKey": []
+            }
+          ]
+        }
+      }
+    }
+  }
+
+You can then utilize security, by adding security callback when loading
+the plugin
+
+  $self->plugin(
+    OpenAPI => {
+      spec     => $self->static->file("openapi.json")->path,
+      schema   => 'v3',
+      security => {
+        apiKey => sub ($c, $definition, $scopes, $cb) {
+          if (my $key = $c->tx->req->content->headers->to_hash->{'X-Api-Key'}) {
+            if (got_valid_api_key()) {
+              return $c->$cb();
+            }
+            else {
+              return $c->$cb('Api Key not valid');
+            }
+          }
+          else {
+            return $c->$cb('Api Key header not present');
+          }
+        }
+      }
+    }
+  );
 
 =back
 
