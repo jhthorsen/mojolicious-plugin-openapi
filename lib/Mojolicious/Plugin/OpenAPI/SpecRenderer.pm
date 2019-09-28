@@ -184,7 +184,7 @@ L<Mojolicious::Plugin::OpenAPI>
 __DATA__
 @@ mojolicious/plugin/openapi/header.html.ep
 <h1 id="title"><%= $spec->{info}{title} || 'No title' %></h1>
-<p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %></span></p>
+<p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %> - OpenAPI <%= $spec->{swagger} || $spec->{openapi} %></span></p>
 
 %= include "mojolicious/plugin/openapi/toc"
 
@@ -253,7 +253,7 @@ __DATA__
       <td><%= $p->{name} %></td>
     % }
     <td><%= $p->{in} %></td>
-    <td><%= $p->{type} %></td>
+    <td><%= $p->{type} || $p->{schema}{type} %></td>
     <td><%= $p->{required} ? "Yes" : "No" %></td>
     <td><%== $p->{description} ? $markdown->($p->{description}) : "" %></td>
   </tr>
@@ -268,13 +268,17 @@ __DATA__
 <h4 class="op-parameter-body">Body</h4>
 <pre class="op-parameter-body"><%= $serialize->($body) %></pre>
 % }
+% if ($op->{requestBody}) {
+<h4 class="op-parameter-body">requestBody</h4>
+<pre class="op-parameter-body"><%= $serialize->($op->{requestBody}{content}) %></pre>
+% }
 @@ mojolicious/plugin/openapi/response.html.ep
 % for my $code (sort keys %{$op->{responses}}) {
   % next if $code =~ $X_RE;
   % my $res = $op->{responses}{$code};
 <h4 class="op-response">Response <%= $code %></h3>
 %= include "mojolicious/plugin/openapi/human", spec => $res
-<pre class="op-response"><%= $serialize->($res->{schema}) %></pre>
+<pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
 <h3 id="op-<%= lc $method %><%= $esc->($path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></a></h3>
@@ -294,6 +298,13 @@ __DATA__
   % next if $key =~ $X_RE;
   <h3 id="ref-definitions-<%= lc $esc->($key) %>"><a href="#title">#/definitions/<%= $key %></a></h3>
   <pre class="ref"><%= $serialize->($spec->{definitions}{$key}) %></pre>
+% }
+% for my $type (sort { $a cmp $b } keys %{$spec->{components} || {}}) {
+  % for my $key (sort { $a cmp $b } keys %{$spec->{components}{$type} || {}}) {
+    % next if $key =~ $X_RE;
+    <h3 id="ref-components-<%= lc $esc->($type) %>-<%= lc $esc->($key) %>"><a href="#title">#/components/<%= $type %>/<%= $key %></a></h3>
+    <pre class="ref"><%= $serialize->($spec->{components}{$type}{$key}) %></pre>
+  % }
 % }
 % for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
   % next if $key =~ $X_RE;
@@ -343,15 +354,24 @@ __DATA__
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
 
-% my $schemes = $spec->{schemes} || ["http"];
-% my $url = Mojo::URL->new("http://$spec->{host}");
-<h3 id="base-url"><a href="#title">Base URL</a></h3>
-<ul class="unstyled">
-% for my $scheme (@$schemes) {
-  % $url->scheme($scheme);
-  <li><a href="<%= $url %>"><%= $url %></a></li>
+% if ( exists $spec->{openapi} ) {
+  <h3 id="servers"><a href="#title">Servers</a></h3>
+  <ul class="unstyled">
+  % for my $server (@{$spec->{servers}}){
+    <li><a href="<%= $server->{url} %>"><%= $server->{url} %></a><%= $server->{description} ? ' - '.$server->{description} : '' %></li>
+  % }
+  </ul>
+% } else {
+  % my $schemes = $spec->{schemes} || ["http"];
+  % my $url = Mojo::URL->new("http://$spec->{host}");
+  <h3 id="base-url"><a href="#title">Base URL</a></h3>
+  <ul class="unstyled">
+  % for my $scheme (@$schemes) {
+    % $url->scheme($scheme);
+    <li><a href="<%= $url %>"><%= $url %></a></li>
+  % }
+  </ul>
 % }
-</ul>
 
 % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
   % next if $path =~ $X_RE;
@@ -387,6 +407,12 @@ __DATA__
     % for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
       % next if $key =~ $X_RE;
       <li><a href="#ref-definitions-<%= lc $esc->($key) %>">#/definitions/<%= $key %></a></li>
+    % }
+    % for my $type (sort { $a cmp $b } keys %{$spec->{components} || {}}) {
+      % for my $key (sort { $a cmp $b } keys %{$spec->{components}{$type} || {}}) {
+        % next if $key =~ $X_RE;
+        <li><a href="#ref-components-<%= lc $esc->($type) %>-<%= lc $esc->($key) %>">#/components/<%= $type %>/<%= $key %></a></li>
+      % }
     % }
     % for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
       % next if $key =~ $X_RE;
