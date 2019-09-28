@@ -6,9 +6,9 @@ make_app();
 make_controller();
 
 my $t = Test::Mojo->new('Myapp');
-
 $t->get_ok('/api')->status_is(200)->json_is('/info/title', 'Some awesome API');
-$t->get_ok('/api/pets')->status_is(200)->json_is('/pets/0/name', 'kit-e-cat');
+$t->get_ok('/api/pets' => {'Content-Type' => 'application/json'})->status_is(200)
+  ->json_is('/pets/0/name', 'kit-e-cat');
 
 done_testing;
 
@@ -19,7 +19,7 @@ sub make_app {
 
   sub startup {
     my $app = shift;
-    $app->plugin("OpenAPI" => {url => "data://main/myapi.json"});
+    $app->plugin("OpenAPI" => {url => "data://main/myapi.json", schema => 'v3'});
   }
 
   $ENV{"Myapp.pm"} = 1;
@@ -35,7 +35,8 @@ sub make_controller {
 
     # Do not continue on invalid input and render a default 400
     # error document.
-    my $c = shift->openapi->valid_input or return;
+    my $c = shift;
+    $c = $c->openapi->valid_input or return;
 
     # $c->openapi->valid_input copies valid data to validation object,
     # and the normal Mojolicious api works as well.
@@ -55,9 +56,11 @@ HERE
 __DATA__
 @@ myapi.json
 {
-  "swagger": "2.0",
-  "info": { "version": "1.0", "title": "Some awesome API" },
-  "basePath": "/api",
+  "openapi": "3.0.2",
+  "info": {
+    "version": "1.0",
+    "title": "Some awesome API"
+  },
   "paths": {
     "/pets": {
       "get": {
@@ -66,18 +69,38 @@ __DATA__
         "x-mojo-to": "pet#list",
         "summary": "Finds pets in the system",
         "parameters": [
-          {"in": "body", "name": "body", "schema": {"type": "object"}},
-          {"in": "query", "name": "age", "type": "integer"}
+          {
+            "in": "query",
+            "name": "age",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Pet response",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "pets": {
-                  "type": "array",
-                  "items": { "type": "object" }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pets": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -85,5 +108,10 @@ __DATA__
         }
       }
     }
-  }
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ]
 }
