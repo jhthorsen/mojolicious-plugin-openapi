@@ -1,11 +1,11 @@
 =head1 NAME
 
-Mojolicious::Plugin::OpenAPI::Guides::OpenAPI3 - Mojolicious <3 Open API (Swagger)
+Mojolicious::Plugin::OpenAPI::Guides::OpenAPI3 - Mojolicious <3 Open API v3 (Swagger)
 
 =head1 OVERVIEW
 
 This guide will give you an introduction to how to use
-L<Mojolicious::Plugin::OpenAPI>.
+L<Mojolicious::Plugin::OpenAPI> with OpenAPI version v3.x
 
 =head1 TUTORIAL
 
@@ -77,7 +77,7 @@ L<supported schema file formats|JSON::Validator/Supported schema formats>.
   }
 
 The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
-The first part of the path ("/api") comes from C<basePath>, the second part
+The first part of the path ("/api") comes from C<servers>, the second part
 comes from the keys under C<paths>, and the HTTP method comes from the keys
 under C</pets>.
 
@@ -105,7 +105,7 @@ C<parameters>, C<requestBody> and C<responses> will be used to define input and 
 validtion rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
 and when rendering the response back to the client, using C<< render(openapi => ...) >>.
 
-Here OpenAPIv3 input differs from v2 spec, where C<paramters> is used for input in the
+Here OpenAPIv3 input differs from v2 spec, where C<parameters> is used for input in the
 path or query of the request. The C<requestBody> is used for input passed in the body.
 
 Have a look at L<Mojolicious::Plugin::OpenAPI/RENDERER> for more details about
@@ -167,7 +167,7 @@ place an apiKey in the header of the request
     }
   }
 
-Its then referenced under the path object as security like this
+It is then referenced under the path object as security like this
 
   {
     ...
@@ -194,8 +194,9 @@ the plugin
       spec     => $self->static->file("openapi.json")->path,
       schema   => 'v3',
       security => {
-        apiKey => sub ($c, $definition, $scopes, $cb) {
-          if (my $key = $c->tx->req->content->headers->to_hash->{'X-Api-Key'}) {
+        apiKey => sub {
+          my ($c, $definition, $scopes, $cb) = @_;
+          if (my $key = $c->tx->req->content->headers->header('X-Api-Key')) {
             if (got_valid_api_key()) {
               return $c->$cb();
             }
@@ -348,7 +349,7 @@ L<Mojolicious> tools:
 
 =head1 OpenAPIv2 to OpenAPIv3 conversion
 
-Online and offline tools are available one example is
+Both online and offline tools are available. One example is of this is
 L<https://github.com/mermade/openapi-webconverter>
 
 =head1 Known issues
@@ -374,6 +375,7 @@ Will also be placed under '#/definitions/...', again producing a spec output
 which will not pass validation
 
 A reference like
+
   "$ref": "my-other-cool-component.json#/components/schemas/inputSchema"
 
 Is not supported either, even though it would be easier to place it correctly
