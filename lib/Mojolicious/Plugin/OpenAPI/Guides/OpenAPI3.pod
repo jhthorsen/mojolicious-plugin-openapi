@@ -381,11 +381,6 @@ A reference like
 Is not supported either, even though it would be easier to place it correctly
 in the final rendering of the spec
 
-=head2 Doc rendering of OpenAPI v3 spec
-
-The internal doc renderer does not support OpenAPI v3, and issue exists for this
-on github L<jhthorsen/mojolicious-plugin-openapi#127>
-
 =head1 SEE ALSO
 
 L<Mojolicious::Plugin::OpenAPI>,
