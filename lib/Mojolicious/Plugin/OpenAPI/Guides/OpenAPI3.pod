@@ -1,0 +1,389 @@
+=head1 NAME
+
+Mojolicious::Plugin::OpenAPI::Guides::OpenAPI3 - Mojolicious <3 Open API v3 (Swagger)
+
+=head1 OVERVIEW
+
+This guide will give you an introduction to how to use
+L<Mojolicious::Plugin::OpenAPI> with OpenAPI version v3.x
+
+=head1 TUTORIAL
+
+=head2 Specification
+
+This plugin reads an L<OpenAPI specification|https://openapis.org/specification>
+and generate routes and input/output rules from it. See L<JSON::Validator> for
+L<supported schema file formats|JSON::Validator/Supported schema formats>.
+
+  {
+    "openapi": "3.0.2",
+    "info": {
+      "version": "1.0",
+      "title": "Some awesome API"
+    },
+    "paths": {
+      "/pets": {
+        "get": {
+          "operationId": "getPets",
+          "x-mojo-name": "get_pets",
+          "x-mojo-to": "pet#list",
+          "summary": "Finds pets in the system",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "age",
+              "schema": {
+                "type": "integer"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Pet response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "pets": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "servers": [
+      {
+        "url": "/api"
+      }
+    ]
+  }
+
+The complete HTTP request for getting the "pet list" will be C<GET /api/pets>
+The first part of the path ("/api") comes from C<servers>, the second part
+comes from the keys under C<paths>, and the HTTP method comes from the keys
+under C</pets>.
+
+The different parts of the specification can also be retrieved as JSON using
+the "OPTIONS" HTTP method. Example:
+
+  OPTIONS /api/pets
+  OPTIONS /api/pets?method=get
+
+Note that the use of "OPTIONS" is EXPERIMENTAL, and subject to change.
+
+Here are some more details about the different keys:
+
+=over 2
+
+=item * openapi, info and paths
+
+These three sections are required to make the specification valid. Check out
+L<https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md>
+for a complete reference to the specification.
+
+=item * parameters, requestBody and responses
+
+C<parameters>, C<requestBody> and C<responses> will be used to define input and output
+validtion rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
+and when rendering the response back to the client, using C<< render(openapi => ...) >>.
+
+Here OpenAPIv3 input differs from v2 spec, where C<parameters> is used for input in the
+path or query of the request. The C<requestBody> is used for input passed in the body.
+
+Have a look at L<Mojolicious::Plugin::OpenAPI/RENDERER> for more details about
+output rendering.
+
+=item * operationId and x-mojo-name
+
+See L</Route names>.
+
+=item * x-mojo-placeholder
+
+C<x-mojo-placeholder> can be used inside a parameter definition to instruct
+Mojolicious to parse a path part in a certain way. Example:
+
+  "parameters": [
+    {
+      "x-mojo-placeholder": "#",
+      "in": "path",
+      "name": "email",
+      "type": "string"
+    }
+  ]
+
+See L<Mojolicious::Guides::Routing> for more information about "standard",
+"relaxed" and "wildcard" placeholders. The default is to use the "standard"
+("/:foo") placeholder.
+
+=item * x-mojo-to
+
+The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key
+can be either a plain string, object (hash) or an array. The string and hash
+will be passed directly to L<Mojolicious::Routes::Route/to>, while the array
+ref will be flatten. Examples:
+
+  "x-mojo-to": "pet#list"
+  $route->to("pet#list");
+
+  "x-mojo-to": {"controller": "pet", "action": "list", "foo": 123}
+  $route->to({controller => "pet", action => "list", foo => 123);
+
+  "x-mojo-to": ["pet#list", {"foo": 123}]
+  $route->to("pet#list", {foo => 123});
+
+=item * security and securitySchemes
+
+The securityScheme is added under components, where on way is to have the client
+place an apiKey in the header of the request
+
+  {
+    ...
+    "components": {
+      "securitySchemes": {
+        "apiKey": {
+          "name": "X-Api-Key",
+          "in": "header",
+          "type": "apiKey"
+        }
+      }
+    }
+  }
+
+It is then referenced under the path object as security like this
+
+  {
+    ...
+    "paths": {
+      "/pets": {
+        "get": {
+          "operationId": "getPets",
+          ...
+          "security": [
+            {
+              "apiKey": []
+            }
+          ]
+        }
+      }
+    }
+  }
+
+You can then utilize security, by adding security callback when loading
+the plugin
+
+  $self->plugin(
+    OpenAPI => {
+      spec     => $self->static->file("openapi.json")->path,
+      schema   => 'v3',
+      security => {
+        apiKey => sub {
+          my ($c, $definition, $scopes, $cb) = @_;
+          if (my $key = $c->tx->req->content->headers->header('X-Api-Key')) {
+            if (got_valid_api_key()) {
+              return $c->$cb();
+            }
+            else {
+              return $c->$cb('Api Key not valid');
+            }
+          }
+          else {
+            return $c->$cb('Api Key header not present');
+          }
+        }
+      }
+    }
+  );
+
+=back
+
+=head2 Application
+
+  package Myapp;
+  use Mojo::Base "Mojolicious";
+
+  sub startup {
+    my $app = shift;
+    $app->plugin("OpenAPI" => {url => $app->home->rel_file("myapi.json"), schema => 'v3'});
+  }
+
+  1;
+
+The first thing in your code that you need to do is to load this plugin and the
+L</Specification>. See L<Mojolicious::Plugin::OpenAPI/register> for information
+about what the plugin config can be.
+
+See also L<Mojolicious::Plugin::OpenAPI/SYNOPSIS> for example
+L<Mojolicious::Lite> application.
+
+=head2 Controller
+
+  package Myapp::Controller::Pet;
+  use Mojo::Base "Mojolicious::Controller";
+
+  sub list {
+
+    # Do not continue on invalid input and render a default 400
+    # error document.
+    my $c = shift->openapi->valid_input or return;
+
+    # You might want to introspect the specification for the current route
+    my $spec = $c->openapi->spec;
+    unless ($spec->{'x-opening-hour'} == (localtime)[2]) {
+      return $c->render(openapi => [], status => 498);
+    }
+
+    # $c->openapi->valid_input copies valid data to validation object,
+    # and the normal Mojolicious api works as well.
+    my $input = $c->validation->output;
+    my $age   = $c->param("age"); # same as $input->{age}
+    my $body  = $c->req->json;    # same as $input->{body}
+
+    # $output will be validated by the OpenAPI spec before rendered
+    my $output = {pets => [{name => "kit-e-cat"}]};
+    $c->render(openapi => $output);
+  }
+
+  1;
+
+The input will be validated using
+L<Mojolicious::Plugin::OpenAPI/openapi.valid_input> while the output is
+validated through then L<openapi|Mojolicious::Plugin::OpenAPI/RENDERER>
+handler.
+
+=head2 Route names
+
+Routes will get its name from either L</x-mojo-name> or from L</operationId> if
+defined in the specification.
+
+The route name can also be used the other way around, to find already defined
+routes. This is especially useful for L<Mojolicious::Lite> apps.
+
+Note that if L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name>
+then all the route names will have that value as prefix:
+
+  spec_route_name            = "my_cool_api"
+  operationId or x-mojo-name = "Foo"
+  Route name                 = "my_cool_api.Foo"
+
+You can also set "x-mojo-name" in the spec, instead of passing
+L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name>
+to L<plugin()|Mojolicious::Plugin::OpenAPI/register>:
+
+  {
+    "openapi": "3.0.2",
+    "info": { "version": "1.0", "title": "Some awesome API" },
+    "x-mojo-name": "my_cool_api"
+  }
+
+=head2 Default response schema
+
+A default response definition will be added to the API spec, unless it's
+already defined. This schema will at least be used for invalid input (400 - Bad Request) and
+invalid output (500 - Internal Server Error), but can also be used in other cases.
+
+See L<Mojolicious::Plugin::OpenAPI/default_response_codes> and
+L<Mojolicious::Plugin::OpenAPI/default_response_name> for more details on how
+to configure these settings.
+
+The response schema will be added to your spec like this, unless already defined:
+
+  {
+    ...
+    "components": {
+      ...
+      "schemas": {
+        ...
+        "DefaultResponse": {
+          "type":     "object",
+          "required": ["errors"],
+          "properties": {
+            "errors": {
+              "type":  "array",
+              "items": {
+                "type":       "object",
+                "required":   ["message"],
+                "properties": {"message": {"type": "string"}, "path": {"type": "string"}}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+The "errors" key will contain one element for all the invalid data, and not
+just the first one. The useful part for a client is mostly the "path", while
+the "message" is just to add some human readable debug information for why this
+request/response failed.
+
+=head2 Rendering binary data
+
+Rendering assets and binary data should be accomplished by using the standard
+L<Mojolicious> tools:
+
+  sub get_image {
+    my $c = shift->openapi->valid_input or return;
+    my $asset = Mojo::Asset::File->new(path => "image.jpeg");
+
+    $c->res->headers->content_type("image/jpeg");
+    $c->reply->asset($asset);
+  }
+
+=head1 OpenAPIv2 to OpenAPIv3 conversion
+
+Both online and offline tools are available. One example is of this is
+L<https://github.com/mermade/openapi-webconverter>
+
+=head1 Known issues
+
+=head2 Path references
+
+Today L<JSON::Validator> does not handle references for OpenAPI v3
+
+  "$ref": '#/components/schemas/inputSchema'
+
+They will be places under '#/definitions/....', which will not pass validation.
+
+Work is currently underway to remedy this.
+
+=head2 File references
+
+Relative file references like the following
+
+  "$ref": "my-cool-component.json#"
+  "$ref": "my-cool-component.json"
+
+Will also be placed under '#/definitions/...', again producing a spec output
+which will not pass validation
+
+A reference like
+
+  "$ref": "my-other-cool-component.json#/components/schemas/inputSchema"
+
+Is not supported either, even though it would be easier to place it correctly
+in the final rendering of the spec
+
+=head1 SEE ALSO
+
+L<Mojolicious::Plugin::OpenAPI>,
+L<https://openapis.org/specification>.
+
+=cut
