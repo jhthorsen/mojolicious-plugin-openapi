@@ -7,7 +7,7 @@ use Mojo::JSON;
 use Mojo::Util;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '2.16';
+our $VERSION = '2.17';
 my $X_RE = qr{^x-};
 
 has route     => sub {undef};
@@ -69,6 +69,7 @@ sub _add_default_response {
   my ($self, $op_spec) = @_;
   my $name        = $self->{default_response_name};
   my $schema_data = $self->validator->schema->data;
+
   # turn off with config { default_response_codes => [] }
   return unless @{$self->{default_response_codes}};
 

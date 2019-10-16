@@ -1,5 +1,17 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.17 2019-10-17T08:12:29+0900
+ - Add tuturial for OpenAPI v3 #142
+   Contributor: Henrik Andersen
+ - The internal doc renderer now supports OpenAPI v3 #144
+   Contributor: Henrik Andersen
+ - Fixed failing tests #143
+   Contributor: Henrik Andersen
+ - Fixed rendering OpenAPI v3 spec #141
+   Contributor: Henrik Andersen
+ - Fixed failing integration with OpenAPI::Client #135
+   Contributor: Roy Storey
+
 2.16 2019-08-02T09:07:24+0200
  - Fix t/v3-body.t when YAML::XS is not available
 
