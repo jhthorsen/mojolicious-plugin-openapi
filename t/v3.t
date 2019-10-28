@@ -36,6 +36,8 @@ plugin OpenAPI => {
 };
 
 my $t = Test::Mojo->new;
+$t->get_ok('/v1.json')->status_is(200)->json_like('/servers/0/url', qr{^http://[^/]+/v1\.json$});
+
 $t->get_ok('/v1/pets?limit=invalid', {Accept => 'application/json'})->status_is(400)
   ->json_is('/errors/0/message', 'Expected integer - got string.');
 

@@ -11,7 +11,7 @@ sub register {
 
   if ($config->{render_specification} // 1) {
     my $spec_route = $openapi->route->get('/')->to(cb => sub { shift->openapi->render_spec });
-    my $name = $config->{spec_route_name} || $openapi->validator->get('/x-mojo-name');
+    my $name       = $config->{spec_route_name} || $openapi->validator->get('/x-mojo-name');
     $spec_route->name($name) if $name;
     push @{$app->renderer->classes}, __PACKAGE__ unless $app->{'openapi.render_specification'}++;
   }
@@ -82,10 +82,19 @@ sub _render_spec {
   my $format = $c->stash('format') || 'json';
   my $spec   = $self->{bundled} ||= $self->validator->bundle;
 
-  local $spec->{basePath} = $c->url_for($spec->{basePath});
-  local $spec->{host}     = $c->req->url->to_abs->host_port;
+  local $spec->{basePath} = $spec->{basePath};
+  local $spec->{host}     = $spec->{host};
+  local $spec->{servers}  = $spec->{servers};
 
-  delete @$spec{qw(basePath host)} if $self->validator->version ge '3';
+  if ($self->validator->version ge '3') {
+    $spec->{servers} = [{url => $c->req->url->to_abs->to_string}];
+    delete @$spec{qw(basePath host)};
+  }
+  else {
+    $spec->{basePath} = $c->url_for($spec->{basePath});
+    $spec->{host}     = $c->req->url->to_abs->host_port;
+    delete $spec->{servers};
+  }
 
   return $c->render(json => $spec) unless $format eq 'html';
   return $c->render(
