@@ -6,7 +6,10 @@ use Mojolicious::Lite;
 
 get '/pets/:petId' => sub {
   my $c = shift->openapi->valid_input or return;
-  $c->render(openapi => {});
+  my $input = $c->validation->output;
+  my $output = {id => $input->{petId}, name => 'Cow'};
+  $output->{age} = 6 if $input->{wantAge};
+  $c->render(openapi => $output);
   },
   'showPetById';
 
@@ -68,6 +71,17 @@ $t->post_ok('/v1/pets', {Cookie => 'debug=1'}, json => {id => 1, name => 'Superc
 
 $t->post_ok('/v1/pets', form => {id => 1, name => 'Supercow'})->status_is(201)->content_is('');
 
+$t->get_ok('/v1/pets/23?wantAge=yes', {Accept => 'application/json'})->status_is(400)
+  ->json_is('/errors/0/message', 'Expected boolean - got string.');
+
+$t->get_ok('/v1/pets/23?wantAge=true', {Accept => 'application/json'})->status_is(200)
+  ->json_is('/id', 23)
+  ->json_is('/age', 6);
+
+$t->get_ok('/v1/pets/23?wantAge=false', {Accept => 'application/json'})->status_is(200)
+  ->json_is('/id', 23)
+  ->json_is('/age', undef);
+
 done_testing;
 
 __DATA__
@@ -97,6 +111,14 @@ __DATA__
             "name": "petId",
             "required": true,
             "schema": { "type": "string" }
+          },
+          {
+            "description": "Indicates if the age is wanted in the response object",
+            "in": "query",
+            "name": "wantAge",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -115,10 +137,10 @@ __DATA__
             "description": "Expected response to a valid request",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Pets" }
+                "schema": { "$ref": "#/components/schemas/Pet" }
               },
               "application/xml": {
-                "schema": { "$ref": "#/components/schemas/Pets" }
+                "schema": { "$ref": "#/components/schemas/Pet" }
               }
             }
           }
@@ -228,7 +250,8 @@ __DATA__
         "properties": {
           "tag": { "type": "string" },
           "id": { "type": "integer", "format": "int64" },
-          "name": { "type": "string" }
+          "name": { "type": "string" },
+          "age": { "type": "integer" }
         }
       },
       "Error": {
