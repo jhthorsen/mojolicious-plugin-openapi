@@ -1,7 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.18 Not Released
+2.18 2019-10-28T14:18:33+0900
  - Fix /servers/url for OpenAPI v3 in SpecRenderer #148
+ - Fix OpenAPI v3 parameter type #137 #147
+   Contributor: SebMourlhou
 
 2.17 2019-10-17T08:12:29+0900
  - Add tuturial for OpenAPI v3 #142
