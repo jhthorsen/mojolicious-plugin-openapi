@@ -19,6 +19,28 @@ has version => 2;
 
 sub E { JSON::Validator::Error->new(@_) }
 
+has generate_definitions_path => sub {
+  my $self = shift;
+  Scalar::Util::weaken($self);
+
+  return sub {
+    my $ref = shift;
+    my @path;
+
+    # Try to determin the path from the fqn
+    if ($ref->fqn =~ m|^(.*)#/(.+)$|) {
+      my $relative = $1;
+      my $path     = $2;
+
+      @path = split '/', $path;
+      pop @path;
+    }
+
+    if   (@path) { \@path }
+    else         { [$self->{definitions_key} || 'definitions'] }
+  };
+};
+
 sub load_and_validate_schema {
   my ($self, $spec, $args) = @_;
 

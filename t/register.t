@@ -91,7 +91,7 @@ $t->options_ok('/oa3/users?method=get')->status_is(200)
   ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
   ->json_is(
   '/responses/400/content/application~1json/schema/$ref',
-  '#/definitions/_components_schemas_DefaultResponse'
+  '#/components/schemas/DefaultResponse'
   );
 
 $t->options_ok('/one/user?method=post')->status_is(200)
