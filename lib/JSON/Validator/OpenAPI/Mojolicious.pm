@@ -89,7 +89,10 @@ sub validate_request {
       $value = $self->_coerce_by_collection_format($value, $p);
     }
 
-    ($exists, $value) = (1, $p->{default}) if !$exists and exists $p->{default};
+    ($exists, $value) = (1, $p->{schema}{default})
+      if !$exists and $p->{schema} and exists $p->{schema}{default};
+    ($exists, $value) = (1, $p->{default})
+      if !$exists and exists $p->{default};
 
     if ($type and defined $value) {
       if ($type ne 'array' and ref $value eq 'ARRAY') {
