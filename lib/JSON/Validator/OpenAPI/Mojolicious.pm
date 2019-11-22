@@ -26,14 +26,20 @@ has generate_definitions_path => sub {
   return sub {
     my $ref = shift;
 
-    # Try to determine the path from the fqn
-    # We are only interested in the path in the fqn, so following fqn:
-    #
-    # #/components/schemas/some_schema, the returned path with be ['components', 'schemas']   (v3)
-    # #/definitions/some_schema, the returned path with be ['definitions']  (v2)
+    if ($self->version eq '3') {
 
-    my $path = Mojo::Path->new( $ref->fqn =~ m!^.*#/(.+)$! )->to_dir->parts;
-    return $path->[0] ? $path : ['definitions'];
+      # Try to determine the path from the fqn
+      # We are only interested in the path in the fqn, so following fqn:
+      #
+      # #/components/schemas/some_schema, the returned path with be ['components', 'schemas']
+      my $path = Mojo::Path->new($ref->fqn =~ m!^.*#/(components/.+)$!)->to_dir->parts;
+      return $path->[0] ? $path : ['definitions'];
+    }
+    else {
+
+      # By default return definitions as path
+      return ['definitions'];
+    }
   };
 };
 
