@@ -25,19 +25,15 @@ has generate_definitions_path => sub {
 
   return sub {
     my $ref = shift;
-    my @path;
 
-    # Try to determin the path from the fqn
-    if ($ref->fqn =~ m|^(.*)#/(.+)$|) {
-      my $relative = $1;
-      my $path     = $2;
+    # Try to determine the path from the fqn
+    # We are only interested in the path in the fqn, so following fqn:
+    #
+    # #/components/schemas/some_schema, the returned path with be ['components', 'schemas']   (v3)
+    # #/definitions/some_schema, the returned path with be ['definitions']  (v2)
 
-      @path = split '/', $path;
-      pop @path;
-    }
-
-    if   (@path) { \@path }
-    else         { [$self->{definitions_key} || 'definitions'] }
+    my $path = Mojo::Path->new( $ref->fqn =~ m!^.*#/(.+)$! )->to_dir->parts;
+    return $path->[0] ? $path : ['definitions'];
   };
 };
 
@@ -615,6 +611,10 @@ Validate the expanded version of the spec, (without any C<$ref>) against the
 OpenAPI schema.
 
 =back
+
+=head2 generate_definitions_path
+
+See L<JSON::Validator/generate_definitions_path>.
 
 =head2 validate_input
 

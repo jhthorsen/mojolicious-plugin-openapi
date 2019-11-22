@@ -354,16 +354,6 @@ L<https://github.com/mermade/openapi-webconverter>
 
 =head1 Known issues
 
-=head2 Path references
-
-Today L<JSON::Validator> does not handle references for OpenAPI v3
-
-  "$ref": '#/components/schemas/inputSchema'
-
-They will be places under '#/definitions/....', which will not pass validation.
-
-Work is currently underway to remedy this.
-
 =head2 File references
 
 Relative file references like the following
