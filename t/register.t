@@ -59,7 +59,8 @@ plugin OpenAPI => {
         description => 'Optional server description, e.g. Internal staging server for testing'
       }
     ],
-    paths => {
+    components => {schemas => {jobs => {type => 'array', items => {type => 'string'}}}},
+    paths      => {
       '/users' => {
         get => {
           summary     => 'Returns a list of users.',
@@ -69,6 +70,18 @@ plugin OpenAPI => {
               description => 'A JSON array of user names',
               content =>
                 {'application/json' => {schema => {type => 'array', items => {type => 'string'}}}}
+            }
+          }
+        }
+      },
+      '/jobs' => {
+        get => {
+          summary     => 'Returns a list of jobs.',
+          description => 'Optional extended description in CommonMark or HTML.',
+          responses   => {
+            '200' => {
+              description => 'A JSON array of job types',
+              content => {'application/json' => {schema => {'$ref' => '#/components/schemas/jobs'}}}
             }
           }
         }
@@ -89,10 +102,13 @@ $t->get_ok('/one')->status_is(200)
 $t->options_ok('/oa3/users?method=get')->status_is(200)
   ->json_is('/responses/200/description', 'A JSON array of user names')
   ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
-  ->json_is(
-  '/responses/400/content/application~1json/schema/$ref',
-  '#/definitions/_components_schemas_DefaultResponse'
-  );
+  ->json_is('/responses/400/content/application~1json/schema/$ref',
+  '#/components/schemas/DefaultResponse');
+
+$t->options_ok('/oa3/jobs?method=get')->status_is(200)
+  ->json_is('/responses/200/description', 'A JSON array of job types')
+  ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
+  ->json_is('/responses/200/content/application~1json/schema/$ref', '#/components/schemas/jobs');
 
 $t->options_ok('/one/user?method=post')->status_is(200)
   ->json_is('/responses/200/description', 'ok')

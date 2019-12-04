@@ -214,6 +214,17 @@ the plugin
 
 =back
 
+=head3 References with files
+
+Only a file reference like
+
+  "$ref": "my-other-cool-component.json#/components/schemas/inputSchema"
+
+Is supported, though a valid path must be used for both the reference and in the
+referenced file, in order to produce a valid spec output.
+
+See L<Known Issues/File references> for unsupported file references
+
 =head2 Application
 
   package Myapp;
@@ -354,16 +365,6 @@ L<https://github.com/mermade/openapi-webconverter>
 
 =head1 Known issues
 
-=head2 Path references
-
-Today L<JSON::Validator> does not handle references for OpenAPI v3
-
-  "$ref": '#/components/schemas/inputSchema'
-
-They will be places under '#/definitions/....', which will not pass validation.
-
-Work is currently underway to remedy this.
-
 =head2 File references
 
 Relative file references like the following
@@ -373,13 +374,6 @@ Relative file references like the following
 
 Will also be placed under '#/definitions/...', again producing a spec output
 which will not pass validation
-
-A reference like
-
-  "$ref": "my-other-cool-component.json#/components/schemas/inputSchema"
-
-Is not supported either, even though it would be easier to place it correctly
-in the final rendering of the spec
 
 =head1 SEE ALSO
 

@@ -1,0 +1,19 @@
+openapi: 3.0.0
+info:
+  title: Test file refs
+  version: "1"
+servers:
+  - url: /api
+paths:
+  /test:
+    get:
+      operationId: File
+      parameters:
+        - $ref: "v3-valid_include.yaml#"
+      responses:
+        "200":
+          description: thing
+          content:
+            "*/*":
+              schema:
+                type: string

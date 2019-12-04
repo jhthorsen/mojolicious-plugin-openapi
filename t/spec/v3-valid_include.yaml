@@ -1,0 +1,12 @@
+components:
+  parameters:
+    PCVersion:
+      name: pcversion
+      in: query
+      description: version of commands which will run on backend
+      schema:
+        type: string
+        enum:
+          - 9.6.1
+          - 10.1.0
+        default: 10.1.0

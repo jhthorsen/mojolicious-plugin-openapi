@@ -19,6 +19,30 @@ has version => 2;
 
 sub E { JSON::Validator::Error->new(@_) }
 
+has generate_definitions_path => sub {
+  my $self = shift;
+  Scalar::Util::weaken($self);
+
+  return sub {
+    my $ref = shift;
+
+    if ($self->version eq '3') {
+
+      # Try to determine the path from the fqn
+      # We are only interested in the path in the fqn, so following fqn:
+      #
+      # #/components/schemas/some_schema, the returned path with be ['components', 'schemas']
+      my $path = Mojo::Path->new($ref->fqn =~ m!^.*#/(components/.+)$!)->to_dir->parts;
+      return $path->[0] ? $path : ['definitions'];
+    }
+    else {
+
+      # By default return definitions as path
+      return ['definitions'];
+    }
+  };
+};
+
 sub load_and_validate_schema {
   my ($self, $spec, $args) = @_;
 
@@ -593,6 +617,10 @@ Validate the expanded version of the spec, (without any C<$ref>) against the
 OpenAPI schema.
 
 =back
+
+=head2 generate_definitions_path
+
+See L<JSON::Validator/generate_definitions_path>.
 
 =head2 validate_input
 
