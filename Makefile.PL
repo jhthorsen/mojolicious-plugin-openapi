@@ -10,7 +10,7 @@ my %WriteMakefileArgs = (
   EXE_FILES      => [qw()],
   BUILD_REQUIRES => {},
   TEST_REQUIRES  => {'Test::More' => '0.88'},
-  PREREQ_PM      => {'JSON::Validator' => '3.15', 'Mojolicious' => '8.00'},
+  PREREQ_PM      => {'JSON::Validator' => '3.16', 'Mojolicious' => '8.00'},
   META_MERGE     => {
     'dynamic_config' => 0,
     'meta-spec'      => {version => 2},
@@ -23,7 +23,7 @@ my %WriteMakefileArgs = (
         web  => 'https://github.com/jhthorsen/mojolicious-plugin-openapi',
       },
     },
-    'x_contributors' => ['Jan Henning Thorsen'],
+    'x_contributors' => ['Henrik Andersen', 'Ilya Rassadin', 'Jan Henning Thorsen', 'Joel Berger'],
   },
   test => {TESTS => (-e 'META.yml' ? 't/*.t' : 't/*.t xt/*.t')},
 );

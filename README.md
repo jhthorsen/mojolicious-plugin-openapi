@@ -285,13 +285,19 @@ This will only have an effect if "version" is "0".
 
 Defaults to the current `$app`.
 
-# AUTHOR
+# AUTHORS
+
+Henrik Andersen
+
+Ilya Rassadin
 
 Jan Henning Thorsen
 
+Joel Berger
+
 # COPYRIGHT AND LICENSE
 
-Copyright (C) 2016, Jan Henning Thorsen
+Copyright (C) Jan Henning Thorsen
 
 This program is free software, you can redistribute it and/or modify it under
 the terms of the Artistic License version 2.0.

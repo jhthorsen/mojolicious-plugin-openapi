@@ -7,7 +7,7 @@ use Mojo::JSON;
 use Mojo::Util;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '2.18';
+our $VERSION = '2.19';
 my $X_RE = qr{^x-};
 
 has route     => sub {undef};
@@ -645,13 +645,19 @@ This will only have an effect if "version" is "0".
 
 Defaults to the current C<$app>.
 
-=head1 AUTHOR
+=head1 AUTHORS
+
+Henrik Andersen
+
+Ilya Rassadin
 
 Jan Henning Thorsen
 
+Joel Berger
+
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2016, Jan Henning Thorsen
+Copyright (C) Jan Henning Thorsen
 
 This program is free software, you can redistribute it and/or modify it under
 the terms of the Artistic License version 2.0.
