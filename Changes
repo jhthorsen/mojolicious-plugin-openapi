@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.20 Not Released
+ - Depends on YAML::XS because it's a nicer way to write the spec and I have
+   made too many failed releases that depend on YAML::XS #153
+
 2.19 2019-12-04T17:19:08+0100
  - Add support for parameter defaults in OpenAPI v3 #115
  - Override generate_definitions_path() in order to render proper OpenAPIv3 spec #152

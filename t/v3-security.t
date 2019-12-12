@@ -2,8 +2,6 @@ use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
 
-plan skip_all => $@ unless eval 'use YAML::XS 0.67;1';
-
 use Mojolicious::Lite;
 
 post '/global' => sub {
