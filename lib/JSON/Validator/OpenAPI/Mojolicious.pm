@@ -109,7 +109,7 @@ sub validate_request {
       $value  = $value->{$key};
     }
 
-    if (defined $value and ref $p->{items} eq 'HASH' and $p->{collectionFormat}) {
+    if (defined $value and $type eq 'array') {
       $value = $self->_coerce_by_collection_format($value, $p);
     }
 
@@ -191,16 +191,49 @@ sub _build_formats {
 }
 
 sub _coerce_by_collection_format {
-  my ($self, $data, $schema) = @_;
+  my ($self, $data, $p) = @_;
+
+  my $schema = $p->{schema} || $p;
   my $type = ($schema->{items} ? $schema->{items}{type} : $schema->{type}) || '';
 
-  if ($schema->{collectionFormat} eq 'multi') {
+  my $collection_format = $p->{collectionFormat};
+  my $custom_re;
+
+  # support for v3 style / explode
+  if ($p->{style}) {
+    if ($p->{style} eq 'simple') {
+      $collection_format = 'csv';
+    }
+    elsif ($p->{style} eq 'label') {
+      $custom_re = qr{\.};
+      $collection_format = $p->{explode} ? 'custom' : 'csv' if $data =~ s/^$custom_re//;
+    }
+    elsif ($p->{style} eq 'matrix') {
+      $custom_re = qr{;\Q$p->{name}\E=};
+      $collection_format = $p->{explode} ? 'custom' : 'csv' if $data =~ s/^$custom_re//;
+    }
+    elsif ($p->{style} eq 'form') {
+      $collection_format = $p->{explode} ? 'multi' : 'csv';
+    }
+    elsif ($p->{style} eq 'spaceDelimited') {
+      $collection_format = $p->{explode} ? 'multi' : 'ssv';
+    }
+    elsif ($p->{style} eq 'pipeDelimited') {
+      $collection_format = $p->{explode} ? 'multi' : 'pipes';
+    }
+  }
+
+  return $data unless $collection_format;
+
+  if ($collection_format eq 'multi') {
     $data = [$data] unless ref $data eq 'ARRAY';
     @$data = map { $_ + 0 } @$data if $type eq 'integer' or $type eq 'number';
     return $data;
   }
 
-  my $re = $COLLECTION_RE{$schema->{collectionFormat}} || ',';
+  my $re = $collection_format eq 'custom' ? $custom_re
+                                          : $COLLECTION_RE{$collection_format} || ',';
+
   my $single = ref $data eq 'ARRAY' ? 0 : ($data = [$data]);
 
   for my $i (0 .. @$data - 1) {
@@ -407,7 +440,7 @@ sub _validate_response_headers {
 sub _validate_type_array {
   my ($self, $data, $path, $schema) = @_;
 
-  if (ref $schema->{items} eq 'HASH' and $schema->{items}{collectionFormat}) {
+  if (ref $schema->{items} eq 'HASH' and ($schema->{items}{type} || '') eq 'array') {
     $data = $self->_coerce_by_collection_format($data, $schema->{items});
   }
 
