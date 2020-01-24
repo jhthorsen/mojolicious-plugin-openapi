@@ -1,7 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.21 Not Released
+2.21 2020-01-24T12:34:04+0900
  - Will not detect invalid route names on startup
+ - Add support for v3 array parameters #149 #154
+   Contributor: Sebastien Mourlhou
 
 2.20 2019-12-12T21:17:07+0100
  - Depends on YAML::XS because it's a nicer way to write the spec and I have
