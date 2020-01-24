@@ -121,10 +121,9 @@ sub _add_routes {
       die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
       if (!$to and $name) {
-        $r = $self->route->root->find($name)
-          or die "[OpenAPI] Could not find route by name '$name'.";
-        warn "[OpenAPI] Found existing route by name '$name'.\n" if DEBUG;
-        $self->route->add_child($r);
+        $r = $self->route->root->find($name);
+        warn "[OpenAPI] Found existing route by name '$name'.\n" if DEBUG and $r;
+        $self->route->add_child($r) if $r;
       }
       if (!$r) {
         my $route_path = $self->_openapi_path_to_route_path($http_method, $openapi_path);

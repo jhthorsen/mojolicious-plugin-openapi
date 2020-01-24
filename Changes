@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+2.21 Not Released
+ - Will not detect invalid route names on startup
+
 2.20 2019-12-12T21:17:07+0100
  - Depends on YAML::XS because it's a nicer way to write the spec and I have
    made too many failed releases that depend on YAML::XS #153

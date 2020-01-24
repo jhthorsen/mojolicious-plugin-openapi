@@ -27,6 +27,7 @@ $t->app->plugin(OpenAPI => {spec_route_name => 'my_api', url => 'data://main/ful
 ok $r->lookup('my_api'), 'my_api is defined';
 $r = $r->lookup('my_api')->parent;
 ok $r->find('my_api.Whatever'), 'my_api.Whatever is defined';
+$t->get_ok('/api/no-endpoint')->status_is(501)->json_is('/errors/0/message', 'Not Implemented.');
 
 done_testing;
 
@@ -51,6 +52,12 @@ __DATA__
       "get" : {
         "operationId" : "Whatever",
         "x-mojo-to": "dummy#whatever",
+        "responses" : { "200": { "description": "response", "schema": { "type": "object" } } }
+      }
+    },
+    "/no-endpoint": {
+      "get" : {
+        "operationId" : "NoEndpoint",
         "responses" : { "200": { "description": "response", "schema": { "type": "object" } } }
       }
     }
