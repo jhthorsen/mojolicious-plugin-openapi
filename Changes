@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.00 Not Released
+ - Add support for new JSON::Validator schema API
+ - Removed support for "default_response"
+
 2.21 2020-01-24T12:34:04+0900
  - Will not detect invalid route names on startup
  - Add support for v3 array parameters #149 #154
