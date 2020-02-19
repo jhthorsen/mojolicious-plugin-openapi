@@ -4,7 +4,7 @@ Mojolicious::Plugin::OpenAPI::Guides::OpenAPI3 - Mojolicious <3 Open API v3 (Swa
 
 =head1 OVERVIEW
 
-This guide will give you an introduction to how to use
+This guide will give you an introduction on how to use
 L<Mojolicious::Plugin::OpenAPI> with OpenAPI version v3.x
 
 =head1 TUTORIAL
@@ -12,7 +12,7 @@ L<Mojolicious::Plugin::OpenAPI> with OpenAPI version v3.x
 =head2 Specification
 
 This plugin reads an L<OpenAPI specification|https://openapis.org/specification>
-and generate routes and input/output rules from it. See L<JSON::Validator> for
+and generates routes and input/output rules from it. See L<JSON::Validator> for
 L<supported schema file formats|JSON::Validator/Supported schema formats>.
 
   {
@@ -102,10 +102,10 @@ for a complete reference to the specification.
 =item * parameters, requestBody and responses
 
 C<parameters>, C<requestBody> and C<responses> will be used to define input and output
-validtion rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
+validation rules, which is used by L<Mojolicious::Plugin::OpenAPI/openapi.input>
 and when rendering the response back to the client, using C<< render(openapi => ...) >>.
 
-Here OpenAPIv3 input differs from v2 spec, where C<parameters> is used for input in the
+Here OpenAPIv3 input differs from the v2 spec, where C<parameters> is used for input in the
 path or query of the request. The C<requestBody> is used for input passed in the body.
 
 Have a look at L<Mojolicious::Plugin::OpenAPI/RENDERER> for more details about
@@ -138,7 +138,7 @@ See L<Mojolicious::Guides::Routing> for more information about "standard",
 The non-standard part in the spec above is "x-mojo-to". The "x-mojo-to" key
 can be either a plain string, object (hash) or an array. The string and hash
 will be passed directly to L<Mojolicious::Routes::Route/to>, while the array
-ref will be flatten. Examples:
+ref will be flattened. Examples:
 
   "x-mojo-to": "pet#list"
   $route->to("pet#list");
@@ -151,7 +151,7 @@ ref will be flatten. Examples:
 
 =item * security and securitySchemes
 
-The securityScheme is added under components, where on way is to have the client
+The securityScheme is added under components, where one way is to have the client
 place an apiKey in the header of the request
 
   {
@@ -186,7 +186,7 @@ It is then referenced under the path object as security like this
     }
   }
 
-You can then utilize security, by adding security callback when loading
+You can then utilize security, by adding a security callback when loading
 the plugin
 
   $self->plugin(
@@ -287,8 +287,8 @@ defined in the specification.
 The route name can also be used the other way around, to find already defined
 routes. This is especially useful for L<Mojolicious::Lite> apps.
 
-Note that if L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name>
-then all the route names will have that value as prefix:
+Note that if L<spec_route_name|Mojolicious::Plugin::OpenAPI/spec_route_name> is 
+used then all the route names will have that value as prefix:
 
   spec_route_name            = "my_cool_api"
   operationId or x-mojo-name = "Foo"
