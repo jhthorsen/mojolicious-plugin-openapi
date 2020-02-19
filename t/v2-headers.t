@@ -5,11 +5,11 @@ use Test::More;
 use Mojolicious::Lite;
 my $what_ever;
 get '/headers' => sub {
-  my $c = shift->openapi->valid_input or return;
+  my $c    = shift->openapi->valid_input or return;
   my $args = $c->validation->output;
 
   $c->res->headers->header('what-ever' => ref $what_ever ? @$what_ever : $what_ever);
-  $c->res->headers->header('x-bool' => $args->{'x-bool'}) if exists $args->{'x-bool'};
+  $c->res->headers->header('x-bool'    => $args->{'x-bool'}) if exists $args->{'x-bool'};
   $c->render(openapi => $args);
   },
   'dummy';

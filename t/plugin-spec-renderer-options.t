@@ -54,7 +54,7 @@ $t->options_ok('/api/spec?method=post')->status_is(404)
 
 $t->options_ok('/api/user/1')->status_is(200)
   ->json_is('/$schema', 'http://json-schema.org/draft-04/schema#')
-  ->json_is('/title', 'Test spec response')->json_is('/get/operationId', 'user')
+  ->json_is('/title',   'Test spec response')->json_is('/get/operationId', 'user')
   ->json_is('/definitions/DefaultResponse/properties/errors/items/properties/message/type',
   'string');
 

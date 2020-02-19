@@ -5,8 +5,8 @@ use Test::More;
 use Mojolicious::Lite;
 
 get '/pets/:petId' => sub {
-  my $c = shift->openapi->valid_input or return;
-  my $input = $c->validation->output;
+  my $c      = shift->openapi->valid_input or return;
+  my $input  = $c->validation->output;
   my $output = {id => $input->{petId}, name => 'Cow'};
   $output->{age} = 6 if $input->{wantAge};
   $c->render(openapi => $output);
@@ -75,12 +75,10 @@ $t->get_ok('/v1/pets/23?wantAge=yes', {Accept => 'application/json'})->status_is
   ->json_is('/errors/0/message', 'Expected boolean - got string.');
 
 $t->get_ok('/v1/pets/23?wantAge=true', {Accept => 'application/json'})->status_is(200)
-  ->json_is('/id', 23)
-  ->json_is('/age', 6);
+  ->json_is('/id', 23)->json_is('/age', 6);
 
 $t->get_ok('/v1/pets/23?wantAge=false', {Accept => 'application/json'})->status_is(200)
-  ->json_is('/id', 23)
-  ->json_is('/age', undef);
+  ->json_is('/id', 23)->json_is('/age', undef);
 
 done_testing;
 

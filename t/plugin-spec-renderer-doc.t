@@ -6,7 +6,7 @@ use Mojolicious;
 sub VERSION {1.42}
 
 {
-  my $app = Mojolicious->new;
+  my $app   = Mojolicious->new;
   my $under = $app->routes->under('/my-api' => sub {1});
   add_routes($app, 'cool_spec_path');
   $app->plugin(

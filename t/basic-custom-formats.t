@@ -4,24 +4,25 @@ use Test::More;
 
 use Mojolicious::Lite;
 my $what_ever;
-get '/cf' => sub {
+get '/custom-format' => sub {
   my $c = shift->openapi->valid_input or return;
   $c->render(openapi => $c->validation->output);
   },
   'custom_format';
 
-my $oap = plugin OpenAPI => {url => 'data://main/cf.json'};
-
+my $oap = plugin OpenAPI => {url => 'data://main/custom-format.json'};
 $oap->validator->formats->{need_to_be_x} = sub { $_[0] eq 'x' ? undef : 'Not x.' };
 
 my $t = Test::Mojo->new;
-$t->get_ok('/api/cf' => json => {str => 'x'})->status_is(200)->content_like(qr{"str":"x"});
-$t->get_ok('/api/cf' => json => {str => 'y'})->status_is(400)->content_like(qr{"errors"});
+$t->get_ok('/api/custom-format' => json => {str => 'x'})->status_is(200)
+  ->content_like(qr{"str":"x"});
+$t->get_ok('/api/custom-format' => json => {str => 'y'})->status_is(400)
+  ->content_like(qr{"errors"});
 
 done_testing;
 
 __DATA__
-@@ cf.json
+@@ custom-format.json
 {
   "swagger" : "2.0",
   "info" : { "version": "9.1", "title" : "Test API for custom formats" },
@@ -30,7 +31,7 @@ __DATA__
   "schemes" : [ "http" ],
   "basePath" : "/api",
   "paths" : {
-    "/cf" : {
+    "/custom-format" : {
       "get" : {
         "x-mojo-name": "custom_format",
         "parameters" : [

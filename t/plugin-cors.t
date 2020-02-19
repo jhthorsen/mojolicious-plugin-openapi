@@ -119,8 +119,8 @@ sub cors_exchange {
   my $origin  = $req_h->header('Origin');
 
   return '/Origin' unless $origin eq 'http://foo.example';
-  return '/X-No-Can-Do' if $headers and $headers =~ /X-No-Can-Do/;
-  return '/Access-Control-Request-Method' if $method and $method eq 'DELETE';
+  return '/X-No-Can-Do'                   if $headers and $headers =~ /X-No-Can-Do/;
+  return '/Access-Control-Request-Method' if $method  and $method eq 'DELETE';
 
   $c->stash(origin => $origin);
 
