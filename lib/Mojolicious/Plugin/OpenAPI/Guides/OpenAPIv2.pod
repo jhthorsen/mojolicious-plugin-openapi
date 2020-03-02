@@ -1,11 +1,11 @@
 =head1 NAME
 
-Mojolicious::Plugin::OpenAPI::Guides::Tutorial - Mojolicious <3 Open API (Swagger)
+Mojolicious::Plugin::OpenAPI::Guides::OpenAPI2 - Mojolicious <3 OpenAPI v2 (Swagger)
 
 =head1 OVERVIEW
 
 This guide will give you an introduction to how to use
-L<Mojolicious::Plugin::OpenAPI>.
+L<Mojolicious::Plugin::OpenAPI> with OpenAPI version v2.
 
 =head1 TUTORIAL
 
