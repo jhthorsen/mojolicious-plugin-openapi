@@ -1,6 +1,6 @@
 =head1 NAME
 
-Mojolicious::Plugin::OpenAPI::Guides::OpenAPI2 - Mojolicious <3 OpenAPI v2 (Swagger)
+Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2 - Mojolicious <3 OpenAPI v2 (Swagger)
 
 =head1 OVERVIEW
 
