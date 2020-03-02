@@ -21,7 +21,8 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     }, "echo";
 
     # Load specification and start web server
-    plugin OpenAPI => {url => "data:///spec.json"};
+    # Use "v3" instead of "v2" for "schema" if you are using OpenAPI v3
+    plugin OpenAPI => {url => "data:///spec.json", schema => "v2"};
     app->start;
 
     __DATA__
@@ -49,20 +50,18 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
       }
     }
 
-See [Mojolicious::Plugin::OpenAPI::Guides::Tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial) for a tutorial on how to
+See [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2) or
+[Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv3) for tutorials on how to
 write a "full" app with application class and controllers.
 
 # DESCRIPTION
 
-[Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI) is [Mojolicious::Plugin](https://metacpan.org/pod/Mojolicious::Plugin) that add routes and
+[Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI) is [Mojolicious::Plugin](https://metacpan.org/pod/Mojolicious%3A%3APlugin) that add routes and
 input/output validation to your [Mojolicious](https://metacpan.org/pod/Mojolicious) application based on a OpenAPI
-(Swagger) specification.
+(Swagger) specification. This plugin supports both version [2.0](#schema) and
+[3.x](#schema), though 3.x _might_ have some missing features.
 
-Have a look at the ["SEE ALSO"](#see-also) for references to more documentation, or jump
-right to the [tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial).
-
-Currently v2 is very well supported, while v3 should be considered
-EXPERIMENTAL.
+Have a look at the ["SEE ALSO"](#see-also) for references to more documentation.
 
 Please report in [issues](https://github.com/jhthorsen/json-validator/issues)
 or open pull requests to enhance the 3.0 support.
@@ -94,7 +93,7 @@ be relative to the current operation. Example:
     @errors = $c->openapi->validate;
 
 Used to validate a request. `@errors` holds a list of
-[JSON::Validator::Error](https://metacpan.org/pod/JSON::Validator::Error) objects or empty list on valid input.
+[JSON::Validator::Error](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3AError) objects or empty list on valid input.
 
 Note that this helper is only for customization. You probably want
 ["openapi.valid\_input"](#openapi-valid_input) in most cases.
@@ -113,13 +112,13 @@ Validated input parameters will be copied to
 
     $c = $c->openapi->valid_input;
 
-Returns the [Mojolicious::Controller](https://metacpan.org/pod/Mojolicious::Controller) object if the input is valid or
+Returns the [Mojolicious::Controller](https://metacpan.org/pod/Mojolicious%3A%3AController) object if the input is valid or
 automatically render an error document if not and return false. See
 ["SYNOPSIS"](#synopsis) for example usage.
 
 # HOOKS
 
-[Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI) will emit the following hooks on the
+[Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI) will emit the following hooks on the
 [application](https://metacpan.org/pod/Mojolicious) object.
 
 ## openapi\_routes\_added
@@ -163,13 +162,13 @@ below shows the default ["renderer"](#renderer) which generates JSON data:
 
     $route = $openapi->route;
 
-The parent [Mojolicious::Routes::Route](https://metacpan.org/pod/Mojolicious::Routes::Route) object for all the OpenAPI endpoints.
+The parent [Mojolicious::Routes::Route](https://metacpan.org/pod/Mojolicious%3A%3ARoutes%3A%3ARoute) object for all the OpenAPI endpoints.
 
 ## validator
 
     $jv = $openapi->validator;
 
-Holds a [JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON::Validator::OpenAPI::Mojolicious) object.
+Holds a [JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3AOpenAPI%3A%3AMojolicious) object.
 
 # METHODS
 
@@ -195,7 +194,7 @@ Note that setting this attribute is discourage.
 
 ### coerce
 
-See ["coerce" in JSON::Validator](https://metacpan.org/pod/JSON::Validator#coerce) for possible values that `coerce` can take.
+See ["coerce" in JSON::Validator](https://metacpan.org/pod/JSON%3A%3AValidator#coerce) for possible values that `coerce` can take.
 
 Default: booleans,numbers,strings
 
@@ -222,7 +221,7 @@ plugin.
 
 The name of the "definition" in the spec that will be used for
 ["default\_response\_codes"](#default_response_codes). The default value is "DefaultResponse". See
-["Default response schema" in Mojolicious::Plugin::OpenAPI::Guides::Tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial#Default-response-schema)
+["Default response schema" in Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2#Default-response-schema)
 for more details.
 
 ### log\_level
@@ -234,9 +233,9 @@ Default: "warn".
 ### plugins
 
 A list of OpenAPI classes to extend the functionality. Default is:
-[Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Cors),
-[Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::SpecRenderer) and
-[Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Security).
+[Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ACors),
+[Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ASpecRenderer) and
+[Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ASecurity).
 
     $app->plugin(OpenAPI => {plugins => [qw(+Cors +SpecRenderer +Security)]});
 
@@ -262,6 +261,9 @@ See ["RENDERER"](#renderer).
 Can be used to set a different schema, than the default OpenAPI 2.0 spec.
 Example values: "http://swagger.io/v2/schema.json", "v2" or "v3".
 
+See also [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2) and
+[Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv3).
+
 ### spec\_route\_name
 
 Name of the route that handles the "basePath" part of the specification and
@@ -270,7 +272,7 @@ the top level.
 
 ### url
 
-See ["schema" in JSON::Validator](https://metacpan.org/pod/JSON::Validator#schema) for the different `url` formats that is
+See ["schema" in JSON::Validator](https://metacpan.org/pod/JSON%3A%3AValidator#schema) for the different `url` formats that is
 accepted.
 
 `spec` is an alias for "url", which might make more sense if your
@@ -304,8 +306,26 @@ the terms of the Artistic License version 2.0.
 
 # SEE ALSO
 
-- [Mojolicious::Plugin::OpenAPI::Guides::Tutorial](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Guides::Tutorial)
-- [Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Cors)
-- [Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::Security)
-- [Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious::Plugin::OpenAPI::SpecRenderer)
-- [OpenAPI specification](https://openapis.org/specification)
+- [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2)
+
+    Guide for how to use this plugin with OpenAPI version 2.0 spec.
+
+- [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv3)
+
+    Guide for how to use this plugin with OpenAPI version 3.0 spec.
+
+- [Mojolicious::Plugin::OpenAPI::Cors](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ACors)
+
+    Plugin to add Cross-Origin Resource Sharing (CORS).
+
+- [Mojolicious::Plugin::OpenAPI::Security](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ASecurity)
+
+    Plugin for handling security definitions in your schema.
+
+- [Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ASpecRenderer)
+
+    Plugin for exposing your spec in human readble or JSON format.
+
+- [https://www.openapis.org/](https://www.openapis.org/)
+
+    Official OpenAPI website.
