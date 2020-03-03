@@ -13,7 +13,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
       my $c = shift->openapi->valid_input or return;
 
       # Generate some data
-      my $data = {body => $c->validation->param("body")};
+      my $data = {body => $c->req->json};
 
       # Validate the output response and render it to the user agent
       # using a custom "openapi" handler.
@@ -98,15 +98,8 @@ Used to validate a request. `@errors` holds a list of
 Note that this helper is only for customization. You probably want
 ["openapi.valid\_input"](#openapi-valid_input) in most cases.
 
-Validated input parameters will be copied to
-`Mojolicious::Controller/validation`, which again can be extracted by the
-"name" in the parameters list from the spec. Example:
-
-    # specification:
-    "parameters": [{"in": "body", "name": "whatever", "schema": {"type": "object"}}],
-
-    # controller
-    my $body = $c->validation->param("whatever");
+IMPORTANT! Integration with `Mojolicious::Controller/validation` used to be
+supported, but it is now slowly being deprecated.
 
 ## openapi.valid\_input
 

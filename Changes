@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-2.23 Not Released
+2.23 2020-03-03T15:57:42+0900
  - Started slowly to deprecate $c->validation->output #162
  - Bump JSON::Validator version #163
 
