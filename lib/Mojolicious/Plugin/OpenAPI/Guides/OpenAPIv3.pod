@@ -261,11 +261,8 @@ L<Mojolicious::Lite> application.
       return $c->render(openapi => [], status => 498);
     }
 
-    # $c->openapi->valid_input copies valid data to validation object,
-    # and the normal Mojolicious api works as well.
-    my $input = $c->validation->output;
-    my $age   = $c->param("age"); # same as $input->{age}
-    my $body  = $c->req->json;    # same as $input->{body}
+    my $age  = $c->param("age");
+    my $body = $c->req->json;
 
     # $output will be validated by the OpenAPI spec before rendered
     my $output = {pets => [{name => "kit-e-cat"}]};
@@ -373,7 +370,7 @@ Relative file references like the following
   "$ref": "my-cool-component.json"
 
 Will also be placed under '#/definitions/...', again producing a spec output
-which will not pass validation
+which will not pass validation.
 
 =head1 SEE ALSO
 

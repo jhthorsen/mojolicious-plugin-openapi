@@ -274,6 +274,7 @@ sub _helper_validate {
   # code() can be set by other methods such as $c->openapi->cors_simple()
   return [{message => 'Already rendered.'}] if $c->res->code;
 
+  # TODO: Remove support for $c->validation->output (2020-03-03)
   # Write validated data to $c->validation->output
   my $self    = _self($c);
   my $op_spec = $c->openapi->spec;
@@ -372,7 +373,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     my $c = shift->openapi->valid_input or return;
 
     # Generate some data
-    my $data = {body => $c->validation->param("body")};
+    my $data = {body => $c->req->json};
 
     # Validate the output response and render it to the user agent
     # using a custom "openapi" handler.
@@ -457,15 +458,8 @@ L<JSON::Validator::Error> objects or empty list on valid input.
 Note that this helper is only for customization. You probably want
 L</openapi.valid_input> in most cases.
 
-Validated input parameters will be copied to
-C<Mojolicious::Controller/validation>, which again can be extracted by the
-"name" in the parameters list from the spec. Example:
-
-  # specification:
-  "parameters": [{"in": "body", "name": "whatever", "schema": {"type": "object"}}],
-
-  # controller
-  my $body = $c->validation->param("whatever");
+IMPORTANT! Integration with C<Mojolicious::Controller/validation> used to be
+supported, but it is now slowly being deprecated.
 
 =head2 openapi.valid_input
 
