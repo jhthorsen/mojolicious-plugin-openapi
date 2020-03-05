@@ -1,6 +1,7 @@
 package Mojolicious::Plugin::OpenAPI::SpecRenderer;
-use Mojo::Base -base;
+use Mojo::Base 'Mojolicious::Plugin';
 
+use JSON::Validator;
 use Mojo::JSON;
 
 use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
@@ -8,20 +9,26 @@ use constant MARKDOWN => eval 'require Text::Markdown;1';
 
 sub register {
   my ($self, $app, $config) = @_;
+
+  $self->{standalone} = $config->{openapi} ? 0 : 1;
+  $app->helper('openapi.render_spec' => sub { $self->_render_spec(@_) });
+  push @{$app->renderer->classes}, __PACKAGE__ unless $app->{'openapi.render_specification'}++;
+  $self->_register_with_openapi($app, $config) unless $self->{standalone};
+}
+
+sub _register_with_openapi {
+  my ($self, $app, $config) = @_;
   my $openapi = $config->{openapi};
 
   if ($config->{render_specification} // 1) {
-    my $spec_route = $openapi->route->get('/')->to(cb => sub { shift->openapi->render_spec });
+    my $spec_route = $openapi->route->get('/')->to(cb => sub { shift->openapi->render_spec(@_) });
     my $name       = $config->{spec_route_name} || $openapi->validator->get('/x-mojo-name');
     $spec_route->name($name) if $name;
-    push @{$app->renderer->classes}, __PACKAGE__ unless $app->{'openapi.render_specification'}++;
   }
 
   if ($config->{render_specification_for_paths} // 1) {
     $app->plugins->once(openapi_routes_added => sub { $self->_add_documentation_routes(@_) });
   }
-
-  $app->helper('openapi.render_spec' => \&_render_spec);
 }
 
 sub _add_documentation_routes {
@@ -35,7 +42,7 @@ sub _add_documentation_routes {
     my $openapi_path = $route->to->{'openapi.path'};
     my $doc_route
       = $openapi->route->options($route->pattern->unparsed, {'openapi.default_options' => 1});
-    $doc_route->to(cb => sub { _render_spec(shift, $openapi_path) });
+    $doc_route->to(cb => sub { $self->_render_spec(shift, $openapi_path) });
     $doc_route->name(join '_', $route->name, 'openapi_documentation')              if $route->name;
     warn "[OpenAPI] Add route options $route_path (@{[$doc_route->name // '']})\n" if DEBUG;
   }
@@ -46,12 +53,12 @@ sub _markdown {
 }
 
 sub _render_partial_spec {
-  my ($c, $path) = @_;
-  my $self   = Mojolicious::Plugin::OpenAPI::_self($c);
-  my $method = $c->param('method');
+  my ($self, $c, $path) = @_;
+  my $validator = $self->_validator($c);
+  my $method    = $c->param('method');
 
-  my $bundled = $self->validator->get([paths => $path]);
-  $bundled = $self->validator->bundle({schema => $bundled}) if $bundled;
+  my $bundled = $validator->get([paths => $path]);
+  $bundled = $validator->bundle({schema => $bundled}) if $bundled;
   my $definitions = $bundled->{definitions} || {} if $bundled;
   my $parameters  = $bundled->{parameters}  || [];
 
@@ -66,8 +73,8 @@ sub _render_partial_spec {
   return $c->render(
     json => {
       '$schema'   => 'http://json-schema.org/draft-04/schema#',
-      title       => $self->validator->get([qw(info title)]) || '',
-      description => $self->validator->get([qw(info description)]) || '',
+      title       => $validator->get([qw(info title)]) || '',
+      description => $validator->get([qw(info description)]) || '',
       definitions => $definitions,
       parameters  => $parameters,
       %$bundled,
@@ -76,37 +83,49 @@ sub _render_partial_spec {
 }
 
 sub _render_spec {
-  return _render_partial_spec(@_) if $_[1];
+  my ($self, $c, $path) = @_;
+  return $self->_render_partial_spec($c, $path) if $path;
 
-  my $c      = shift;
-  my $self   = Mojolicious::Plugin::OpenAPI::_self($c);
-  my $format = $c->stash('format') || 'json';
-  my $spec   = $self->{bundled} ||= $self->validator->bundle;
+  my $openapi = $self->{standalone} ? undef : Mojolicious::Plugin::OpenAPI::_self($c);
+  my $format  = $c->stash('format') || 'json';
+  my %spec;
 
-  local $spec->{basePath} = $spec->{basePath};
-  local $spec->{host}     = $spec->{host};
-  local $spec->{servers}  = $spec->{servers};
+  if ($openapi) {
+    $openapi->{bundled} ||= $openapi->validator->bundle;
+    %spec = %{$openapi->{bundled}};
 
-  if ($self->validator->version ge '3') {
-    $spec->{servers} = [{url => $c->req->url->to_abs->to_string}];
-    delete @$spec{qw(basePath host)};
+    if ($openapi->validator->version ge '3') {
+      $spec{servers} = [{url => $c->req->url->to_abs->to_string}];
+      delete $spec{basePath};    # Added by Plugin::OpenAPI
+    }
+    else {
+      $spec{basePath} = $c->url_for($spec{basePath});
+      $spec{host}     = $c->req->url->to_abs->host_port;
+    }
   }
-  else {
-    $spec->{basePath} = $c->url_for($spec->{basePath});
-    $spec->{host}     = $c->req->url->to_abs->host_port;
-    delete $spec->{servers};
+  elsif ($c->stash('openapi_spec')) {
+    %spec = %{$c->stash('openapi_spec') || {}};
   }
 
-  return $c->render(json => $spec) unless $format eq 'html';
+  return $c->render(json => {errors => [{message => 'No specification to render.'}]}, status => 500)
+    unless %spec;
+
+  return $c->render(json => \%spec) unless $format eq 'html';
   return $c->render(
     handler   => 'ep',
     template  => 'mojolicious/plugin/openapi/layout',
     esc       => sub { local $_ = shift; s/\W/-/g; $_ },
     markdown  => \&_markdown,
     serialize => \&_serialize,
-    spec      => $spec,
+    spec      => \%spec,
     X_RE      => qr{^x-},
   );
+}
+
+sub _validator {
+  my ($self, $c) = @_;
+  return Mojolicious::Plugin::OpenAPI::_self($c)->validator unless $self->{standalone};
+  return JSON::Validator->new->schema($c->stash('openapi_spec'));
 }
 
 sub _serialize { Mojo::JSON::encode_json(@_) }
@@ -121,6 +140,8 @@ Mojolicious::Plugin::OpenAPI::SpecRenderer - Render OpenAPI specification
 
 =head1 SYNOPSIS
 
+=head2 With Mojolicious::Plugin::OpenAPI
+
   $app->plugin(OpenAPI => {
     plugins                        => [qw(+SpecRenderer)],
     render_specification           => 1,
@@ -131,11 +152,32 @@ Mojolicious::Plugin::OpenAPI::SpecRenderer - Render OpenAPI specification
 See L<Mojolicious::Plugin::OpenAPI/register> for what
 C<%openapi_parameters> might contain.
 
+=head2 Standalone
+
+  use Mojolicious::Lite;
+  plugin "Mojolicious::Plugin::OpenAPI::SpecRenderer";
+
+  # Some specification to render
+  my $petstore = app->home->child("petstore.json");
+
+  get "/my-spec" => sub {
+    my $c = shift;
+
+    # "openapi_spec" can also be set in...
+    # - $app->defaults(openapi_spec => ...);
+    # - $route->to(openapi_spec => ...);
+    $c->stash(openapi_spec => JSON::Validator->new->schema($petstore->to_string)->bundle);
+
+    # render_spec() can be called with $openapi_path
+    $c->openapi->render_spec;
+  };
+
 =head1 DESCRIPTION
 
 L<Mojolicious::Plugin::OpenAPI::SpecRenderer> will enable
 L<Mojolicious::Plugin::OpenAPI> to render the specification in both HTML and
-JSON format.
+JSON format. It can also be used L</Standalone> if you just want to render
+the specification, and not add any API routes to your application.
 
 The human readable format focus on making the documentation printable, so you
 can easily share it with third parties as a PDF. If this documentation format
