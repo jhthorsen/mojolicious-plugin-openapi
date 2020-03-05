@@ -4,7 +4,8 @@ use Mojo::Base -base;
 my %DEF_PATH = (2 => '/securityDefinitions', 3 => '/components/securitySchemes');
 
 sub register {
-  my ($self, $app, $openapi, $config) = @_;
+  my ($self, $app, $config) = @_;
+  my $openapi  = $config->{openapi};
   my $handlers = $config->{security} or return;
 
   return unless $openapi->validator->get($DEF_PATH{$openapi->validator->version});
@@ -21,7 +22,7 @@ sub _build_action {
     my $c = shift;
     return 1 if $c->req->method eq 'OPTIONS' and $c->match->stack->[-1]{'openapi.default_options'};
 
-    my $spec = $c->openapi->spec || {};
+    my $spec        = $c->openapi->spec || {};
     my @security_or = @{$spec->{security} || $global};
     my ($sync_mode, $n_checks, %res) = (1, 0);
 

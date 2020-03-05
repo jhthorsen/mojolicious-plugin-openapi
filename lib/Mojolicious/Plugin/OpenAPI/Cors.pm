@@ -15,7 +15,8 @@ our %PREFLIGHTED_METHODS       = map { ($_ => 1) } qw(CONNECT DELETE OPTIONS PAT
 my $X_RE = qr{^x-};
 
 sub register {
-  my ($self, $app, $openapi, $config) = @_;
+  my ($self, $app, $config) = @_;
+  my $openapi = $config->{openapi};
 
   if ($config->{add_preflighted_routes}) {
     $app->plugins->once(openapi_routes_added => sub { $self->_add_preflighted_routes($app, @_) });

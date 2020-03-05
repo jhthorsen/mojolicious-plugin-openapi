@@ -7,7 +7,8 @@ use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 use constant MARKDOWN => eval 'require Text::Markdown;1';
 
 sub register {
-  my ($self, $app, $openapi, $config) = @_;
+  my ($self, $app, $config) = @_;
+  my $openapi = $config->{openapi};
 
   if ($config->{render_specification} // 1) {
     my $spec_route = $openapi->route->get('/')->to(cb => sub { shift->openapi->render_spec });

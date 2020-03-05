@@ -58,7 +58,7 @@ sub register {
   for my $plugin (@{$config->{plugins} || [qw(+Cors +SpecRenderer +Security)]}) {
     $plugin = "Mojolicious::Plugin::OpenAPI::$plugin" if $plugin =~ s!^\+!!;
     eval "require $plugin;1" or Carp::confess("require $plugin: $@");
-    push @plugins, $plugin->new->register($app, $self, $config);
+    push @plugins, $plugin->new->register($app, {%$config, openapi => $self});
   }
 
   $self->_add_routes($app, $config);
