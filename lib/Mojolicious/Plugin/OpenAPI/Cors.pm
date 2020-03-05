@@ -10,7 +10,7 @@ our %SIMPLE_HEADERS = map { (lc $_ => 1) }
   qw(Accept Accept-Language Content-Language Content-Type DPR Downlink Save-Data Viewport-Width Width);
 
 our %PREFLIGHTED_CONTENT_TYPES = %SIMPLE_CONTENT_TYPES;
-our %PREFLIGHTED_METHODS = map { ($_ => 1) } qw(CONNECT DELETE OPTIONS PATCH PUT TRACE);
+our %PREFLIGHTED_METHODS       = map { ($_ => 1) } qw(CONNECT DELETE OPTIONS PATCH PUT TRACE);
 
 my $X_RE = qr{^x-};
 
@@ -40,7 +40,7 @@ sub register {
 
 sub _add_preflighted_routes {
   my ($self, $app, $openapi, $routes) = @_;
-  my $c = $app->build_controller;
+  my $c     = $app->build_controller;
   my $match = Mojolicious::Routes::Match->new(root => $app->routes);
 
   for my $route (@$routes) {
@@ -193,7 +193,10 @@ Mojolicious::Plugin::OpenAPI::Cors - OpenAPI plugin for Cross-Origin Resource Sh
 Set L</add_preflighted_routes> to 1, if you want "Preflighted" CORS requests to
 be sent to your already existing actions.
 
-  $app->plugin("OpenAPI" => {add_preflighted_routes => 1});
+  $app->plugin(OpenAPI => {add_preflighted_routes => 1, %openapi_parameters});
+
+See L<Mojolicious::Plugin::OpenAPI/register> for what
+C<%openapi_parameters> might contain.
 
 =head2 Simple exchange
 

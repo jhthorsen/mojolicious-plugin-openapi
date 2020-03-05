@@ -35,7 +35,7 @@ sub _add_documentation_routes {
     my $doc_route
       = $openapi->route->options($route->pattern->unparsed, {'openapi.default_options' => 1});
     $doc_route->to(cb => sub { _render_spec(shift, $openapi_path) });
-    $doc_route->name(join '_', $route->name, 'openapi_documentation') if $route->name;
+    $doc_route->name(join '_', $route->name, 'openapi_documentation')              if $route->name;
     warn "[OpenAPI] Add route options $route_path (@{[$doc_route->name // '']})\n" if DEBUG;
   }
 }
@@ -124,7 +124,11 @@ Mojolicious::Plugin::OpenAPI::SpecRenderer - Render OpenAPI specification
     plugins                        => [qw(+SpecRenderer)],
     render_specification           => 1,
     render_specification_for_paths => 1,
+    %openapi_parameters,
   });
+
+See L<Mojolicious::Plugin::OpenAPI/register> for what
+C<%openapi_parameters> might contain.
 
 =head1 DESCRIPTION
 
