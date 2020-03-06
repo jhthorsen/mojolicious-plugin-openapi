@@ -242,8 +242,7 @@ __DATA__
 <h1 id="title"><%= $spec->{info}{title} || 'No title' %></h1>
 <p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %> - OpenAPI <%= $spec->{swagger} || $spec->{openapi} %></span></p>
 
-%= include "mojolicious/plugin/openapi/toc"
-
+@@ mojolicious/plugin/openapi/intro.html.ep
 % if ($spec->{info}{description}) {
 <h2 id="description"><a href="#title">Description</a></h2>
 <div class="description">
@@ -276,78 +275,10 @@ __DATA__
 <p class="contact-url"><a href="mailto:<%= $contact->{url} %>"><%= $contact->{url} %></a></p>
 % }
 @@ mojolicious/plugin/openapi/head.html.ep
-<style>
-  body {
-    font-family: 'Gotham Narrow SSm','Helvetica Neue',Helvetica,sans-serif;
-    font-size: 16px;
-    margin: 3em;
-    padding: 0;
-    color: #222;
-    line-height: 1.4em;
-  }
-  a {
-    color: #225;
-    text-decoration: underline;
-  }
-  h1, h2, h3, h4 { font-weight: bold; margin: 1em 0; }
-  h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: #222; }
-  h1 { font-size: 2em; }
-  h2 { font-size: 1.6em; margin-top: 2em; }
-  h3 { font-size: 1.2em; }
-  h4 { font-size: 1.1em; }
-  table {
-    margin: 0em -0.5em;
-    width: 100%;
-    border-collapse: collapse;
-  }
-  td, th {
-    vertical-align: top;
-    text-align: left;
-    padding: 0.5em;
-  }
-  th {
-    font-weight: bold;
-    border-bottom: 1px solid #ccc;
-  }
-  td p, th p {
-    margin: 0;
-  }
-  ul {
-    margin: 0;
-    padding: 0 1.5em;
-  }
-  ul.unstyled {
-    list-style: none;
-    padding: 0;
-  }
-  p {
-    margin: 1em 0;
-  }
-  pre {
-    background: #f3f3f3;
-    font-size: 0.9rem;
-    line-height: 1.2em;
-    letter-spacing: -0.02em;
-    border: 1px solid #ddd;
-    padding: 0.5em;
-    margin: 1em -0.5em;
-    overflow: auto;
-  }
-  #toc a { text-decoration: none; display: block; }
-  #toc .method { display: inline-block; width: 7em; }
-  div.container { max-width: 50em; margin: 0 auto; }
-  p.version { color: #666; margin: -0.5em 0 2em 0; }
-  p.op-deprecated { color: #c00; }
-  h3.op-path { margin-top: 3em; }
-  .container > h3.op-path { margin-top: 1em; }
-  .renderjson .disclosure { display: none; }
-  .renderjson .syntax     { color: #002b36; }
-  .renderjson .string     { color: #073642; }
-  .renderjson .number     { color: #2aa198; }
-  .renderjson .boolean    { color: #d33682; }
-  .renderjson .key        { color: #0e6fb3; }
-  .renderjson .keyword    { color: #b58900; }
-</style>
+<title><%= $spec->{info}{title} || 'No title' %></title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="chrome=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0">
 @@ mojolicious/plugin/openapi/human.html.ep
 % if ($spec->{summary}) {
 <p class="spec-summary"><%= $spec->{summary} %></p>
@@ -404,7 +335,7 @@ __DATA__
 <pre class="op-parameter-body"><%= $serialize->($op->{requestBody}{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/response.html.ep
-% for my $code (sort keys %{$op->{responses}}) {
+% for my $code (sort { $a cmp $b } keys %{$op->{responses}}) {
   % next if $code =~ $X_RE;
   % my $res = $op->{responses}{$code};
 <h4 class="op-response">Response <%= $code %></h3>
@@ -485,7 +416,7 @@ __DATA__
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
 
-% if ( exists $spec->{openapi} ) {
+% if (exists $spec->{openapi}) {
   <h3 id="servers"><a href="#title">Servers</a></h3>
   <ul class="unstyled">
   % for my $server (@{$spec->{servers}}){
@@ -506,7 +437,7 @@ __DATA__
 
 % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
   % next if $path =~ $X_RE;
-  % for my $http_method (sort keys %{$spec->{paths}{$path}}) {
+  % for my $http_method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
     % next if $http_method =~ $X_RE or $http_method eq 'parameters';
     % my $op = $spec->{paths}{$path}{$http_method};
     %= include "mojolicious/plugin/openapi/resource", method => $http_method, op => $op, path => $path
@@ -525,9 +456,9 @@ __DATA__
     <ul>
     % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
       % next if $path =~ $X_RE;
-      % for my $method (sort keys %{$spec->{paths}{$path}}) {
+      % for my $method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
         % next if $method =~ $X_RE;
-        <li><a href="#op-<%= lc $method %><%= $esc->($path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></h3>
+        <li><a href="#op-<%= lc $method %><%= $esc->($path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></a></li>
       % }
     % }
     </ul>
@@ -558,18 +489,38 @@ __DATA__
 <!doctype html>
 <html lang="en">
 <head>
-  <title><%= $spec->{info}{title} || 'No title' %></title>
   %= include "mojolicious/plugin/openapi/head"
+  %= include "mojolicious/plugin/openapi/style"
 </head>
 <body>
-<div class="container">
-  %= include "mojolicious/plugin/openapi/header"
-  %= include "mojolicious/plugin/openapi/resources"
-  %= include "mojolicious/plugin/openapi/references"
-  %= include "mojolicious/plugin/openapi/footer"
+<div class="container openapi-container">
+  <header class="openapi-header">
+    %= include "mojolicious/plugin/openapi/header"
+  </header>
+
+  <nav class="openapi-nav">
+    %= include "mojolicious/plugin/openapi/toc"
+  </nav>
+
+  <article class="openapi-spec">
+    <section class="openapi-spec_intro">
+      %= include "mojolicious/plugin/openapi/intro"
+    </section>
+    <section class="openapi-spec_resources">
+      %= include "mojolicious/plugin/openapi/resources"
+    </section>
+    <section class="openapi-spec_references">
+      %= include "mojolicious/plugin/openapi/references"
+    </section>
+  </article>
+
+  <footer class="openapi-footer">
+    %= include "mojolicious/plugin/openapi/footer"
+  </footer>
 </div>
 
 %= include "mojolicious/plugin/openapi/renderjson"
+%= include "mojolicious/plugin/openapi/scrollspy"
 %= include "mojolicious/plugin/openapi/foot"
 </body>
 </html>
@@ -602,3 +553,187 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
   }
 })(window, document);
 </script>
+@@ mojolicious/plugin/openapi/scrollspy.html.ep
+<script>
+(function() {
+  var aEls = document.querySelectorAll('.openapi-nav a');
+  var firstH2 = document.querySelector('h2');
+  var headings = document.querySelectorAll('h3[id]');
+
+  var spy = function() {
+    var innerHeight = window.innerHeight;
+    var offsetTop = parseInt(innerHeight / 2.3, 10);
+    var scrollPosition = document.documentElement.scrollTop || document.body.scrollTop;
+    var i = 0;
+
+    // Do not run this method too often
+    if (spy.tid) clearTimeout(spy.tid);
+    delete spy.tid;
+
+    // Find the next heading that is not scrolled into view
+    if (firstH2.offsetTop < scrollPosition) {
+      for (i = 0; i < headings.length; i++) {
+        if (headings[i].offsetTop >= scrollPosition + innerHeight - offsetTop) break;
+      }
+    }
+
+    if (i > 0) i--;
+
+    // Find a corresponding link in the nav and style it
+    var id = headings[i] && headings[i].id || '';
+    var aEl = document.querySelector('.openapi-nav a[href$="#' + id + '"]');
+
+    for (i = 0; i < aEls.length; i++) {
+      aEls[i].parentNode.classList[aEls[i] == aEl ? 'add' : 'remove']('is-active');
+    }
+  };
+
+  ['click', 'resize', 'scroll'].forEach(function(name) {
+    window.addEventListener(name, function() {
+      return spy.tid || (spy.tid = setTimeout(spy, 100));
+    });
+  });
+
+  spy();
+})();
+</script>
+@@ mojolicious/plugin/openapi/style.html.ep
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    background: #f7f7f7;
+    font-family: 'Gotham Narrow SSm','Helvetica Neue',Helvetica,sans-serif;
+    font-size: 16px;
+    color: #222;
+    line-height: 1.4em;
+    margin: 1rem;
+    padding: 0;
+  }
+  a { color: #225; text-decoration: underline; word-break: break-word; }
+  a:hover { text-decoration: none; }
+  h1, h2, h3, h4 { font-weight: bold; line-height: 1.2em; margin: 1em 0; }
+  h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: #222; }
+  h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover { text-decoration: underline; }
+  h1 { font-size: 2em; }
+  h2 { font-size: 1.6em; padding-top: 1rem; margin-top: 1em; }
+  h3 { font-size: 1.2em; }
+  h4 { font-size: 1.1em; }
+  table {
+    margin: 0em -0.5em;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  td, th {
+    vertical-align: top;
+    text-align: left;
+    padding: 0.5em;
+  }
+  th {
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+  }
+  td p, th p {
+    margin: 0;
+  }
+  ul {
+    margin: 0;
+    padding: 0 1.5em;
+  }
+  ul.unstyled {
+    list-style: none;
+    padding: 0;
+  }
+  p {
+    margin: 1em 0;
+  }
+  pre {
+    background: #f0f0f0;
+    font-size: 0.9rem;
+    line-height: 1.2em;
+    letter-spacing: -0.02em;
+    border: 1px solid #ddd;
+    padding: 0.5em;
+    margin: 1em -0.5em;
+    overflow: auto;
+  }
+  .openapi-nav a { text-decoration: none; padding: 0.1rem 0; white-space: nowrap; display: block; }
+  .openapi-nav a:hover,
+  .openapi-nav a:hover .method { text-decoration: underline; }
+  .openapi-nav .method { display: inline-block; width: 7em; }
+  .openapi-container { max-width: 50rem; margin: 0 auto; }
+  p.version { color: #666; margin: -1rem 0 2em 0; }
+  p.op-deprecated { color: #c00; }
+  h3.op-path { margin-top: 3em; }
+  .openapi-container > h3.op-path { margin-top: 1em; }
+  .renderjson .disclosure { display: none; }
+  .renderjson .syntax     { color: #002b36; }
+  .renderjson .string     { color: #073642; }
+  .renderjson .number     { color: #2aa198; }
+  .renderjson .boolean    { color: #d33682; }
+  .renderjson .key        { color: #0e6fb3; }
+  .renderjson .keyword    { color: #b58900; }
+
+  @media only screen and (min-width: 900px) {
+    body {
+      margin: 0;
+    }
+
+    .openapi-container {
+      margin: 0;
+      padding: 0;
+      max-width: none;
+    }
+
+    .openapi-nav {
+      background: #fbfbfd;
+      border-right: 1px solid #e2e2e8;
+      padding: 0 0 4rem 0;
+      max-width: 20rem;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      overflow: auto;
+      z-index: 999;
+    }
+
+    .openapi-nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .openapi-nav > ul > li > a {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin: 1rem 0 0.5rem 0;
+      display: block;
+    }
+
+    .openapi-nav li a {
+      padding: 0.1rem 1rem;
+    }
+
+    .openapi-nav li.is-active a {
+      background: #e2e2e8;
+      color: #000;
+    }
+
+    .openapi-nav .method {
+      font-size: 0.8rem;
+      color: #222;
+      width: auto;
+    }
+
+    .openapi-header,
+    .openapi-spec {
+      margin-left: 23rem;
+      margin-right: 3rem;
+      max-width: 50rem;
+    }
+
+    .openapi-spec_resources h3.op-path {
+      padding: 0.5rem 0;
+    }
+  }
+</style>
