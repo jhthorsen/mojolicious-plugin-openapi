@@ -1,5 +1,15 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.24 2020-03-06T13:30:16+0900
+ - SpecRenderer can be used standalone
+ - New default CSS styling for SpecRenderer
+ - Add more templates for SpecRenderer
+   * mojolicious/plugin/openapi/foot.html.ep
+   * mojolicious/plugin/openapi/head.html.ep
+   * mojolicious/plugin/openapi/renderjson.html.ep
+   * mojolicious/plugin/openapi/scrollspy.html.ep
+   * mojolicious/plugin/openapi/style.html.ep
+
 2.23 2020-03-03T15:57:42+0900
  - Started slowly to deprecate $c->validation->output #162
  - Bump JSON::Validator version #163
