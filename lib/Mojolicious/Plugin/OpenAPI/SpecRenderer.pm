@@ -257,6 +257,8 @@ __DATA__
   %= $spec->{info}{termsOfService}
 </p>
 % }
+@@ mojolicious/plugin/openapi/foot.html.ep
+<!-- default foot -->
 @@ mojolicious/plugin/openapi/footer.html.ep
 % my $contact = $spec->{info}{contact};
 % my $license = $spec->{info}{license};
@@ -273,6 +275,79 @@ __DATA__
 % if ($contact->{url}) {
 <p class="contact-url"><a href="mailto:<%= $contact->{url} %>"><%= $contact->{url} %></a></p>
 % }
+@@ mojolicious/plugin/openapi/head.html.ep
+<style>
+  body {
+    font-family: 'Gotham Narrow SSm','Helvetica Neue',Helvetica,sans-serif;
+    font-size: 16px;
+    margin: 3em;
+    padding: 0;
+    color: #222;
+    line-height: 1.4em;
+  }
+  a {
+    color: #225;
+    text-decoration: underline;
+  }
+  h1, h2, h3, h4 { font-weight: bold; margin: 1em 0; }
+  h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: #222; }
+  h1 { font-size: 2em; }
+  h2 { font-size: 1.6em; margin-top: 2em; }
+  h3 { font-size: 1.2em; }
+  h4 { font-size: 1.1em; }
+  table {
+    margin: 0em -0.5em;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  td, th {
+    vertical-align: top;
+    text-align: left;
+    padding: 0.5em;
+  }
+  th {
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+  }
+  td p, th p {
+    margin: 0;
+  }
+  ul {
+    margin: 0;
+    padding: 0 1.5em;
+  }
+  ul.unstyled {
+    list-style: none;
+    padding: 0;
+  }
+  p {
+    margin: 1em 0;
+  }
+  pre {
+    background: #f3f3f3;
+    font-size: 0.9rem;
+    line-height: 1.2em;
+    letter-spacing: -0.02em;
+    border: 1px solid #ddd;
+    padding: 0.5em;
+    margin: 1em -0.5em;
+    overflow: auto;
+  }
+  #toc a { text-decoration: none; display: block; }
+  #toc .method { display: inline-block; width: 7em; }
+  div.container { max-width: 50em; margin: 0 auto; }
+  p.version { color: #666; margin: -0.5em 0 2em 0; }
+  p.op-deprecated { color: #c00; }
+  h3.op-path { margin-top: 3em; }
+  .container > h3.op-path { margin-top: 1em; }
+  .renderjson .disclosure { display: none; }
+  .renderjson .syntax     { color: #002b36; }
+  .renderjson .string     { color: #073642; }
+  .renderjson .number     { color: #2aa198; }
+  .renderjson .boolean    { color: #d33682; }
+  .renderjson .key        { color: #0e6fb3; }
+  .renderjson .keyword    { color: #b58900; }
+</style>
 @@ mojolicious/plugin/openapi/human.html.ep
 % if ($spec->{summary}) {
 <p class="spec-summary"><%= $spec->{summary} %></p>
@@ -484,78 +559,7 @@ __DATA__
 <html lang="en">
 <head>
   <title><%= $spec->{info}{title} || 'No title' %></title>
-  <style>
-    body {
-      font-family: 'Gotham Narrow SSm','Helvetica Neue',Helvetica,sans-serif;
-      font-size: 16px;
-      margin: 3em;
-      padding: 0;
-      color: #222;
-      line-height: 1.4em;
-    }
-    a {
-      color: #225;
-      text-decoration: underline;
-    }
-    h1, h2, h3, h4 { font-weight: bold; margin: 1em 0; }
-    h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: #222; }
-    h1 { font-size: 2em; }
-    h2 { font-size: 1.6em; margin-top: 2em; }
-    h3 { font-size: 1.2em; }
-    h4 { font-size: 1.1em; }
-    table {
-      margin: 0em -0.5em;
-      width: 100%;
-      border-collapse: collapse;
-    }
-    td, th {
-      vertical-align: top;
-      text-align: left;
-      padding: 0.5em;
-    }
-    th {
-      font-weight: bold;
-      border-bottom: 1px solid #ccc;
-    }
-    td p, th p {
-      margin: 0;
-    }
-    ul {
-      margin: 0;
-      padding: 0 1.5em;
-    }
-    ul.unstyled {
-      list-style: none;
-      padding: 0;
-    }
-    p {
-      margin: 1em 0;
-    }
-    pre {
-      background: #f3f3f3;
-      font-size: 0.9rem;
-      line-height: 1.2em;
-      letter-spacing: -0.02em;
-      border: 1px solid #ddd;
-      padding: 0.5em;
-      margin: 1em -0.5em;
-      overflow: auto;
-    }
-    #toc a { text-decoration: none; display: block; }
-    #toc .method { display: inline-block; width: 7em; }
-    div.container { max-width: 50em; margin: 0 auto; }
-    p.version { color: #666; margin: -0.5em 0 2em 0; }
-    p.op-deprecated { color: #c00; }
-    h3.op-path { margin-top: 3em; }
-    .container > h3.op-path { margin-top: 1em; }
-    .renderjson .disclosure { display: none; }
-    .renderjson .syntax     { color: #002b36; }
-    .renderjson .string     { color: #073642; }
-    .renderjson .number     { color: #2aa198; }
-    .renderjson .boolean    { color: #d33682; }
-    .renderjson .key        { color: #0e6fb3; }
-    .renderjson .keyword    { color: #b58900; }
-  </style>
+  %= include "mojolicious/plugin/openapi/head"
 </head>
 <body>
 <div class="container">
@@ -564,6 +568,12 @@ __DATA__
   %= include "mojolicious/plugin/openapi/references"
   %= include "mojolicious/plugin/openapi/footer"
 </div>
+
+%= include "mojolicious/plugin/openapi/renderjson"
+%= include "mojolicious/plugin/openapi/foot"
+</body>
+</html>
+@@ mojolicious/plugin/openapi/renderjson.html.ep
 <script>
 var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":u,_=function(n,o,a,u,c){var _,d=l(u),h=function(){_||e(d.parentNode,_=r(c(),i(f.hide,"disclosure",function(){_.style.display="none",d.style.display="inline"}))),_.style.display="inline",d.style.display="none"};e(d,i(f.show,"disclosure",h),t(u+" syntax",n),i(o,null,h),t(u+" syntax",a));var g=e(l(),s(y.slice(0,-1)),d);return p>0&&"string"!=u&&h(),g};return null===a?t(null,y,"keyword","null"):void 0===a?t(null,y,"keyword","undefined"):"string"==typeof a&&a.length>f.max_string_length?_('"',a.substr(0,f.max_string_length)+" ...",'"',"string",function(){return e(l("string"),t(null,y,"string",JSON.stringify(a)))}):"object"!=typeof a||[Number,String,Boolean,Date].indexOf(a.constructor)>=0?t(null,y,typeof a,JSON.stringify(a)):a.constructor==Array?0==a.length?t(null,y,"array syntax","[]"):_("["," ... ","]","array",function(){for(var r=e(l("array"),t("array syntax","[",null,"\n")),o=0;o<a.length;o++)e(r,n(f.replacer.call(a,o,a[o]),u+"  ",!1,p-1,f),o!=a.length-1?t("syntax",","):[],s("\n"));return e(r,t(null,u,"array syntax","]")),r}):o(a,f.property_list)?t(null,y,"object syntax","{}"):_("{","...","}","object",function(){var r=e(l("object"),t("object syntax","{",null,"\n"));for(var o in a)var i=o;var c=f.property_list||Object.keys(a);f.sort_objects&&(c=c.sort());for(var y in c)(o=c[y])in a&&e(r,t(null,u+"  ","key",'"'+o+'"',"object syntax",": "),n(f.replacer.call(a,o,a[o]),u+"  ",!0,p-1,f),o!=i?t("syntax",","):[],s("\n"));return e(r,t(null,u,"object syntax","}")),r})}var t=function(){for(var n=[];arguments.length;)n.push(e(l(Array.prototype.shift.call(arguments)),s(Array.prototype.shift.call(arguments))));return n},e=function(){for(var n=Array.prototype.shift.call(arguments),t=0;t<arguments.length;t++)arguments[t].constructor==Array?e.apply(this,[n].concat(arguments[t])):n.appendChild(arguments[t]);return n},r=function(n,t){return n.insertBefore(t,n.firstChild),n},o=function(n,t){var e=t||Object.keys(n);for(var r in e)if(Object.hasOwnProperty.call(n,e[r]))return!1;return!0},s=function(n){return document.createTextNode(n)},l=function(n){var t=document.createElement("span");return n&&(t.className=n),t},i=function(n,t,e){var r=document.createElement("a");return t&&(r.className=t),r.appendChild(s(n)),r.href="#",r.onclick=function(n){return e(),n&&n.stopPropagation(),!1},r},a=function t(r){var o=Object.assign({},t.options);o.replacer="function"==typeof o.replacer?o.replacer:function(n,t){return t};var s=e(document.createElement("pre"),n(r,"",!1,o.show_to_level,o));return s.className="renderjson",s};return a.set_icons=function(n,t){return a.options.show=n,a.options.hide=t,a},a.set_show_to_level=function(n){return a.options.show_to_level="string"==typeof n&&"all"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_max_string_length=function(n){return a.options.max_string_length="string"==typeof n&&"none"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_sort_objects=function(n){return a.options.sort_objects=n,a},a.set_replacer=function(n){return a.options.replacer=n,a},a.set_property_list=function(n){return a.options.property_list=n,a},a.set_show_by_default=function(n){return a.options.show_to_level=n?Number.MAX_VALUE:0,a},a.options={},a.set_icons("⊕","⊖"),a.set_show_by_default(!1),a.set_sort_objects(!1),a.set_max_string_length("none"),a.set_replacer(void 0),a.set_property_list(void 0),a}();define?define({renderjson:renderjson}):(module||{}).exports=(window||{}).renderjson=renderjson;
 (function(w, d) {
@@ -592,5 +602,3 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
   }
 })(window, document);
 </script>
-</body>
-</html>
