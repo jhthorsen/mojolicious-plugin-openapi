@@ -12,7 +12,11 @@ sub register {
 
   $self->{standalone} = $config->{openapi} ? 0 : 1;
   $app->helper('openapi.render_spec' => sub { $self->_render_spec(@_) });
-  push @{$app->renderer->classes}, __PACKAGE__ unless $app->{'openapi.render_specification'}++;
+
+  unless ($app->{'openapi.render_specification'}++) {
+    push @{$app->renderer->classes}, __PACKAGE__;
+    push @{$app->static->classes},   __PACKAGE__;
+  }
   $self->_register_with_openapi($app, $config) unless $self->{standalone};
 }
 
@@ -416,7 +420,7 @@ __DATA__
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
 
-% if (exists $spec->{openapi}) {
+% if (exists $spec->{servers}) {
   <h3 id="servers"><a href="#title">Servers</a></h3>
   <ul class="unstyled">
   % for my $server (@{$spec->{servers}}){
@@ -444,16 +448,16 @@ __DATA__
   % }
 % }
 @@ mojolicious/plugin/openapi/toc.html.ep
-<ul id="toc">
+<ol id="toc">
   % if ($spec->{info}{description}) {
-  <li><a href="#description">Description</a></li>
+  <li class="for-description"><a href="#description">Description</a></a>
   % }
   % if ($spec->{info}{termsOfService}) {
-  <li><a href="#terms-of-service">Terms of service</a></li>
+  <li class="for-terms"><a href="#terms-of-service">Terms of service</a></li>
   % }
-  <li>
+  <li class="for-resources">
     <a href="#resources">Resources</a>
-    <ul>
+    <ol>
     % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
       % next if $path =~ $X_RE;
       % for my $method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
@@ -461,11 +465,11 @@ __DATA__
         <li><a href="#op-<%= lc $method %><%= $esc->($path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></a></li>
       % }
     % }
-    </ul>
+    </ol>
   </li>
-  <li>
+  <li class="for-references">
     <a href="#references">References</a>
-    <ul>
+    <ol>
     % for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
       % next if $key =~ $X_RE;
       <li><a href="#ref-definitions-<%= lc $esc->($key) %>">#/definitions/<%= $key %></a></li>
@@ -480,11 +484,11 @@ __DATA__
       % next if $key =~ $X_RE;
       <li><a href="#ref-parameters-<%= lc $esc->($key) %>">#/parameters/<%= $key %></a></li>
     % }
-    </ul>
+    </ol>
   </li>
-  <li><a href="#license">License</a></li>
-  <li><a href="#contact">Contact</a></li>
-</ul>
+  <li class="for-license"><a href="#license">License</a></li>
+  <li class="for-contact"><a href="#contact">Contact</a></li>
+</ol>
 @@ mojolicious/plugin/openapi/layout.html.ep
 <!doctype html>
 <html lang="en">
@@ -495,27 +499,28 @@ __DATA__
 <body>
 <div class="container openapi-container">
   <header class="openapi-header">
-    %= include "mojolicious/plugin/openapi/header"
+    %= include 'mojolicious/plugin/openapi/header'
   </header>
 
   <nav class="openapi-nav">
-    %= include "mojolicious/plugin/openapi/toc"
+    %= include 'mojolicious/plugin/openapi/logo'
+    %= include 'mojolicious/plugin/openapi/toc'
   </nav>
 
   <article class="openapi-spec">
     <section class="openapi-spec_intro">
-      %= include "mojolicious/plugin/openapi/intro"
+      %= include 'mojolicious/plugin/openapi/intro'
     </section>
     <section class="openapi-spec_resources">
-      %= include "mojolicious/plugin/openapi/resources"
+      %= include 'mojolicious/plugin/openapi/resources'
     </section>
     <section class="openapi-spec_references">
-      %= include "mojolicious/plugin/openapi/references"
+      %= include 'mojolicious/plugin/openapi/references'
     </section>
   </article>
 
   <footer class="openapi-footer">
-    %= include "mojolicious/plugin/openapi/footer"
+    %= include 'mojolicious/plugin/openapi/footer'
   </footer>
 </div>
 
@@ -606,17 +611,27 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
     font-size: 16px;
     color: #222;
     line-height: 1.4em;
-    margin: 1rem;
+    margin: 0;
     padding: 0;
   }
-  a { color: #225; text-decoration: underline; word-break: break-word; }
+  body {
+    padding: 1rem;
+  }
+  a { color: #508a25; text-decoration: underline; word-break: break-word; }
   a:hover { text-decoration: none; }
-  h1, h2, h3, h4 { font-weight: bold; line-height: 1.2em; margin: 1em 0; }
-  h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: #222; }
+  h1, h2, h3, h4 { font-family: Verdana; color: #403f41; font-weight: bold; line-height: 1.2em; margin: 1em 0; }
+  h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: inherit; }
   h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover { text-decoration: underline; }
-  h1 { font-size: 2em; }
-  h2 { font-size: 1.6em; padding-top: 1rem; margin-top: 1em; }
-  h3 { font-size: 1.2em; }
+  h1 { font-size: 2.4em; }
+
+  h2 {
+    font-size: 1.8em;
+    border-bottom: 2px solid #cfd4c5;
+    padding: 0.5rem 0;
+    margin-top: 1.5em;
+  }
+
+  h3 { font-size: 1.4em; }
   h4 { font-size: 1.1em; }
   table {
     margin: 0em -0.5em;
@@ -635,6 +650,7 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
   td p, th p {
     margin: 0;
   }
+  ol,
   ul {
     margin: 0;
     padding: 0 1.5em;
@@ -646,77 +662,92 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
   p {
     margin: 1em 0;
   }
+
   pre {
-    background: #f0f0f0;
+    background: #e8eae2;
     font-size: 0.9rem;
     line-height: 1.2em;
     letter-spacing: -0.02em;
-    border: 1px solid #ddd;
+    border-left: 4px solid #6cab3e;
     padding: 0.5em;
-    margin: 1em -0.5em;
+    margin: 1rem 0rem;
     overflow: auto;
   }
-  .openapi-nav a { text-decoration: none; padding: 0.1rem 0; white-space: nowrap; display: block; }
-  .openapi-nav a:hover,
-  .openapi-nav a:hover .method { text-decoration: underline; }
-  .openapi-nav .method { display: inline-block; width: 7em; }
+
+  .openapi-nav a {
+    text-decoration: none;
+    line-height: 1.5rem;
+    white-space: nowrap;
+  }
+
+  .openapi-logo { display: none; }
+  .openapi-nav ol { margin: 0.2rem 0 0.5rem 0; }
+
   .openapi-container { max-width: 50rem; margin: 0 auto; }
-  p.version { color: #666; margin: -1rem 0 2em 0; }
+  p.version { margin: -1rem 0 2em 0; }
   p.op-deprecated { color: #c00; }
-  h3.op-path { margin-top: 3em; }
-  .openapi-container > h3.op-path { margin-top: 1em; }
+
+  h3.op-path { margin-top: 2em; }
+  h2 + h3.op-path { margin-top: 1em; }
+
   .renderjson .disclosure { display: none; }
   .renderjson .syntax     { color: #002b36; }
   .renderjson .string     { color: #073642; }
   .renderjson .number     { color: #2aa198; }
   .renderjson .boolean    { color: #d33682; }
-  .renderjson .key        { color: #0e6fb3; }
+  .renderjson .key        { color: #3c8607; }
   .renderjson .keyword    { color: #b58900; }
 
-  @media only screen and (min-width: 900px) {
+  @media only screen and (min-width: 60rem) {
     body {
-      margin: 0;
+      padding: 0;
     }
 
     .openapi-container {
-      margin: 0;
-      padding: 0;
-      max-width: none;
+      max-width: 70rem;
     }
 
     .openapi-nav {
-      background: #fbfbfd;
-      border-right: 1px solid #e2e2e8;
-      padding: 0 0 4rem 0;
-      max-width: 20rem;
+      padding: 1.4rem 0 3rem 1rem;
+      max-width: 18rem;
+      height: 100vh;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       position: fixed;
       top: 0;
-      bottom: 0;
-      left: 0;
-      overflow: auto;
-      z-index: 999;
     }
 
-    .openapi-nav ul {
+    .openapi-logo {
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    .openapi-nav ol {
       list-style: none;
       padding: 0;
       margin: 0;
     }
 
-    .openapi-nav > ul > li > a {
-      font-size: 1.2rem;
-      font-weight: bold;
-      margin: 1rem 0 0.5rem 0;
+    .openapi-nav li a {
+      margin: -0.1rem -0.2rem;
+      padding: 0.1rem 0.4rem;
       display: block;
     }
 
-    .openapi-nav li a {
-      padding: 0.1rem 1rem;
+    .openapi-nav li a:hover {
+      background: #dbe4cd;
+      text-decoration: none;
+    }
+
+    .openapi-nav > ol > li > a {
+      color: #403f41;
+      font-weight: bold;
+      font-size: 1.1rem;
+      line-height: 1.8em;
     }
 
     .openapi-nav li.is-active a {
-      background: #e2e2e8;
-      color: #000;
+      background: #e3e8d4;
     }
 
     .openapi-nav .method {
@@ -727,13 +758,83 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
 
     .openapi-header,
     .openapi-spec {
-      margin-left: 23rem;
-      margin-right: 3rem;
-      max-width: 50rem;
-    }
-
-    .openapi-spec_resources h3.op-path {
-      padding: 0.5rem 0;
+      padding-left: 21rem;
+      padding-right: 1rem;
     }
   }
 </style>
+@@ mojolicious/plugin/openapi/logo.html.ep
+<a href="#title" class="openapi-logo">
+  %= image '/mojolicious/plugin/openapi/logo.png', alt => 'OpenAPI Logo'
+</a>
+@@ mojolicious/plugin/openapi/logo.png (base64)
+iVBORw0KGgoAAAANSUhEUgAAAMgAAAA5CAMAAABESJQQAAAABGdBTUEAALGPC/xhBQAAACBjSFJN
+AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAC+lBMVEVHcExXYExNTE5GREZH
+RkhLSUxZXFMAAElLSkxEQ0VDQkRDQkNDQkRDQkRFRUZMSk1LSkxJR0pRU09DQkREQ0VOT0tUVFFE
+Q0RHRkd8gHxNS05CQUNUVFF2tk95qlByqkt2rU5vp0hfZ09ZZkdLS0xDQkRCQUN2qU5wqUptp0Zt
+p0ZupkZspkRwqEhLXDJNXDNOXTNOXTROXTRSYDdYZz5nkVNEQ0VNTE9wqEpup0ZrpUNupEZQXzVM
+WzFSYThSYjhgYVyArlZwp0htpkZNXDFNXDNRYDdeZk1RUU1EQ0VDQkSi01KVyEhtp0VSYDdCQUNL
+SkuWyT+XykJ0q0xNXDJYXVBYWlVFREZFREZCQkOtx22YykWWyUCVyD2VyD6Wx0ltpkZMS05FREZJ
+SEmXykKWyUB8rE1NXDNFREZCQUNGRUdFREZfX19XZztOXTRth0KWyUGUyD2XykRRYjdOTU9PXTRw
+iUWVyD+Mu0xtp0dNXDJPXjVMS01PXjSWyUGYykN2qlBspkRRUFJbXlhPXjSUyT5PTlBRYDdYZz1N
+XDFspkRRYTdNXDFSXj1tg0CVyT6Zy0VaX1JEQ0VQXzZDQURSYjlxoU1wqElSYDdSYTmXykdSYThT
+YTlJSEpJR0lCQUNJSEpEREVRUVNKSEtYWFhPTlFOTlBNTE1GRkdISElHR0lxcHJxbXFEREVcXFVh
+YGJycXJ7e354eHxsa25JSUpFQ0Y/PkpBQUNIR0hAQEdIR0lKSUtHRkiJrmVEQUSenpyhs46Vm4Nv
+qElwqUpGRUdEQ0VIR0lKSEpHRkiWykGVyD5CQUNCQUNHRkdJSUqn1l6Vxklvp0dTU1VBQUVEQERE
+Q0VKSkyYy0hrpkNfX2JGRUdPT1B0pk9rpkRHRkhFREVJSEtEREVLSkyVyD+WyUB1pFBZWVqVxU91
+olBup0hnZ2ptpkZDQ0NKSkuXyUN0plBMWzKXxkyXyERXV1lKSUtTYThPTVBKSktDQUNCQUNrpUNM
+WzGUyD3///+AqxLvAAAA+XRSTlMAE0FicjwRAkfV7/j97cgzYVkE8eEqDLmiAiTkIgoTGi0yDi43
+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
+KzAwOjAw+374IAAAAABJRU5ErkJggg==
