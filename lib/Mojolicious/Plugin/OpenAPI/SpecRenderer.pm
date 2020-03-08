@@ -539,30 +539,44 @@ __DATA__
 </html>
 @@ mojolicious/plugin/openapi/renderjson.html.ep
 <script>
-var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":u,_=function(n,o,a,u,c){var _,d=l(u),h=function(){_||e(d.parentNode,_=r(c(),i(f.hide,"disclosure",function(){_.style.display="none",d.style.display="inline"}))),_.style.display="inline",d.style.display="none"};e(d,i(f.show,"disclosure",h),t(u+" syntax",n),i(o,null,h),t(u+" syntax",a));var g=e(l(),s(y.slice(0,-1)),d);return p>0&&"string"!=u&&h(),g};return null===a?t(null,y,"keyword","null"):void 0===a?t(null,y,"keyword","undefined"):"string"==typeof a&&a.length>f.max_string_length?_('"',a.substr(0,f.max_string_length)+" ...",'"',"string",function(){return e(l("string"),t(null,y,"string",JSON.stringify(a)))}):"object"!=typeof a||[Number,String,Boolean,Date].indexOf(a.constructor)>=0?t(null,y,typeof a,JSON.stringify(a)):a.constructor==Array?0==a.length?t(null,y,"array syntax","[]"):_("["," ... ","]","array",function(){for(var r=e(l("array"),t("array syntax","[",null,"\n")),o=0;o<a.length;o++)e(r,n(f.replacer.call(a,o,a[o]),u+"  ",!1,p-1,f),o!=a.length-1?t("syntax",","):[],s("\n"));return e(r,t(null,u,"array syntax","]")),r}):o(a,f.property_list)?t(null,y,"object syntax","{}"):_("{","...","}","object",function(){var r=e(l("object"),t("object syntax","{",null,"\n"));for(var o in a)var i=o;var c=f.property_list||Object.keys(a);f.sort_objects&&(c=c.sort());for(var y in c)(o=c[y])in a&&e(r,t(null,u+"  ","key",'"'+o+'"',"object syntax",": "),n(f.replacer.call(a,o,a[o]),u+"  ",!0,p-1,f),o!=i?t("syntax",","):[],s("\n"));return e(r,t(null,u,"object syntax","}")),r})}var t=function(){for(var n=[];arguments.length;)n.push(e(l(Array.prototype.shift.call(arguments)),s(Array.prototype.shift.call(arguments))));return n},e=function(){for(var n=Array.prototype.shift.call(arguments),t=0;t<arguments.length;t++)arguments[t].constructor==Array?e.apply(this,[n].concat(arguments[t])):n.appendChild(arguments[t]);return n},r=function(n,t){return n.insertBefore(t,n.firstChild),n},o=function(n,t){var e=t||Object.keys(n);for(var r in e)if(Object.hasOwnProperty.call(n,e[r]))return!1;return!0},s=function(n){return document.createTextNode(n)},l=function(n){var t=document.createElement("span");return n&&(t.className=n),t},i=function(n,t,e){var r=document.createElement("a");return t&&(r.className=t),r.appendChild(s(n)),r.href="#",r.onclick=function(n){return e(),n&&n.stopPropagation(),!1},r},a=function t(r){var o=Object.assign({},t.options);o.replacer="function"==typeof o.replacer?o.replacer:function(n,t){return t};var s=e(document.createElement("pre"),n(r,"",!1,o.show_to_level,o));return s.className="renderjson",s};return a.set_icons=function(n,t){return a.options.show=n,a.options.hide=t,a},a.set_show_to_level=function(n){return a.options.show_to_level="string"==typeof n&&"all"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_max_string_length=function(n){return a.options.max_string_length="string"==typeof n&&"none"===n.toLowerCase()?Number.MAX_VALUE:n,a},a.set_sort_objects=function(n){return a.options.sort_objects=n,a},a.set_replacer=function(n){return a.options.replacer=n,a},a.set_property_list=function(n){return a.options.property_list=n,a},a.set_show_by_default=function(n){return a.options.show_to_level=n?Number.MAX_VALUE:0,a},a.options={},a.set_icons("⊕","⊖"),a.set_show_by_default(!1),a.set_sort_objects(!1),a.set_max_string_length("none"),a.set_replacer(void 0),a.set_property_list(void 0),a}();define?define({renderjson:renderjson}):(module||{}).exports=(window||{}).renderjson=renderjson;
 (function(w, d) {
-  renderjson.set_show_to_level("all");
-  renderjson.set_sort_objects(true);
-  renderjson.set_max_string_length(100);
+  function jsonhtmlify(e){let n=document.createElement('div');const t=[[e,n]],s=[];for(;t.length;){const[e,l]=t.shift();let a,c,o=typeof e;if(null===e||'undefined'==o?o='null':Array.isArray(e)&&(o='array'),'array'==o)(c=(e=>e)).len=e.length,(a=document.createElement('div')).className='json-array '+(c.len?'has-items':'is-empty');else if('object'==o){const n=Object.keys(e).sort();(c=(e=>n[e])).len=n.length,(a=document.createElement('div')).className='json-object '+(c.len?'has-items':'is-empty')}else(a=document.createElement('span')).className='json-'+o,a.textContent='null'==o?'null':'boolean'!=o?e:e?'true':'false';if(c){const i=document.createElement('span');if(i.className='json-type',i.textContent=c.len?o+'['+c.len+']':'{}',l.appendChild(i),-1!=s.indexOf(e))n.classList.add('has-recursive-items'),a.classList.add('is-seen');else{for(let n=0;n<c.len;n++){const s=c(n),l=document.createElement('div'),o=document.createElement('span');o.className='json-key',o.textContent=s,l.appendChild(o),a.appendChild(l),t.push([e[s],l])}s.push(e)}}l.className='json-item '+a.className.replace(/^json-/,'contains-'),l.appendChild(a)}return n}
 
-  var els = d.querySelectorAll("pre");
-  for (var i = 0; i < els.length; i++) {
-    els[i].parentNode.replaceChild(renderjson(JSON.parse(els[i].innerText)), els[i]);
+  function createRefLink(refEl) {
+    var a = d.createElement('a');
+    var href = refEl.textContent.replace(/'/g, '');
+    a.className = refEl.className;
+    a.textContent = refEl.textContent;
+    a.href = href.match(/^#/) ? '#ref-' + href.replace(/\W/g, '-').substring(2).toLowerCase() : href;
+    return a;
   }
 
-  els = d.querySelectorAll(".key");
+  var els = d.querySelectorAll('pre');
   for (var i = 0; i < els.length; i++) {
-    if (els[i].textContent != '"$ref"') continue;
-    var link = els[i].nextElementSibling;
-    while (link = link.nextElementSibling) {
-      if (!link.className || !link.className.match(/\bstring\b/)) continue;
-      var a = d.createElement("a");
-      var href = link.textContent.replace(/"/g, "");
-      a.className = link.className;
-      a.textContent = link.textContent;
-      a.href = href.match(/^#/) ? "#ref-" + href.replace(/\W/g, "-").substring(2).toLowerCase() : href;
-      link.parentNode.replaceChild(a, link);
+    var jsonEl = jsonhtmlify(JSON.parse(els[i].innerText));
+
+    try {
+      var refEl = jsonEl.querySelector(':scope > .json-object > .json-item > .json-key');
+      if (refEl && refEl.textContent == '$ref') {
+        var p = d.createElement('p');
+        var a = createRefLink(refEl.nextElementSibling);
+        a.className = 'openapi-ref-link';
+        p.textContent = 'Schema: ';
+        p.appendChild(a);
+        jsonEl = p;
+      }
+    } catch (e) {
+      console.log('[OpenAPI] Not supported.', e);
     }
+
+    els[i].parentNode.replaceChild(jsonEl, els[i]);
+  }
+
+  els = d.querySelectorAll('.json-key');
+  for (var i = 0; i < els.length; i++) {
+    if (els[i].textContent != '$ref') continue;
+    var refEl = els[i].nextElementSibling;
+    refEl.parentNode.replaceChild(createRefLink(refEl), refEl);
   }
 })(window, document);
 </script>
@@ -671,10 +685,11 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
     margin: 1em 0;
   }
 
+  .json-item,
   pre {
-    background: #e8eae2;
+    background: #edefe8;
     font-size: 0.9rem;
-    line-height: 1.2em;
+    line-height: 1.4em;
     letter-spacing: -0.02em;
     border-left: 4px solid #6cab3e;
     padding: 0.5em;
@@ -698,13 +713,25 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
   h3.op-path { margin-top: 2em; }
   h2 + h3.op-path { margin-top: 1em; }
 
-  .renderjson .disclosure { display: none; }
-  .renderjson .syntax     { color: #002b36; }
-  .renderjson .string     { color: #073642; }
-  .renderjson .number     { color: #2aa198; }
-  .renderjson .boolean    { color: #d33682; }
-  .renderjson .key        { color: #3c8607; }
-  .renderjson .keyword    { color: #b58900; }
+  .openapi-spec_references > .json-item > .json-type { display: none; }
+  .openapi-spec_references > .json-item > div > .json-item { padding: 0; }
+
+  .json-item .json-item {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    margin-left: 0.4rem;
+    padding-left: 0.4rem;
+  }
+
+  .json-array > .json-item > .json-key { display: none; }
+  .json-array > .json-item > .json-string:before { color: #222; content: '- '; }
+  .json-boolean { color: #228dad; }
+  .json-key { font-weight: bold; }
+  .json-key:after { content: ': '; color: #222; }
+  .json-null { color: #222; }
+  .json-number, .json-string { color: #42791a; }
+  .json-type { font-size: 0.85rem; color: #999799; }
 
   @media only screen and (min-width: 60rem) {
     body {
