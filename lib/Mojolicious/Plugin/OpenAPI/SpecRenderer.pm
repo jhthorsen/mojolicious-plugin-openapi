@@ -619,7 +619,6 @@ __DATA__
   function createRefLink(refEl) {
     var a = d.createElement('a');
     var href = refEl.textContent.replace(/'/g, '');
-    a.className = refEl.className;
     a.textContent = refEl.textContent;
     a.href = href.match(/^#/) ? '#ref-' + href.replace(/\W/g, '-').substring(2).toLowerCase() : href;
     return a;
@@ -628,21 +627,7 @@ __DATA__
   var els = d.querySelectorAll('pre');
   for (var i = 0; i < els.length; i++) {
     var jsonEl = jsonhtmlify(JSON.parse(els[i].innerText));
-
-    try {
-      var refEl = jsonEl.querySelector(':scope > .json-object > .json-item > .json-key');
-      if (refEl && refEl.textContent == '$ref') {
-        var p = d.createElement('p');
-        var a = createRefLink(refEl.nextElementSibling);
-        a.className = 'openapi-ref-link';
-        p.textContent = 'Schema: ';
-        p.appendChild(a);
-        jsonEl = p;
-      }
-    } catch (e) {
-      console.log('[OpenAPI] Not supported.', e);
-    }
-
+    jsonEl.classList.add('json-container');
     els[i].parentNode.replaceChild(jsonEl, els[i]);
   }
 
@@ -759,9 +744,9 @@ __DATA__
     margin: 1em 0;
   }
 
-  .json-item,
+  .json-container,
   pre {
-    background: #edefe8;
+    background: #f1f3ed;
     font-size: 0.9rem;
     line-height: 1.4em;
     letter-spacing: -0.02em;
@@ -787,9 +772,6 @@ __DATA__
   h3.op-path { margin-top: 2em; padding: 0.5rem 0 0 0; }
   h2 + h3.op-path { margin-top: 1em; }
 
-  .openapi-spec_references > .json-item > .json-type { display: none; }
-  .openapi-spec_references > .json-item > div > .json-item { padding: 0; }
-
   .json-item .json-item {
     border: 0;
     padding: 0;
@@ -799,13 +781,15 @@ __DATA__
   }
 
   .json-array > .json-item > .json-key { display: none; }
-  .json-array > .json-item > .json-string:before { color: #222; content: '- '; }
-  .json-boolean { color: #228dad; }
-  .json-key { font-weight: bold; }
+  .json-array > .json-item > .json-string:before { content: '- '; color: #222; font-weight: bold; }
+  .json-boolean, .json-number, .json-string { color: #356710; font-weight: 500; }
   .json-key:after { content: ': '; color: #222; }
   .json-null { color: #222; }
-  .json-number, .json-string { color: #42791a; }
-  .json-type { font-size: 0.85rem; color: #999799; }
+  .json-type { color: #c5a138; display: none; }
+
+  .json-item:hover > .json-type { display: inline; }
+  .json-container > .json-type { display: none !important; }
+  .json-container > div > .json-item { padding: 0; margin: 0; }
 
   @media only screen and (min-width: 60rem) {
     body {
@@ -869,7 +853,7 @@ __DATA__
     .openapi-header,
     .openapi-spec {
       margin-left: 21rem;
-      padding-right: 1rem;
+      margin-right: 1rem;
     }
 
     .openapi-footer {
