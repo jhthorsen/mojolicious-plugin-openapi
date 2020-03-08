@@ -40,8 +40,9 @@ sub VERSION {1.42}
     ->json_is('/basePath', '/api');
 
   $t->get_ok('/api/docs.html')->status_is(200)->text_is('h3#op-post--pets a', 'addPet')
-    ->text_like('style', qr{font-family:}s)->text_like('script', qr{function jsonhtmlify}s)
-    ->content_like(qr{-- default foot --});
+    ->text_like('style',  qr{font-family:}s)
+    ->text_like('script', qr{SpecRenderer\.prototype\.jsonhtmlify}s)
+    ->content_like(qr{new SpecRenderer\(\).setup\(\)});
 
 SKIP: {
     skip 'Text::Markdown is not installed', 2 unless eval 'require Text::Markdown;1';

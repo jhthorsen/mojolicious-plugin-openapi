@@ -402,10 +402,10 @@ __DATA__
 </p>
 % }
 @@ mojolicious/plugin/openapi/foot.html.ep
+<a href="#top" class="openapi-up-button" type="button">&#8963;</a>
 <script>
 new SpecRenderer().setup();
 </script>
-<!-- default foot -->
 @@ mojolicious/plugin/openapi/footer.html.ep
 <!-- default footer -->
 @@ mojolicious/plugin/openapi/head.html.ep
@@ -651,6 +651,10 @@ SpecRenderer.prototype.renderPre = function() {
   }
 };
 
+SpecRenderer.prototype.renderUpButton = function(e) {
+  this.upButton.classList[this.scrollTop > 150 ? 'add' : 'remove']('is-visible');
+};
+
 SpecRenderer.prototype.scrollSpy = function(e) {
   // Do not run this method too often
   if (e && e.preventDefault) return this._scrollSpyTid || (this._scrollSpyTid = setTimeout(this.scrollSpy, 100));
@@ -662,12 +666,14 @@ SpecRenderer.prototype.scrollSpy = function(e) {
   this.scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 
   this.renderNav();
+  this.renderUpButton();
 }
 
 SpecRenderer.prototype.setup = function() {
   this.aEls = document.querySelectorAll('.openapi-nav a');
   this.firstHeadingEl = document.querySelector('h2');
   this.headings = document.querySelectorAll('h3[id]');
+  this.upButton = document.querySelector('.openapi-up-button');
   this.scrollSpy = this.scrollSpy.bind(this);
 
   this.renderPre();
@@ -766,6 +772,7 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
 
   .openapi-logo { display: none; }
   .openapi-nav ol { margin: 0.2rem 0 0.5rem 0; }
+  .openapi-up-button { display: none; }
 
   .openapi-container { max-width: 50rem; margin: 0 auto; }
   p.version { margin: -1rem 0 2em 0; }
@@ -793,9 +800,51 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
   .json-container > .json-type { display: none !important; }
   .json-container > div > .json-item { padding: 0; margin: 0; }
 
+  @media only screen {
+    .openapi-up-button {
+      background: #403f41;
+      color: #f2f3ed;
+      font-weight: bold;
+      font-size: 1.2rem;
+      line-height: 1.5em;
+      text-align: center;
+      border: 0;
+      box-shadow: 0 0 4px 3px rgba(0, 0, 0, 0.2);
+      border-radius: 50%;
+      padding-top: 0.3em;
+      width: 2.1em;
+      height: 2.1em;
+      opacity: 0;
+      position: fixed;
+      bottom: 1.5rem;
+      left: calc(50vw + 31rem);
+      transition: background 0.25s ease-in-out, opacity 0.25s ease-in-out;
+      cursor: pointer;
+    }
+
+    .openapi-up-button:hover {
+      background: #000;
+    }
+
+    .openapi-up-button.is-visible {
+      opacity: 0.9;
+    }
+  }
+
+  @media only screen and (max-width: 70rem) {
+    .openapi-up-button {
+      left: auto;
+      right: 1rem;
+    }
+  }
+
   @media only screen and (min-width: 60rem) {
     body {
       padding: 0;
+    }
+
+    .openapi-up-button {
+      display: block;
     }
 
     .openapi-container {
