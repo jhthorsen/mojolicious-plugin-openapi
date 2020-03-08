@@ -13,12 +13,31 @@ sub register {
   $self->{standalone} = $config->{openapi} ? 0 : 1;
   $app->helper('openapi.render_spec' => sub { $self->_render_spec(@_) });
 
+  # EXPERIMENTAL
+  $app->helper('openapi.spec_iterator' => \&_helper_iterator);
+
   unless ($app->{'openapi.render_specification'}++) {
     push @{$app->renderer->classes}, __PACKAGE__;
     push @{$app->static->classes},   __PACKAGE__;
   }
 
   $self->_register_with_openapi($app, $config) unless $self->{standalone};
+}
+
+sub _helper_iterator {
+  my ($c, $obj) = @_;
+  return unless $obj;
+
+  unless ($c->{_helper_iterator}{$obj}) {
+    my $x_re = qr{^x-};
+    $c->{_helper_iterator}{$obj}
+      = [map { [$_, $obj->{$_}] } sort { lc $a cmp lc $b } grep { !/$x_re/ } keys %$obj];
+  }
+
+  my $items = $c->{_helper_iterator}{$obj};
+  my $item  = shift @$items;
+  delete $c->{_helper_iterator}{$obj} unless $item;
+  return $item ? @$item : ();
 }
 
 sub _register_with_openapi {
@@ -152,7 +171,6 @@ sub _render_spec {
       join '-', map { s/\W/-/g; lc } map {"$_"} @_;
     },
     spec => \%spec,
-    X_RE => $x_re,
   );
 }
 
@@ -450,12 +468,10 @@ __DATA__
 <pre class="op-parameter-body"><%= $serialize->($op_spec->{requestBody}{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/response.html.ep
-% for my $code (sort { $a cmp $b } keys %{$op_spec->{responses}}) {
-  % next if $code =~ $X_RE;
-  % my $res = $op_spec->{responses}{$code};
-<h4 class="op-response">Response <%= $code %></h3>
-%= include 'mojolicious/plugin/openapi/human', op_spec => $res
-<pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
+% while (my ($code, $res) = $c->openapi->spec_iterator($op_spec->{responses})) {
+  <h4 class="op-response">Response <%= $code %></h3>
+  %= include 'mojolicious/plugin/openapi/human', op_spec => $res
+  <pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
 <h3 id="<%= $slugify->(op => $method, $path) %>" class="op-path <%= $op_spec->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= $name %></a></h3>
@@ -472,65 +488,32 @@ __DATA__
 %= include 'mojolicious/plugin/openapi/parameters', op_spec => $op_spec
 %= include 'mojolicious/plugin/openapi/response', op_spec => $op_spec
 @@ mojolicious/plugin/openapi/references.html.ep
-% use Mojo::ByteStream 'b';
-<h2 id="references"><a href="#title">References</a></h2>
-% for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
-  % next if $key =~ $X_RE;
-  <h3 id="<%= lc $slugify->(qw(ref definitions), $key) %>"><a href="#title">#/definitions/<%= $key %></a></h3>
-  <pre class="ref"><%= $serialize->($spec->{definitions}{$key}) %></pre>
-% }
-% for my $type (sort { $a cmp $b } keys %{$spec->{components} || {}}) {
-  % for my $key (sort { $a cmp $b } keys %{$spec->{components}{$type} || {}}) {
-    % next if $key =~ $X_RE;
-    <h3 id="<%= lc $slugify->(qw(ref components), $type, $key) %>"><a href="#title">#/components/<%= $type %>/<%= $key %></a></h3>
-    <pre class="ref"><%= $serialize->($spec->{components}{$type}{$key}) %></pre>
+% if ($spec->{parameters}) {
+  <h2 id="parameters"><a href="#title">Parameters</a></h2>
+  % while (my ($key, $schema) = $c->openapi->spec_iterator($spec->{parameters})) {
+    <h3 id="<%= lc $slugify->(qw(ref parameters), $key) %>"><a href="#title"><%= $key %></a></h3>
+    <pre class="ref"><%= $serialize->($schema) %></pre>
   % }
+  </li>
 % }
-% for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
-  % next if $key =~ $X_RE;
-  % my $item = $spec->{parameters}{$key};
-  <h3 id="<%= lc $slugify->(qw(ref parameters), $key) %>"><a href="#title">#/parameters/<%= $key %> - "<%= $item->{name} %>"</a></h3>
-  <p><%= $item->{description} || 'No description.' %></p>
-  <ul>
-    <li>In: <%= $item->{in} %></li>
-    <li>Type: <%= $item->{type} %><%= $item->{format} ? " / $item->{format}" : "" %><%= $item->{pattern} ? " / $item->{pattern}" : ""%></li>
-    % if ($item->{exclusiveMinimum} || $item->{exclusiveMaximum} || $item->{minimum} || $item->{maximum}) {
-      <li>
-        Min / max:
-        <%= $item->{exclusiveMinimum} ? "$item->{exclusiveMinimum} <" : $item->{minimum} ? "$item->{minimum} <=" : b("&infin; <=") %>
-        value
-        <%= $item->{exclusiveMaximum} ? "< $item->{exclusiveMaximum}" : $item->{maximum} ? "<= $item->{maximum}" : b("<= &infin;") %>
-      </li>
+
+% if ($spec->{components}) {
+  <h2 id="components"><a href="#title">Components</a></h2>
+  % while (my ($type, $comp_group) = $c->openapi->spec_iterator($spec->{components})) {
+    % while (my ($key, $comp) = $c->openapi->spec_iterator($comp_group)) {
+      <li><a href="#<%= lc $slugify->(qw(ref components), $key) %>"><%= $key %></a></li>
     % }
-    % if ($item->{minLength} || $item->{maxLength}) {
-      <li>
-        Min / max:
-        <%= $item->{minLength} ? "$item->{minLength} <=" : b("&infin; <=") %>
-        length
-        <%= $item->{maxLength} ? "<= $item->{maxLength}" : b("<= &infin;") %>
-      </li>
-    % }
-    % if ($item->{minItems} || $item->{maxItems}) {
-      <li>
-        Min / max:
-        <%= $item->{minItems} ? "$item->{minItems} <=" : b("&infin; <=") %>
-        items
-        <%= $item->{maxItems} ? "<= $item->{maxItems}" : b("<= &infin;") %>
-      </li>
-    % }
-    % for my $k (qw(collectionFormat uniqueItems multipleOf enum)) {
-      % next unless $item->{$k};
-      <li><%= ucfirst $k %>: <%= ref $item->{$k} ? $serialize->($item->{$k}) : $item->{$k} %></li>
-    % }
-    <li>Required: <%= $item->{required} ? 'Yes.' : 'No.' %></li>
-    <li><%= defined $item->{default} ? "Default: " . $serialize->($item->{default}) : 'No default value.' %></li>
-  </ul>
-  % for my $k (qw(items schema)) {
-    % next unless $item->{$k};
-    <pre class="ref"><%= $serialize->($item->{$k}) %></pre>
   % }
 % }
 
+% if ($spec->{definitions}) {
+  <h2 id="definitions"><a href="#title">Parameters</a></h2>
+  % while (my ($key, $schema) = $c->openapi->spec_iterator($spec->{definitions})) {
+    <h3 id="<%= lc $slugify->(qw(ref definitions), $key) %>"><a href="#title"><%= $key %></a></h3>
+    <pre class="ref"><%= $serialize->($schema) %></pre>
+  % }
+  </li>
+% }
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
 % for my $op (@$operations) {
@@ -559,25 +542,41 @@ __DATA__
       % }
     </ol>
   </li>
-  <li class="for-references">
-    <a href="#references">References</a>
-    <ol>
-    % for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
-      % next if $key =~ $X_RE;
-      <li><a href="#<%= $slugify->(qw(ref definitions), $key) %>">#/definitions/<%= $key %></a></li>
-    % }
-    % for my $type (sort { $a cmp $b } keys %{$spec->{components} || {}}) {
-      % for my $key (sort { $a cmp $b } keys %{$spec->{components}{$type} || {}}) {
-        % next if $key =~ $X_RE;
-        <li><a href="#<%= lc $slugify->(qw(ref components), $type, $key) %>">#/components/<%= $type %>/<%= $key %></a></li>
-      % }
-    % }
-    % for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
-      % next if $key =~ $X_RE;
-      <li><a href="#<%= lc $slugify->(qw(ref parameters), $key) %>">#/parameters/<%= $key %></a></li>
-    % }
-    </ol>
-  </li>
+
+  % if ($spec->{parameters}) {
+    <li class="for-references for-parameters">
+      <a href="#references">Parameters</a>
+      <ol>
+        % while (my ($key) = $c->openapi->spec_iterator($spec->{parameters})) {
+          <li><a href="#<%= lc $slugify->(qw(ref parameters), $key) %>"><%= $key %></a></li>
+        % }
+      </ol>
+    </li>
+  % }
+
+  % if ($spec->{components}) {
+    <li class="for-references for-components">
+      <a href="#references">Components</a>
+      <ol>
+        % while (my ($type, $comp_group) = $c->openapi->spec_iterator($spec->{components})) {
+          % while (my ($key, $comp) = $c->openapi->spec_iterator($comp_group)) {
+            <li><a href="#<%= lc $slugify->(qw(ref components), $key) %>"><%= $key %></a></li>
+          % }
+        % }
+      </ol>
+    </li>
+  % }
+
+  % if ($spec->{definitions}) {
+    <li class="for-references for-definitions">
+      <a href="#references">Definitions</a>
+      <ol>
+        % while (my ($key) = $c->openapi->spec_iterator($spec->{definitions})) {
+          <li><a href="#<%= lc $slugify->(qw(ref definitions), $key) %>"><%= $key %></a></li>
+        % }
+      </ol>
+    </li>
+  % }
 </ol>
 @@ mojolicious/plugin/openapi/layout.html.ep
 <!doctype html>
