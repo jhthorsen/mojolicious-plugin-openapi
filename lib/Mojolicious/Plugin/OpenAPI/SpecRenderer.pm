@@ -395,13 +395,13 @@ __DATA__
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0">
 %= include 'mojolicious/plugin/openapi/style'
 @@ mojolicious/plugin/openapi/human.html.ep
-% if ($spec->{summary}) {
-<p class="spec-summary"><%= $spec->{summary} %></p>
+% if ($op_spec->{summary}) {
+<p class="spec-summary"><%= $op_spec->{summary} %></p>
 % }
-% if ($spec->{description}) {
-<div class="spec-description"><%== $markdown->($spec->{description}) %></div>
+% if ($op_spec->{description}) {
+<div class="spec-description"><%== $markdown->($op_spec->{description}) %></div>
 % }
-% if (!$spec->{description} and !$spec->{summary}) {
+% if (!$op_spec->{description} and !$op_spec->{summary}) {
 <p class="op-summary op-doc-missing">This resource is not documented.</p>
 % }
 @@ mojolicious/plugin/openapi/parameters.html.ep
@@ -454,7 +454,7 @@ __DATA__
   % next if $code =~ $X_RE;
   % my $res = $op_spec->{responses}{$code};
 <h4 class="op-response">Response <%= $code %></h3>
-%= include "mojolicious/plugin/openapi/human", spec => $res
+%= include 'mojolicious/plugin/openapi/human', op_spec => $res
 <pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
@@ -468,9 +468,9 @@ __DATA__
   <li><b>Operation ID:</b> <span><%= $op_spec->{operationId} %></span></li>
   % }
 </ul>
-%= include "mojolicious/plugin/openapi/human", op_spec => $op_spec
-%= include "mojolicious/plugin/openapi/parameters", op_spec => $op_spec
-%= include "mojolicious/plugin/openapi/response", op_spec => $op_spec
+%= include 'mojolicious/plugin/openapi/human', op_spec => $op_spec
+%= include 'mojolicious/plugin/openapi/parameters', op_spec => $op_spec
+%= include 'mojolicious/plugin/openapi/response', op_spec => $op_spec
 @@ mojolicious/plugin/openapi/references.html.ep
 % use Mojo::ByteStream 'b';
 <h2 id="references"><a href="#title">References</a></h2>
@@ -784,7 +784,7 @@ __DATA__
   p.version { margin: -1rem 0 2em 0; }
   p.op-deprecated { color: #c00; }
 
-  h3.op-path { margin-top: 2em; }
+  h3.op-path { margin-top: 2em; padding: 0.5rem 0 0 0; }
   h2 + h3.op-path { margin-top: 1em; }
 
   .openapi-spec_references > .json-item > .json-type { display: none; }
