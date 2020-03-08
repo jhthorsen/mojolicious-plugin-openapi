@@ -311,8 +311,7 @@ creating a file in your templates folder.
   |        '- mojolicious/plugin/openapi/human.html.ep
   |- mojolicious/plugin/openapi/references.html.ep
   |- mojolicious/plugin/openapi/footer.html.ep
-  |- mojolicious/plugin/openapi/renderjson.html.ep
-  |- mojolicious/plugin/openapi/scrollspy.html.ep
+  |- mojolicious/plugin/openapi/javascript.html.ep
   '- mojolicious/plugin/openapi/foot.html.ep
 
 See the DATA section in the source code for more details on styling and markup
@@ -403,6 +402,9 @@ __DATA__
 </p>
 % }
 @@ mojolicious/plugin/openapi/foot.html.ep
+<script>
+new SpecRenderer().setup();
+</script>
 <!-- default foot -->
 @@ mojolicious/plugin/openapi/footer.html.ep
 <!-- default footer -->
@@ -605,82 +607,83 @@ __DATA__
   </footer>
 </div>
 
-%= include "mojolicious/plugin/openapi/renderjson"
-%= include "mojolicious/plugin/openapi/scrollspy"
+%= include "mojolicious/plugin/openapi/javascript"
 %= include "mojolicious/plugin/openapi/foot"
 </body>
 </html>
-@@ mojolicious/plugin/openapi/renderjson.html.ep
+@@ mojolicious/plugin/openapi/javascript.html.ep
 <script>
-(function(w, d) {
-  function jsonhtmlify(e){let n=document.createElement('div');const t=[[e,n]],s=[];for(;t.length;){const[e,l]=t.shift();let a,c,o=typeof e;if(null===e||'undefined'==o?o='null':Array.isArray(e)&&(o='array'),'array'==o)(c=(e=>e)).len=e.length,(a=document.createElement('div')).className='json-array '+(c.len?'has-items':'is-empty');else if('object'==o){const n=Object.keys(e).sort();(c=(e=>n[e])).len=n.length,(a=document.createElement('div')).className='json-object '+(c.len?'has-items':'is-empty')}else(a=document.createElement('span')).className='json-'+o,a.textContent='null'==o?'null':'boolean'!=o?e:e?'true':'false';if(c){const i=document.createElement('span');if(i.className='json-type',i.textContent=c.len?o+'['+c.len+']':'{}',l.appendChild(i),-1!=s.indexOf(e))n.classList.add('has-recursive-items'),a.classList.add('is-seen');else{for(let n=0;n<c.len;n++){const s=c(n),l=document.createElement('div'),o=document.createElement('span');o.className='json-key',o.textContent=s,l.appendChild(o),a.appendChild(l),t.push([e[s],l])}s.push(e)}}l.className='json-item '+a.className.replace(/^json-/,'contains-'),l.appendChild(a)}return n}
+var SpecRenderer = function() {};
 
-  function createRefLink(refEl) {
-    var a = d.createElement('a');
-    var href = refEl.textContent.replace(/'/g, '');
-    a.textContent = refEl.textContent;
-    a.href = href.match(/^#/) ? '#ref-' + href.replace(/\W/g, '-').substring(2).toLowerCase() : href;
-    return a;
+SpecRenderer.prototype.jsonhtmlify
+  = function(e){let n=document.createElement('div');const t=[[e,n]],s=[];for(;t.length;){const[e,l]=t.shift();let a,c,o=typeof e;if(null===e||'undefined'==o?o='null':Array.isArray(e)&&(o='array'),'array'==o)(c=(e=>e)).len=e.length,(a=document.createElement('div')).className='json-array '+(c.len?'has-items':'is-empty');else if('object'==o){const n=Object.keys(e).sort();(c=(e=>n[e])).len=n.length,(a=document.createElement('div')).className='json-object '+(c.len?'has-items':'is-empty')}else(a=document.createElement('span')).className='json-'+o,a.textContent='null'==o?'null':'boolean'!=o?e:e?'true':'false';if(c){const i=document.createElement('span');if(i.className='json-type',i.textContent=c.len?o+'['+c.len+']':'{}',l.appendChild(i),-1!=s.indexOf(e))n.classList.add('has-recursive-items'),a.classList.add('is-seen');else{for(let n=0;n<c.len;n++){const s=c(n),l=document.createElement('div'),o=document.createElement('span');o.className='json-key',o.textContent=s,l.appendChild(o),a.appendChild(l),t.push([e[s],l])}s.push(e)}}l.className='json-item '+a.className.replace(/^json-/,'contains-'),l.appendChild(a)}return n}
+
+SpecRenderer.prototype.renderNav = function() {
+  var i = 0;
+  if (this.firstHeadingEl.offsetTop < this.scrollTop) {
+    for (i = 0; i < this.headings.length; i++) {
+      if (this.headings[i].offsetTop >= this.scrollTop + this.wh - this.headingOffsetTop) break;
+    }
   }
 
-  var els = d.querySelectorAll('pre');
+  if (i > 0) i--;
+
+  var id = this.headings[i] && this.headings[i].id || '';
+  var aEl = document.querySelector('.openapi-nav a[href$="#' + id + '"]');
+  for (i = 0; i < this.aEls.length; i++) {
+    this.aEls[i].parentNode.classList[this.aEls[i] == aEl ? 'add' : 'remove']('is-active');
+  }
+};
+
+SpecRenderer.prototype.renderPre = function() {
+  var els = document.querySelectorAll('pre');
   for (var i = 0; i < els.length; i++) {
-    var jsonEl = jsonhtmlify(JSON.parse(els[i].innerText));
+    var jsonEl = this.jsonhtmlify(JSON.parse(els[i].innerText));
     jsonEl.classList.add('json-container');
     els[i].parentNode.replaceChild(jsonEl, els[i]);
   }
 
-  els = d.querySelectorAll('.json-key');
+  els = document.querySelectorAll('.json-key');
   for (var i = 0; i < els.length; i++) {
     if (els[i].textContent != '$ref') continue;
     var refEl = els[i].nextElementSibling;
-    refEl.parentNode.replaceChild(createRefLink(refEl), refEl);
+    refEl.parentNode.replaceChild(this._createRefLink(refEl), refEl);
   }
-})(window, document);
-</script>
-@@ mojolicious/plugin/openapi/scrollspy.html.ep
-<script>
-(function() {
-  var aEls = document.querySelectorAll('.openapi-nav a');
-  var firstH2 = document.querySelector('h2');
-  var headings = document.querySelectorAll('h3[id]');
+};
 
-  var spy = function() {
-    var innerHeight = window.innerHeight;
-    var offsetTop = parseInt(innerHeight / 2.3, 10);
-    var scrollPosition = document.documentElement.scrollTop || document.body.scrollTop;
-    var i = 0;
+SpecRenderer.prototype.scrollSpy = function(e) {
+  // Do not run this method too often
+  if (e && e.preventDefault) return this._scrollSpyTid || (this._scrollSpyTid = setTimeout(this.scrollSpy, 100));
+  if (this._scrollSpyTid) clearTimeout(this._scrollSpyTid);
+  delete this._scrollSpyTid;
 
-    // Do not run this method too often
-    if (spy.tid) clearTimeout(spy.tid);
-    delete spy.tid;
+  this.wh = window.innerHeight;
+  this.headingOffsetTop = parseInt(this.wh / 2.3, 10);
+  this.scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 
-    // Find the next heading that is not scrolled into view
-    if (firstH2.offsetTop < scrollPosition) {
-      for (i = 0; i < headings.length; i++) {
-        if (headings[i].offsetTop >= scrollPosition + innerHeight - offsetTop) break;
-      }
-    }
+  this.renderNav();
+}
 
-    if (i > 0) i--;
+SpecRenderer.prototype.setup = function() {
+  this.aEls = document.querySelectorAll('.openapi-nav a');
+  this.firstHeadingEl = document.querySelector('h2');
+  this.headings = document.querySelectorAll('h3[id]');
+  this.scrollSpy = this.scrollSpy.bind(this);
 
-    // Find a corresponding link in the nav and style it
-    var id = headings[i] && headings[i].id || '';
-    var aEl = document.querySelector('.openapi-nav a[href$="#' + id + '"]');
+  this.renderPre();
+  this.renderNav();
 
-    for (i = 0; i < aEls.length; i++) {
-      aEls[i].parentNode.classList[aEls[i] == aEl ? 'add' : 'remove']('is-active');
-    }
-  };
+  var self = this;
+  ['click', 'resize', 'scroll'].forEach(function(name) { window.addEventListener(name, self.scrollSpy) });
+};
 
-  ['click', 'resize', 'scroll'].forEach(function(name) {
-    window.addEventListener(name, function() {
-      return spy.tid || (spy.tid = setTimeout(spy, 100));
-    });
-  });
-
-  spy();
-})();
+SpecRenderer.prototype._createRefLink = function(refEl) {
+  var a = document.createElement('a');
+  var href = refEl.textContent.replace(/'/g, '');
+  a.textContent = refEl.textContent;
+  a.href = href.match(/^#/) ? '#ref-' + href.replace(/\W/g, '-').substring(2).toLowerCase() : href;
+  return a;
+};
 </script>
 @@ mojolicious/plugin/openapi/style.html.ep
 <style>
