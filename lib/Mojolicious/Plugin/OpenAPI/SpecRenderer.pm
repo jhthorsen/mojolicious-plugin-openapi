@@ -118,11 +118,13 @@ sub _render_spec {
   return $c->render(
     handler   => 'ep',
     template  => 'mojolicious/plugin/openapi/layout',
-    esc       => sub { local $_ = shift; s/\W/-/g; $_ },
     markdown  => \&_markdown,
     serialize => \&_serialize,
-    spec      => \%spec,
-    X_RE      => qr{^x-},
+    slugify   => sub {
+      join '-', map { s/\W/-/g; lc } map {"$_"} @_;
+    },
+    spec => \%spec,
+    X_RE => qr{^x-},
   );
 }
 
@@ -183,11 +185,15 @@ L<Mojolicious::Plugin::OpenAPI> to render the specification in both HTML and
 JSON format. It can also be used L</Standalone> if you just want to render
 the specification, and not add any API routes to your application.
 
+See L</TEMPLATING> to see how you can override parts of the rendering.
+
 The human readable format focus on making the documentation printable, so you
 can easily share it with third parties as a PDF. If this documentation format
 is too basic or has missing information, then please
 L<report in|https://github.com/jhthorsen/mojolicious-plugin-openapi/issues>
 suggestions for enhancements.
+
+See L<https://demo.convos.by/api.html> for a demo.
 
 =head1 HELPERS
 
@@ -235,6 +241,49 @@ Example:
 
 Disable this feature by setting C<render_specification_for_paths> to C<0>.
 
+=head1 TEMPLATING
+
+L<Mojolicious::Plugin::OpenAPI::SpecRenderer> uses many template files to make
+up the human readable version of the spec. Each of them can be overridden by
+creating a file in your templates folder.
+
+  mojolicious/plugin/openapi/layout.html.ep
+  |- mojolicious/plugin/openapi/head.html.ep
+  |  '- mojolicious/plugin/openapi/style.html.ep
+  |- mojolicious/plugin/openapi/header.html.ep
+  |  |- mojolicious/plugin/openapi/logo.html.ep
+  |  '- mojolicious/plugin/openapi/toc.html.ep
+  |- mojolicious/plugin/openapi/intro.html.ep
+  |- mojolicious/plugin/openapi/resources.html.ep
+  |  '- mojolicious/plugin/openapi/resource.html.ep
+  |     |- mojolicious/plugin/openapi/human.html.ep
+  |     |- mojolicious/plugin/openapi/parameters.html.ep
+  |     '- mojolicious/plugin/openapi/response.html.ep
+  |        '- mojolicious/plugin/openapi/human.html.ep
+  |- mojolicious/plugin/openapi/references.html.ep
+  |- mojolicious/plugin/openapi/footer.html.ep
+  |- mojolicious/plugin/openapi/renderjson.html.ep
+  |- mojolicious/plugin/openapi/scrollspy.html.ep
+  '- mojolicious/plugin/openapi/foot.html.ep
+
+See the DATA section in the source code for more details on styling and markup
+structure.
+
+L<https://github.com/jhthorsen/mojolicious-plugin-openapi/blob/master/lib/Mojolicious/Plugin/OpenAPI/SpecRenderer.pm>
+
+Variables available in the templates:
+
+  %= $markdown->("# markdown\nstring\n")
+  %= $serialize->($data_structure)
+  %= $slugify->(@str)
+  %= $spec->{info}{title}
+
+In addition, there is a static image that you can override:
+
+  mojolicious/plugin/openapi/logo.png
+
+This image makes up the logo inside the default "header.html.ep" template.
+
 =head1 SEE ALSO
 
 L<Mojolicious::Plugin::OpenAPI>
@@ -243,9 +292,17 @@ L<Mojolicious::Plugin::OpenAPI>
 
 __DATA__
 @@ mojolicious/plugin/openapi/header.html.ep
-<h1 id="title"><%= $spec->{info}{title} || 'No title' %></h1>
-<p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %> - OpenAPI <%= $spec->{swagger} || $spec->{openapi} %></span></p>
+<header class="openapi-header">
+  <h1 id="title"><%= $spec->{info}{title} || 'No title' %></h1>
+  <p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %> - OpenAPI <%= $spec->{swagger} || $spec->{openapi} %></span></p>
+</header>
 
+<nav class="openapi-nav">
+  <a href="#title" class="openapi-logo">
+    %= image '/mojolicious/plugin/openapi/logo.png', alt => 'OpenAPI Logo'
+  </a>
+  %= include 'mojolicious/plugin/openapi/toc'
+</nav>
 @@ mojolicious/plugin/openapi/intro.html.ep
 <h2 id="about">About</h2>
 % if ($spec->{info}{description}) {
@@ -305,6 +362,7 @@ __DATA__
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="chrome=1">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0">
+%= include 'mojolicious/plugin/openapi/style'
 @@ mojolicious/plugin/openapi/human.html.ep
 % if ($spec->{summary}) {
 <p class="spec-summary"><%= $spec->{summary} %></p>
@@ -336,7 +394,7 @@ __DATA__
   % $body = $p->{schema} if $p->{in} eq 'body';
   <tr>
     % if ($spec->{parameters}{$p->{name}}) {
-      <td><a href="#ref-parameters-<%= $esc->($p->{name}) %>"><%= $p->{name} %></a></td>
+      <td><a href="#<%= $slugify->(qw(ref, parameters), $p->{name}) %>"><%= $p->{name} %></a></td>
     % } else {
       <td><%= $p->{name} %></td>
     % }
@@ -369,7 +427,7 @@ __DATA__
 <pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
-<h3 id="op-<%= lc $method %><%= $esc->($path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></a></h3>
+<h3 id="<%= $slugify->(op => $method, $path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></a></h3>
 % if ($op->{deprecated}) {
 <p class="op-deprecated">This resource is deprecated!</p>
 % }
@@ -384,20 +442,20 @@ __DATA__
 <h2 id="references"><a href="#title">References</a></h2>
 % for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
   % next if $key =~ $X_RE;
-  <h3 id="ref-definitions-<%= lc $esc->($key) %>"><a href="#title">#/definitions/<%= $key %></a></h3>
+  <h3 id="<%= lc $slugify->(qw(ref definitions), $key) %>"><a href="#title">#/definitions/<%= $key %></a></h3>
   <pre class="ref"><%= $serialize->($spec->{definitions}{$key}) %></pre>
 % }
 % for my $type (sort { $a cmp $b } keys %{$spec->{components} || {}}) {
   % for my $key (sort { $a cmp $b } keys %{$spec->{components}{$type} || {}}) {
     % next if $key =~ $X_RE;
-    <h3 id="ref-components-<%= lc $esc->($type) %>-<%= lc $esc->($key) %>"><a href="#title">#/components/<%= $type %>/<%= $key %></a></h3>
+    <h3 id="<%= lc $slugify->(qw(ref components), $type, $key) %>"><a href="#title">#/components/<%= $type %>/<%= $key %></a></h3>
     <pre class="ref"><%= $serialize->($spec->{components}{$type}{$key}) %></pre>
   % }
 % }
 % for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
   % next if $key =~ $X_RE;
   % my $item = $spec->{parameters}{$key};
-  <h3 id="ref-parameters-<%= lc $esc->($key) %>"><a href="#title">#/parameters/<%= $key %> - "<%= $item->{name} %>"</a></h3>
+  <h3 id="<%= lc $slugify->(qw(ref parameters), $key) %>"><a href="#title">#/parameters/<%= $key %> - "<%= $item->{name} %>"</a></h3>
   <p><%= $item->{description} || 'No description.' %></p>
   <ul>
     <li>In: <%= $item->{in} %></li>
@@ -472,7 +530,7 @@ __DATA__
       % next if $path =~ $X_RE;
       % for my $method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
         % next if $method =~ $X_RE;
-        <li><a href="#op-<%= lc $method %><%= $esc->($path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></a></li>
+        <li><a href="#<%= $slugify->(op => $method, $path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></a></li>
       % }
     % }
     </ol>
@@ -482,17 +540,17 @@ __DATA__
     <ol>
     % for my $key (sort { $a cmp $b } keys %{$spec->{definitions} || {}}) {
       % next if $key =~ $X_RE;
-      <li><a href="#ref-definitions-<%= lc $esc->($key) %>">#/definitions/<%= $key %></a></li>
+      <li><a href="#<%= $slugify->(qw(ref definitions), $key) %>">#/definitions/<%= $key %></a></li>
     % }
     % for my $type (sort { $a cmp $b } keys %{$spec->{components} || {}}) {
       % for my $key (sort { $a cmp $b } keys %{$spec->{components}{$type} || {}}) {
         % next if $key =~ $X_RE;
-        <li><a href="#ref-components-<%= lc $esc->($type) %>-<%= lc $esc->($key) %>">#/components/<%= $type %>/<%= $key %></a></li>
+        <li><a href="#<%= lc $slugify->(qw(ref components), $type, $key) %>">#/components/<%= $type %>/<%= $key %></a></li>
       % }
     % }
     % for my $key (sort { $a cmp $b } keys %{$spec->{parameters} || {}}) {
       % next if $key =~ $X_RE;
-      <li><a href="#ref-parameters-<%= lc $esc->($key) %>">#/parameters/<%= $key %></a></li>
+      <li><a href="#<%= lc $slugify->(qw(ref parameters), $key) %>">#/parameters/<%= $key %></a></li>
     % }
     </ol>
   </li>
@@ -501,19 +559,11 @@ __DATA__
 <!doctype html>
 <html lang="en">
 <head>
-  %= include "mojolicious/plugin/openapi/head"
-  %= include "mojolicious/plugin/openapi/style"
+  %= include 'mojolicious/plugin/openapi/head'
 </head>
 <body>
 <div class="container openapi-container">
-  <header class="openapi-header">
-    %= include 'mojolicious/plugin/openapi/header'
-  </header>
-
-  <nav class="openapi-nav">
-    %= include 'mojolicious/plugin/openapi/logo'
-    %= include 'mojolicious/plugin/openapi/toc'
-  </nav>
+  %= include 'mojolicious/plugin/openapi/header'
 
   <article class="openapi-spec">
     <section class="openapi-spec_intro">
@@ -805,10 +855,6 @@ __DATA__
     }
   }
 </style>
-@@ mojolicious/plugin/openapi/logo.html.ep
-<a href="#title" class="openapi-logo">
-  %= image '/mojolicious/plugin/openapi/logo.png', alt => 'OpenAPI Logo'
-</a>
 @@ mojolicious/plugin/openapi/logo.png (base64)
 iVBORw0KGgoAAAANSUhEUgAAAMgAAAA5CAMAAABESJQQAAAABGdBTUEAALGPC/xhBQAAACBjSFJN
 AAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAC+lBMVEVHcExXYExNTE5GREZH
