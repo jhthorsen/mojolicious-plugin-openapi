@@ -247,15 +247,51 @@ __DATA__
 <p class="version"><span>Version</span> <span class="version"><%= $spec->{info}{version} %> - OpenAPI <%= $spec->{swagger} || $spec->{openapi} %></span></p>
 
 @@ mojolicious/plugin/openapi/intro.html.ep
+<h2 id="about">About</h2>
 % if ($spec->{info}{description}) {
-<h2 id="description"><a href="#title">Description</a></h2>
 <div class="description">
   %== $markdown->($spec->{info}{description})
 </div>
 % }
 
+% my $contact = $spec->{info}{contact};
+% my $license = $spec->{info}{license};
+<h3 id="license"><a href="#title">License</a></h3>
+% if ($license->{name}) {
+<p class="license"><a href="<%= $license->{url} || '' %>"><%= $license->{name} %></a></p>
+% } else {
+<p class="no-license">No license specified.</p>
+% }
+
+<h3 id="contact"<a href="#title">Contact information</a></h3>
+% if ($contact->{email}) {
+<p class="contact-email"><a href="mailto:<%= $contact->{email} %>"><%= $contact->{email} %></a></p>
+% }
+% if ($contact->{url}) {
+<p class="contact-url"><a href="<%= $contact->{url} %>"><%= $contact->{url} %></a></p>
+% }
+
+% if (exists $spec->{openapi}) {
+  <h3 id="servers"><a href="#title">Servers</a></h3>
+  <ul class="unstyled">
+  % for my $server (@{$spec->{servers}}){
+    <li><a href="<%= $server->{url} %>"><%= $server->{url} %></a><%= $server->{description} ? ' - '.$server->{description} : '' %></li>
+  % }
+  </ul>
+% } else {
+  % my $schemes = $spec->{schemes} || ["http"];
+  % my $url = Mojo::URL->new("http://$spec->{host}");
+  <h3 id="baseurl"><a href="#title">Base URL</a></h3>
+  <ul class="unstyled">
+  % for my $scheme (@$schemes) {
+    % $url->scheme($scheme);
+    <li><a href="<%= $url %>"><%= $url %></a></li>
+  % }
+  </ul>
+% }
+
 % if ($spec->{info}{termsOfService}) {
-<h2 id="terms-of-service"><a href="#title">Terms of service</a></h2>
+<h3 id="terms-of-service"><a href="#title">Terms of service</a></h3>
 <p class="terms-of-service">
   %= $spec->{info}{termsOfService}
 </p>
@@ -263,21 +299,7 @@ __DATA__
 @@ mojolicious/plugin/openapi/foot.html.ep
 <!-- default foot -->
 @@ mojolicious/plugin/openapi/footer.html.ep
-% my $contact = $spec->{info}{contact};
-% my $license = $spec->{info}{license};
-<h2 id="license"><a href="#title">License</a></h2>
-% if ($license->{name}) {
-<p class="license"><a href="<%= $license->{url} || '' %>"><%= $license->{name} %></a></p>
-% } else {
-<p class="no-license">No license specified.</p>
-% }
-<h2 id="contact"<a href="#title">Contact information</a></h2>
-% if ($contact->{email}) {
-<p class="contact-email"><a href="mailto:<%= $contact->{email} %>"><%= $contact->{email} %></a></p>
-% }
-% if ($contact->{url}) {
-<p class="contact-url"><a href="mailto:<%= $contact->{url} %>"><%= $contact->{url} %></a></p>
-% }
+<!-- default footer -->
 @@ mojolicious/plugin/openapi/head.html.ep
 <title><%= $spec->{info}{title} || 'No title' %></title>
 <meta charset="utf-8">
@@ -420,25 +442,6 @@ __DATA__
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
 
-% if (exists $spec->{servers}) {
-  <h3 id="servers"><a href="#title">Servers</a></h3>
-  <ul class="unstyled">
-  % for my $server (@{$spec->{servers}}){
-    <li><a href="<%= $server->{url} %>"><%= $server->{url} %></a><%= $server->{description} ? ' - '.$server->{description} : '' %></li>
-  % }
-  </ul>
-% } else {
-  % my $schemes = $spec->{schemes} || ["http"];
-  % my $url = Mojo::URL->new("http://$spec->{host}");
-  <h3 id="base-url"><a href="#title">Base URL</a></h3>
-  <ul class="unstyled">
-  % for my $scheme (@$schemes) {
-    % $url->scheme($scheme);
-    <li><a href="<%= $url %>"><%= $url %></a></li>
-  % }
-  </ul>
-% }
-
 % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
   % next if $path =~ $X_RE;
   % for my $http_method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
@@ -450,10 +453,17 @@ __DATA__
 @@ mojolicious/plugin/openapi/toc.html.ep
 <ol id="toc">
   % if ($spec->{info}{description}) {
-  <li class="for-description"><a href="#description">Description</a></a>
-  % }
-  % if ($spec->{info}{termsOfService}) {
-  <li class="for-terms"><a href="#terms-of-service">Terms of service</a></li>
+  <li class="for-description">
+    <a href="#about">About</a>
+    <ol>
+      <li><a href="#license">License</a></li>
+      <li><a href="#contact">Contact</a></li>
+      <li><a href="#baseurl">Base URL</a></li>
+      % if ($spec->{info}{termsOfService}) {
+        <li class="for-terms"><a href="#terms-of-service">Terms of service</a></li>
+      % }
+    </ol>
+  </li>
   % }
   <li class="for-resources">
     <a href="#resources">Resources</a>
@@ -486,8 +496,6 @@ __DATA__
     % }
     </ol>
   </li>
-  <li class="for-license"><a href="#license">License</a></li>
-  <li class="for-contact"><a href="#contact">Contact</a></li>
 </ol>
 @@ mojolicious/plugin/openapi/layout.html.ep
 <!doctype html>
@@ -756,10 +764,17 @@ var module,window,define,renderjson=function(){function n(a,u,c,p,f){var y=c?"":
       width: auto;
     }
 
+    .openapi-footer,
     .openapi-header,
     .openapi-spec {
-      padding-left: 21rem;
+      margin-left: 21rem;
       padding-right: 1rem;
+    }
+
+    .openapi-footer {
+      border-top: 4px solid #cfd4c5;
+      padding-top: 3rem;
+      margin-top: 4rem;
     }
   }
 </style>
