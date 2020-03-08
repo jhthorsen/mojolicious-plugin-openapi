@@ -17,6 +17,7 @@ sub register {
     push @{$app->renderer->classes}, __PACKAGE__;
     push @{$app->static->classes},   __PACKAGE__;
   }
+
   $self->_register_with_openapi($app, $config) unless $self->{standalone};
 }
 
@@ -114,17 +115,44 @@ sub _render_spec {
   return $c->render(json => {errors => [{message => 'No specification to render.'}]}, status => 500)
     unless %spec;
 
+  my ($x_re, $base_url, @operations) = (qr{^x-});
+  if ($format eq 'html') {
+    for my $path (keys %{$spec{paths}}) {
+      next if $path =~ $x_re;
+      for my $method (keys %{$spec{paths}{$path}}) {
+        next if $method =~ $x_re;
+        my $op_spec = $spec{paths}{$path}{$method};
+        next unless ref $op_spec eq 'HASH';
+        push @operations,
+          {
+          method  => $method,
+          name    => $op_spec->{operationId} ? $op_spec->{operationId} : join(' ', $method, $path),
+          path    => $path,
+          op_spec => $op_spec,
+          };
+      }
+    }
+
+    $base_url
+      = exists $spec{openapi}
+      ? Mojo::URL->new($spec{servers}[0]{url})
+      : Mojo::URL->new->host($spec{host} || 'localhost')->path($spec{basePath})
+      ->scheme($spec{schemes}[0]);
+  }
+
   return $c->render(json => \%spec) unless $format eq 'html';
   return $c->render(
-    handler   => 'ep',
-    template  => 'mojolicious/plugin/openapi/layout',
-    markdown  => \&_markdown,
-    serialize => \&_serialize,
-    slugify   => sub {
+    base_url   => $base_url,
+    handler    => 'ep',
+    template   => 'mojolicious/plugin/openapi/layout',
+    markdown   => \&_markdown,
+    operations => [sort { $a->{name} cmp $b->{name} } @operations],
+    serialize  => \&_serialize,
+    slugify    => sub {
       join '-', map { s/\W/-/g; lc } map {"$_"} @_;
     },
     spec => \%spec,
-    X_RE => qr{^x-},
+    X_RE => $x_re,
   );
 }
 
@@ -242,6 +270,9 @@ Example:
 Disable this feature by setting C<render_specification_for_paths> to C<0>.
 
 =head1 TEMPLATING
+
+Overriding templates is EXPERIMENTAL, but not very likely to break in a bad
+way.
 
 L<Mojolicious::Plugin::OpenAPI::SpecRenderer> uses many template files to make
 up the human readable version of the spec. Each of them can be overridden by
@@ -374,7 +405,7 @@ __DATA__
 <p class="op-summary op-doc-missing">This resource is not documented.</p>
 % }
 @@ mojolicious/plugin/openapi/parameters.html.ep
-% my $has_parameters = @{$op->{parameters} || []};
+% my $has_parameters = @{$op_spec->{parameters} || []};
 % my $body;
 <h4 class="op-parameters">Parameters</h3>
 % if ($has_parameters) {
@@ -390,7 +421,7 @@ __DATA__
   </thead>
   <tbody>
 % }
-% for my $p (@{$op->{parameters} || []}) {
+% for my $p (@{$op_spec->{parameters} || []}) {
   % $body = $p->{schema} if $p->{in} eq 'body';
   <tr>
     % if ($spec->{parameters}{$p->{name}}) {
@@ -414,29 +445,32 @@ __DATA__
 <h4 class="op-parameter-body">Body</h4>
 <pre class="op-parameter-body"><%= $serialize->($body) %></pre>
 % }
-% if ($op->{requestBody}) {
+% if ($op_spec->{requestBody}) {
 <h4 class="op-parameter-body">requestBody</h4>
-<pre class="op-parameter-body"><%= $serialize->($op->{requestBody}{content}) %></pre>
+<pre class="op-parameter-body"><%= $serialize->($op_spec->{requestBody}{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/response.html.ep
-% for my $code (sort { $a cmp $b } keys %{$op->{responses}}) {
+% for my $code (sort { $a cmp $b } keys %{$op_spec->{responses}}) {
   % next if $code =~ $X_RE;
-  % my $res = $op->{responses}{$code};
+  % my $res = $op_spec->{responses}{$code};
 <h4 class="op-response">Response <%= $code %></h3>
 %= include "mojolicious/plugin/openapi/human", spec => $res
 <pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
-<h3 id="<%= $slugify->(op => $method, $path) %>" class="op-path <%= $op->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= uc $method %> <%= $spec->{basePath} %><%= $path %></a></h3>
-% if ($op->{deprecated}) {
+<h3 id="<%= $slugify->(op => $method, $path) %>" class="op-path <%= $op_spec->{deprecated} ? "deprecated" : "" %>"><a href="#title"><%= $name %></a></h3>
+% if ($op_spec->{deprecated}) {
 <p class="op-deprecated">This resource is deprecated!</p>
 % }
-% if ($op->{operationId}) {
-<p class="op-id"><b>Operation ID:</b> <span><%= $op->{operationId} %></span></p>
-% }
-%= include "mojolicious/plugin/openapi/human", spec => $op
-%= include "mojolicious/plugin/openapi/parameters", op => $op
-%= include "mojolicious/plugin/openapi/response", op => $op
+<ul class="unstyled">
+  <li><b><%= uc $method %></b> <a href="<%= "$base_url$path" %>"><%= $base_url->path . $path %></a></li>
+  % if ($op_spec->{operationId}) {
+  <li><b>Operation ID:</b> <span><%= $op_spec->{operationId} %></span></li>
+  % }
+</ul>
+%= include "mojolicious/plugin/openapi/human", op_spec => $op_spec
+%= include "mojolicious/plugin/openapi/parameters", op_spec => $op_spec
+%= include "mojolicious/plugin/openapi/response", op_spec => $op_spec
 @@ mojolicious/plugin/openapi/references.html.ep
 % use Mojo::ByteStream 'b';
 <h2 id="references"><a href="#title">References</a></h2>
@@ -499,14 +533,8 @@ __DATA__
 
 @@ mojolicious/plugin/openapi/resources.html.ep
 <h2 id="resources"><a href="#title">Resources</a></h2>
-
-% for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
-  % next if $path =~ $X_RE;
-  % for my $http_method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
-    % next if $http_method =~ $X_RE or $http_method eq 'parameters';
-    % my $op = $spec->{paths}{$path}{$http_method};
-    %= include "mojolicious/plugin/openapi/resource", method => $http_method, op => $op, path => $path
-  % }
+% for my $op (@$operations) {
+  %= include 'mojolicious/plugin/openapi/resource', %$op;
 % }
 @@ mojolicious/plugin/openapi/toc.html.ep
 <ol id="toc">
@@ -526,13 +554,9 @@ __DATA__
   <li class="for-resources">
     <a href="#resources">Resources</a>
     <ol>
-    % for my $path (sort { length $a <=> length $b } keys %{$spec->{paths}}) {
-      % next if $path =~ $X_RE;
-      % for my $method (sort { $a cmp $b } keys %{$spec->{paths}{$path}}) {
-        % next if $method =~ $X_RE;
-        <li><a href="#<%= $slugify->(op => $method, $path) %>"><span class="method"><%= uc $method %></span> <%= $spec->{basePath} %><%= $path %></a></li>
+      % for my $op (@$operations) {
+        <li><a href="#<%= $slugify->(op => @$op{qw(method path)}) %>"><%= $op->{name} %></a></li>
       % }
-    % }
     </ol>
   </li>
   <li class="for-references">

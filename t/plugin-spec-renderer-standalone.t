@@ -37,11 +37,11 @@ $t->get_ok('/my-cool-doc.json?method=get&path=/pets/{petId}')->status_is(200)
 $t->get_ok('/my-unknown-doc')->status_is(500)
   ->json_is('/errors/0/message', 'No specification to render.');
 
-$t->get_ok('/my-cool-doc.html')->status_is(200)->text_is('h3#op-post-pets a', 'POST /v1/pets');
+$t->get_ok('/my-cool-doc.html')->status_is(200)->text_is('h3#op-post--pets a', 'createPets');
 
 SKIP: {
   skip 'Text::Markdown is not installed', 2 unless eval 'require Text::Markdown;1';
-  $t->text_is('div.spec-description p', 'An paged array of pets');
+  $t->text_is('div.spec-description p', 'Null response');
 }
 
 done_testing;

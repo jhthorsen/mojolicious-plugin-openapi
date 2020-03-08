@@ -34,12 +34,12 @@ sub VERSION {1.42}
   $t->get_ok('/url')->status_is(200)->content_is('/api');
   $t->get_ok('/api')->status_is(200)->json_is('/info/version', 1.42);
   $t->get_ok('/api.html')->status_is(200)->text_is('title', 'Test reply spec')
-    ->text_is('h1#title', 'Test reply spec')->text_is('h3#op-post-pets a', 'POST /api/pets');
+    ->text_is('h1#title', 'Test reply spec')->text_is('h3#op-post--pets a', 'addPet');
 
   $t->get_ok('/api/docs')->status_is(200)->json_is('/info/version', 1.42)
     ->json_is('/basePath', '/api');
 
-  $t->get_ok('/api/docs.html')->status_is(200)->text_is('h3#op-post-pets a', 'POST /api/pets')
+  $t->get_ok('/api/docs.html')->status_is(200)->text_is('h3#op-post--pets a', 'addPet')
     ->text_like('style', qr{font-family:}s)->text_like('script', qr{function jsonhtmlify}s)
     ->content_like(qr{-- default foot --});
 
