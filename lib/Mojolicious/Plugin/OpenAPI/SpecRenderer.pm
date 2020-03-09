@@ -710,18 +710,13 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
   }
   a { color: #508a25; text-decoration: underline; word-break: break-word; }
   a:hover { text-decoration: none; }
-  h1, h2, h3, h4 { font-family: Verdana; color: #403f41; font-weight: bold; line-height: 1.2em; margin: 1em 0; }
+  h1, h2, h3, h4 { font-family: Verdana; color: #403f41; font-weight: bold; line-height: 1.2em; margin: 1em 0; padding-top: 0.4rem; }
   h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: inherit; }
   h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover { text-decoration: underline; }
   h1 { font-size: 2.4em; }
 
-  h2 {
-    font-size: 1.8em;
-    border-bottom: 2px solid #cfd4c5;
-    padding: 0.5rem 0;
-    margin-top: 1.5em;
-  }
-
+  h1 { margin-top: 0; padding-top: 1em; }
+  h2 { font-size: 1.8em; border-bottom: 2px solid #cfd4c5; }
   h3 { font-size: 1.4em; }
   h4 { font-size: 1.1em; }
   table {
