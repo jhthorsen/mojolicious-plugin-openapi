@@ -445,7 +445,7 @@ new SpecRenderer().setup();
   % $body = $p->{schema} if $p->{in} eq 'body';
   <tr>
     % if ($spec->{parameters}{$p->{name}}) {
-      <td><a href="#<%= $slugify->(qw(ref, parameters), $p->{name}) %>"><%= $p->{name} %></a></td>
+      <td><a href="#<%= $slugify->(qw(ref parameters), $p->{name}) %>"><%= $p->{name} %></a></td>
     % } else {
       <td><%= $p->{name} %></td>
     % }
