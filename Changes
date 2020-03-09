@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.27 2020-03-09T09:33:44+0900
+ - Fix "up" button in SpecRenderer
+
 3.26 2020-03-09T09:24:33+0900
  - Add "up" button to SpecRenderer
  - Fix some rendering issues for jsonhtmlify
