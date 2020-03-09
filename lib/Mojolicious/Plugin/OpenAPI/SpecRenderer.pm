@@ -850,7 +850,7 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
 
     .openapi-nav {
       padding: 1.4rem 0 3rem 1rem;
-      max-width: 18rem;
+      width: 18rem;
       height: 100vh;
       overflow: auto;
       -webkit-overflow-scrolling: touch;
@@ -906,7 +906,7 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
 
     .openapi-footer {
       border-top: 4px solid #cfd4c5;
-      padding-top: 3rem;
+      padding-top: 2.5rem;
       margin-top: 4rem;
     }
 
