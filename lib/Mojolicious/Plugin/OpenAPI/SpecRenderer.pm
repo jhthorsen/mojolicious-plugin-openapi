@@ -115,16 +115,18 @@ sub _render_spec {
   my %spec;
 
   if ($openapi) {
+    my $req_url = $c->req->url->to_abs;
     $openapi->{bundled} ||= $openapi->validator->bundle;
     %spec = %{$openapi->{bundled}};
 
     if ($openapi->validator->version ge '3') {
-      $spec{servers} = [{url => $c->req->url->to_abs->to_string}];
+      $spec{servers}[0]{url} = $req_url->to_string;
       delete $spec{basePath};    # Added by Plugin::OpenAPI
     }
     else {
-      $spec{basePath} = $c->url_for($spec{basePath});
-      $spec{host}     = $c->req->url->to_abs->host_port;
+      $spec{basePath}   = $c->url_for($spec{basePath});
+      $spec{host}       = $req_url->host_port;
+      $spec{schemes}[0] = $req_url->scheme;
     }
   }
   elsif ($c->stash('openapi_spec')) {
