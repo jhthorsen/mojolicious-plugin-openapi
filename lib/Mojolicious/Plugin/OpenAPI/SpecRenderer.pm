@@ -723,14 +723,14 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
   h3 { font-size: 1.4em; }
   h4 { font-size: 1.1em; }
   table {
-    margin: 0em -0.5em;
+    margin: 0em -0.4rem;
     width: 100%;
     border-collapse: collapse;
   }
   td, th {
     vertical-align: top;
     text-align: left;
-    padding: 0.5em;
+    padding: 0.4rem;
   }
   th {
     font-weight: bold;
