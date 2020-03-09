@@ -799,14 +799,14 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
 
   @media only screen {
     .openapi-up-button {
-      background: #403f41;
+      background: #436d24;
       color: #f2f3ed;
       font-weight: bold;
       font-size: 1.2rem;
       line-height: 1.5em;
       text-align: center;
       border: 0;
-      box-shadow: 0 0 4px 3px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 0 3px 3px rgba(0, 0, 0, 0.2);
       border-radius: 50%;
       padding-top: 0.3em;
       width: 2.1em;
@@ -820,7 +820,7 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
     }
 
     .openapi-up-button:hover {
-      background: #000;
+      background: #2c520f;
     }
 
     .openapi-up-button.is-visible {
