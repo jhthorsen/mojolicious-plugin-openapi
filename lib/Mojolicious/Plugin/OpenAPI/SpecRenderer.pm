@@ -909,6 +909,14 @@ SpecRenderer.prototype._createRefLink = function(refEl) {
       padding-top: 3rem;
       margin-top: 4rem;
     }
+
+    #about {
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      top: -10rem;
+      opacity: 0;
+    }
   }
 </style>
 @@ mojolicious/plugin/openapi/logo.png (base64)
