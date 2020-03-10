@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.28 2020-03-10T19:20:23+0900
+ - Fix setting "schemes" in OpenAPIv2 when rendering the spec
+ - Fix links to parameters in SpecRenderer
+ - Hiding "About" header on desktop
+
 3.27 2020-03-09T09:33:44+0900
  - Fix "up" button in SpecRenderer
 
