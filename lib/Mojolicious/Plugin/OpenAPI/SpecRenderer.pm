@@ -387,12 +387,11 @@ __DATA__
   </ul>
 % } else {
   % my $schemes = $spec->{schemes} || ["http"];
-  % my $url = Mojo::URL->new("http://$spec->{host}");
   <h3 id="baseurl"><a href="#top">Base URL</a></h3>
   <ul class="unstyled">
   % for my $scheme (@$schemes) {
-    % $url->scheme($scheme);
-    <li><a href="<%= $url %>"><%= $url %></a></li>
+    % $base_url->scheme($scheme);
+    <li><a href="<%= $base_url %>"><%= $base_url %></a></li>
   % }
   </ul>
 % }
