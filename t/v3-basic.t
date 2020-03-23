@@ -46,7 +46,7 @@ $t->get_ok('/v1/pets?limit=invalid', {Accept => 'application/json'})->status_is(
 
 # TODO: Should probably be 400
 $t->get_ok('/v1/pets?limit=10', {Accept => 'not/supported'})->status_is(500)
-  ->json_is('/errors/0/message', 'No responses rules defined for Accept not/supported.');
+  ->json_is('/errors/0/message', 'No responses rules defined for not/supported.');
 
 $t->get_ok('/v1/pets?limit=0', {Accept => 'application/json'})->status_is(500)
   ->json_is('/errors/0/message', 'Expected array - got object.');

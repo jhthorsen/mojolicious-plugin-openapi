@@ -91,15 +91,15 @@ sub validate_request {
 
   for my $p (@{$schema->{parameters} || []}) {
     my ($in, $name, $type) = @$p{qw(in name type)};
-    $type ||= $p->{schema}{type} if $p->{schema}; # v3
+    $type ||= $p->{schema}{type} if $p->{schema};    # v3
     my ($exists, $value) = (0, undef);
 
     if ($in eq 'body') {
-      $value = $self->_get_request_data($c, $in);
+      $value  = $self->_get_request_data($c, $in);
       $exists = length $value if defined $value;
     }
     elsif ($in eq 'formData' and $type eq 'file') {
-      $value = $self->_get_request_uploads($c, $name)->[-1];
+      $value  = $self->_get_request_uploads($c, $name)->[-1];
       $exists = $value ? 1 : 0;
     }
     else {
@@ -114,26 +114,12 @@ sub validate_request {
     }
 
     ($exists, $value) = (1, $p->{schema}{default})
-      if !$exists and $p->{schema} and exists $p->{schema}{default};
-    ($exists, $value) = (1, $p->{default})
-      if !$exists and exists $p->{default};
+      if !$exists
+      and $p->{schema}
+      and exists $p->{schema}{default};
+    ($exists, $value) = (1, $p->{default}) if !$exists and exists $p->{default};
 
-    if ($type and defined $value) {
-      if ($type ne 'array' and ref $value eq 'ARRAY') {
-        $value = $value->[-1];
-      }
-      if (($type eq 'integer' or $type eq 'number') and Scalar::Util::looks_like_number($value)) {
-        $value += 0;
-      }
-      elsif ($type eq 'boolean') {
-        if (!$value or $value =~ /^(?:false)$/) {
-          $value = Mojo::JSON->false;
-        }
-        elsif ($value =~ /^(?:1|true)$/) {
-          $value = Mojo::JSON->true;
-        }
-      }
-    }
+    $self->_coerce_input($type, $value);
 
     if (my @e = $self->_validate_request_value($p, $name => $value)) {
       push @errors, @e;
@@ -155,7 +141,7 @@ sub validate_response {
 
   if ($self->version eq '3') {
     my $accept = $self->_negotiate_accept_header($c, $res_schema);
-    return JSON::Validator::E('/' => "No responses rules defined for Accept $accept.")
+    return JSON::Validator::E('/' => "No responses rules defined for $accept.")
       unless $res_schema = $res_schema->{content}{$accept};
     $c->stash(openapi_negotiated_content_type => $accept);
   }
@@ -190,11 +176,31 @@ sub _build_formats {
   return $formats;
 }
 
+sub _coerce_input {
+  my ($self, $type) = @_;
+  return unless $type and defined $_[2];
+
+  if ($type ne 'array' and ref $_[2] eq 'ARRAY') {
+    $_[2] = $_[2]->[-1];
+  }
+  if (($type eq 'integer' or $type eq 'number') and Scalar::Util::looks_like_number($_[2])) {
+    $_[2] += 0;
+  }
+  elsif ($type eq 'boolean') {
+    if (!$_[2] or $_[2] =~ /^(?:false)$/) {
+      $_[2] = Mojo::JSON->false;
+    }
+    elsif ($_[2] =~ /^(?:1|true)$/) {
+      $_[2] = Mojo::JSON->true;
+    }
+  }
+}
+
 sub _coerce_by_collection_format {
   my ($self, $data, $p) = @_;
 
-  my $schema = $p->{schema} || $p;
-  my $type = ($schema->{items} ? $schema->{items}{type} : $schema->{type}) || '';
+  my $schema = $p->{schema}                                                  || $p;
+  my $type   = ($schema->{items} ? $schema->{items}{type} : $schema->{type}) || '';
 
   my $collection_format = $p->{collectionFormat};
   my $custom_re;
@@ -205,11 +211,11 @@ sub _coerce_by_collection_format {
       $collection_format = 'csv';
     }
     elsif ($p->{style} eq 'label') {
-      $custom_re = qr{\.};
+      $custom_re         = qr{\.};
       $collection_format = $p->{explode} ? 'custom' : 'csv' if $data =~ s/^$custom_re//;
     }
     elsif ($p->{style} eq 'matrix') {
-      $custom_re = qr{;\Q$p->{name}\E=};
+      $custom_re         = qr{;\Q$p->{name}\E=};
       $collection_format = $p->{explode} ? 'custom' : 'csv' if $data =~ s/^$custom_re//;
     }
     elsif ($p->{style} eq 'form') {
@@ -226,13 +232,12 @@ sub _coerce_by_collection_format {
   return $data unless $collection_format;
 
   if ($collection_format eq 'multi') {
-    $data = [$data] unless ref $data eq 'ARRAY';
+    $data  = [$data] unless ref $data eq 'ARRAY';
     @$data = map { $_ + 0 } @$data if $type eq 'integer' or $type eq 'number';
     return $data;
   }
 
-  my $re = $collection_format eq 'custom' ? $custom_re
-                                          : $COLLECTION_RE{$collection_format} || ',';
+  my $re = $collection_format eq 'custom' ? $custom_re : $COLLECTION_RE{$collection_format} || ',';
 
   my $single = ref $data eq 'ARRAY' ? 0 : ($data = [$data]);
 
@@ -258,7 +263,7 @@ sub _get_request_data {
     return $c->match->stack->[-1];
   }
   elsif ($in eq 'formData') {
-    return $self->{cache}{$in} ||= $c->req->body_params->to_hash(1);
+    return $self->{cache}{$in} ||= $self->_get_request_form_and_uploads($c);
   }
   elsif ($in eq 'cookie') {
     return $self->{cache}{$in} ||= {map { ($_->name, $_->value) } @{$c->req->cookies}};
@@ -273,6 +278,13 @@ sub _get_request_data {
   else {
     _confess_invalid_in($in);
   }
+}
+
+sub _get_request_form_and_uploads {
+  my ($self, $c) = @_;
+  my $form = $c->req->body_params->to_hash(1);
+  push @{$form->{$_->name}}, $_->size ? 'x' : '' for @{$c->req->uploads};
+  return $form;
 }
 
 sub _get_request_uploads {
@@ -368,10 +380,14 @@ sub _validate_request_body {
   my $ct = $c->req->headers->content_type // '';
 
   $ct =~ s!;.*$!!;
-  if (my $schema = $body_schema->{content}{$ct}) {
+  if (my $content = $body_schema->{content}{$ct}) {
     my $body = $self->_get_request_data($c, $ct =~ /\bform\b/ ? 'formData' : 'body');
-    local $schema->{required} //= $body_schema->{required};
-    return $self->_validate_request_value($schema, body => $body);
+    local $content->{required} //= $body_schema->{required};
+    if (ref $content->{schema} eq 'HASH' and ref $body eq 'HASH') {
+      $self->_coerce_input($content->{schema}{properties}{$_}{type}, $body->{$_})
+        for keys %{$content->{schema}{properties} || {}};
+    }
+    return $self->_validate_request_value($content, body => $body);
   }
 
   return JSON::Validator::E('/' => "No requestBody rules defined for Content-Type $ct.") if $ct;
