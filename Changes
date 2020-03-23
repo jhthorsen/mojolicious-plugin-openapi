@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.29 2020-03-23T15:09:35+0900
+ - Add basic support for file uploads in OpenAPI v3 #171
+
 3.28 2020-03-10T19:20:23+0900
  - Fix setting "schemes" in OpenAPIv2 when rendering the spec
  - Fix links to parameters in SpecRenderer
