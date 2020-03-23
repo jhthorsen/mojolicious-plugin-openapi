@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.30 Not Released
+ - Fix support for file uploads in OpenAPI v3 #171
+
 3.29 2020-03-23T15:09:35+0900
  - Add basic support for file uploads in OpenAPI v3 #171
 

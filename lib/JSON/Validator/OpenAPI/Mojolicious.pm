@@ -283,7 +283,8 @@ sub _get_request_data {
 sub _get_request_form_and_uploads {
   my ($self, $c) = @_;
   my $form = $c->req->body_params->to_hash(1);
-  push @{$form->{$_->name}}, $_->size ? 'x' : '' for @{$c->req->uploads};
+  push @{$form->{$_->name}}, $_->size ? 'x' : ''
+    for grep { !exists $form->{$_->name} } @{$c->req->uploads};
   return $form;
 }
 

@@ -18,7 +18,7 @@ $t->post_ok('/api/user')->status_is(400)
   ->json_is('/errors/0', {message => 'Missing property.', path => '/image'});
 
 my $image = Mojo::Asset::Memory->new->add_chunk('smileyface');
-$t->post_ok('/api/user', form => {image => {file => $image}})->status_is(200);
+$t->post_ok('/api/user', form => {id => 1, image => {file => $image}})->status_is(200);
 
 done_testing;
 
@@ -34,12 +34,8 @@ __DATA__
       "post": {
         "operationId": "createUser",
         "parameters": [
-          {
-            "name": "image",
-            "in": "formData",
-            "type": "file",
-            "required": true
-          }
+          {"name": "image", "in": "formData", "type": "file", "required": true},
+          {"name": "id", "in": "formData", "type": "string"}
         ],
         "responses": {
           "200": { "description": "ok", "schema": { "type": "object" } }
