@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-3.31 Not Released
+3.31 2020-03-31T20:42:25+0900
  - Fix SpecRenderer should not add ".json" to the "servers" URL #174
 
 3.30 2020-03-24T10:24:44+0900
