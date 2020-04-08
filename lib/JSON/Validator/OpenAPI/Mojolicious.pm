@@ -273,7 +273,7 @@ sub _get_request_data {
     return $self->{cache}{$in} ||= {map { lc($_) => $headers->{$_} } keys %$headers};
   }
   elsif ($in eq 'body') {
-    return $c->req->json;
+    return $c->req->body;
   }
   else {
     _confess_invalid_in($in);
