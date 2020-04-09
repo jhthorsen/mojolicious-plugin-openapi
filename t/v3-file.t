@@ -9,7 +9,7 @@ post '/upload' => sub {
   },
   'upload';
 
-plugin OpenAPI => {url => 'data://main/openapi.yaml', schema => 'v3'};
+plugin OpenAPI => {url => 'data://main/openapi.yaml'};
 
 my $t = Test::Mojo->new;
 

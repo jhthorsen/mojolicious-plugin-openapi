@@ -28,7 +28,6 @@ post '/pets' => sub {
 
 plugin OpenAPI => {
   url      => path(__FILE__)->dirname->child(qw(spec v3-petstore.json)),
-  schema   => 'v3',
   renderer => sub {
     my ($c, $data) = @_;
     my $ct = $c->stash('openapi_negotiated_content_type') || 'application/json';

@@ -82,7 +82,7 @@ sub _render_partial_spec {
   my $method    = $c->param('method');
 
   my $bundled = $validator->get([paths => $path]);
-  $bundled = $validator->bundle({schema => $bundled}) if $bundled;
+  $bundled = $validator->bundle({schema => $bundled})->data if $bundled;
   my $definitions = $bundled->{definitions} || {} if $bundled;
   my $parameters  = $bundled->{parameters}  || [];
 
@@ -116,10 +116,10 @@ sub _render_spec {
 
   if ($openapi) {
     my $req_url = $c->req->url->to_abs;
-    $openapi->{bundled} ||= $openapi->validator->bundle;
+    $openapi->{bundled} ||= $openapi->validator->bundle->data;
     %spec = %{$openapi->{bundled}};
 
-    if ($openapi->validator->version ge '3') {
+    if ($openapi->validator->moniker ge 'openapiv3') {
       $spec{servers}[0]{url} = $req_url->to_string;
       $spec{servers}[0]{url} =~ s!\.(html|json)$!!;
       delete $spec{basePath};    # Added by Plugin::OpenAPI

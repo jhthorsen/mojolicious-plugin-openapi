@@ -10,7 +10,7 @@ post '/test' => sub {
   },
   'test';
 
-plugin OpenAPI => {url => 'data:///api.yml', schema => 'v3'};
+plugin OpenAPI => {url => 'data:///api.yml'};
 
 my $t = Test::Mojo->new();
 

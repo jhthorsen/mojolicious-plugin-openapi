@@ -2,7 +2,7 @@ use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
 use JSON::Validator 'validate_json';
-use JSON::Validator::OpenAPI::Mojolicious;
+use JSON::Validator::Schema::OpenAPIv2;
 
 my $data = {};
 $data->{rec} = $data;
@@ -15,7 +15,7 @@ is $@, '', 'no error';
 is_deeply(\@errors, [], 'avoided recursion');
 
 # This part of the test checks that we don't go into an infite loop
-my $validator = JSON::Validator::OpenAPI::Mojolicious->new;
+my $validator = JSON::Validator::Schema::OpenAPIv2->new;
 is $validator->load_and_validate_schema('data://main/user.json'), $validator,
   'load_and_validate_schema no recursion';
 is $validator->schema($validator->schema->data), $validator,

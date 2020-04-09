@@ -64,7 +64,6 @@ post '/die' => sub {
 our %checks;
 plugin OpenAPI => {
   url      => 'data://main/sec.json',
-  schema   => 'v3',
   security => {
     pass1 => sub {
       my ($c, $def, $scopes, $cb) = @_;
@@ -157,27 +156,23 @@ my $t = Test::Mojo->new;
 
 {
   local %checks;
-  $t->post_ok('/api/multiple_fail' => json => {})->status_is(401)->json_is(
-    {
-      errors => [
-        {message => 'Failed fail1', path => '/security/0/fail1'},
-        {message => 'Failed fail2', %security_definition},
-      ]
-    }
-  );
+  $t->post_ok('/api/multiple_fail' => json => {})->status_is(401)->json_is({
+    errors => [
+      {message => 'Failed fail1', path => '/security/0/fail1'},
+      {message => 'Failed fail2', %security_definition},
+    ]
+  });
   is_deeply \%checks, {fail1 => 1, fail2 => 1}, 'expected checks occurred';
 }
 
 {
   local %checks;
-  $t->post_ok('/api/multiple_and_fail' => json => {})->status_is(401)->json_is(
-    {
-      errors => [
-        {message => 'Failed fail1', path => '/security/0/fail1'},
-        {message => 'Failed fail2', %security_definition}
-      ]
-    }
-  );
+  $t->post_ok('/api/multiple_and_fail' => json => {})->status_is(401)->json_is({
+    errors => [
+      {message => 'Failed fail1', path => '/security/0/fail1'},
+      {message => 'Failed fail2', %security_definition}
+    ]
+  });
   is_deeply \%checks, {fail1 => 1, fail2 => 1}, 'expected checks occurred';
 }
 

@@ -11,7 +11,7 @@ get '/nullable-data' => sub {
   },
   'withNullable';
 
-plugin OpenAPI => {url => 'data:///nullable.json', schema => 'v3'};
+plugin OpenAPI => {url => 'data:///nullable.json'};
 
 my $t = Test::Mojo->new;
 $t->get_ok('/v1/nullable-data')->status_is(500);

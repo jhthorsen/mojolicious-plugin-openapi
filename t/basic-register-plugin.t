@@ -10,7 +10,9 @@ get(
 );
 options(
   '/perl/no-default-options/:id' => sub { $_[0]->render(json => {options => $_[0]->stash('id')}) });
+
 post('/user' => sub { shift->render(openapi => {}) }, 'User');
+
 my $obj = plugin OpenAPI => {route => app->routes->any('/one'), url => 'data://main/one.json'};
 plugin OpenAPI => {default_response_name => 'DefErr', url => 'data://main/two.json'};
 
@@ -40,8 +42,7 @@ plugin OpenAPI => {
 };
 
 plugin OpenAPI => {
-  schema => 'v3',
-  spec   => {
+  spec => {
     openapi => '3.0.0',
     info    => {
       title => 'Sample API',
@@ -92,7 +93,7 @@ plugin OpenAPI => {
 
 ok $obj->route->find('cool_api'), 'found api endpoint';
 isa_ok($obj->route,     'Mojolicious::Routes::Route');
-isa_ok($obj->validator, 'JSON::Validator::OpenAPI::Mojolicious');
+isa_ok($obj->validator, 'JSON::Validator::Schema::OpenAPIv2');
 
 my $t = Test::Mojo->new;
 $t->get_ok('/one')->status_is(200)
@@ -101,13 +102,13 @@ $t->get_ok('/one')->status_is(200)
 
 $t->options_ok('/oa3/users?method=get')->status_is(200)
   ->json_is('/responses/200/description', 'A JSON array of user names')
-  ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
+  ->json_is('/responses/400/description', 'Default response.')
   ->json_is('/responses/400/content/application~1json/schema/$ref',
   '#/components/schemas/DefaultResponse');
 
 $t->options_ok('/oa3/jobs?method=get')->status_is(200)
-  ->json_is('/responses/200/description', 'A JSON array of job types')
-  ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
+  ->json_is('/responses/200/description',                           'A JSON array of job types')
+  ->json_is('/responses/400/description',                           'Default response.')
   ->json_is('/responses/200/content/application~1json/schema/$ref', '#/components/schemas/jobs');
 
 $t->options_ok('/one/user?method=post')->status_is(200)
