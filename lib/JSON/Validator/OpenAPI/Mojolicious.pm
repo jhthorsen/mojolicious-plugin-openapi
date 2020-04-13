@@ -385,8 +385,13 @@ sub _validate_request_body {
     my $body = $self->_get_request_data($c, $ct =~ /\bform\b/ ? 'formData' : 'body');
     local $content->{required} //= $body_schema->{required};
     if (ref $content->{schema} eq 'HASH' and ref $body eq 'HASH') {
-      $self->_coerce_input($content->{schema}{properties}{$_}{type}, $body->{$_})
-        for keys %{$content->{schema}{properties} || {}};
+      my $content_props = $content->{schema}{properties} || {};
+      for my $prop (keys %$content_props) {
+        if (exists $content_props->{$prop}{default} and !exists $body->{$prop}) {
+          $body->{$prop} = $content_props->{$prop}{default};
+        }
+        $self->_coerce_input($content_props->{$prop}, $body->{$prop});
+      }
     }
     return $self->_validate_request_value($content, body => $body);
   }

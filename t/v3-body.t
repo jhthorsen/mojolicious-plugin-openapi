@@ -6,7 +6,7 @@ use Mojolicious::Lite;
 post '/test' => sub {
   my $c = shift;
   $c->openapi->valid_input or return;
-  $c->render(json => undef, status => 200);
+  $c->render(json => $c->req->json, status => 200);
   },
   'test';
 
@@ -15,7 +15,11 @@ plugin OpenAPI => {url => 'data:///api.yml', schema => 'v3'};
 my $t = Test::Mojo->new();
 
 note 'Valid request should be ok';
-$t->post_ok('/test', json => {foo => 'bar'})->status_is(200);
+$t->post_ok('/test', json => {foo => 'bar'})->status_is(200)
+  ->json_is('/hello', 'world', 'requestBody default value was used.');
+
+$t->post_ok('/test', json => {foo => 'bar', hello => 'nobody'})->status_is(200)
+  ->json_is('/hello', 'nobody', 'requestBody body value was used.');
 
 note 'Missing property should fail';
 $t->post_ok('/test', json => {})->status_is(400)->json_is('/errors/0/message', 'Missing property.');
@@ -53,6 +57,9 @@ paths:
               properties:
                 foo:
                   type: string
+                hello:
+                  type: string
+                  default: world
               required:
                 - foo
       responses:
