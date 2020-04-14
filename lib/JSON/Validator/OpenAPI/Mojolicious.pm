@@ -390,7 +390,7 @@ sub _validate_request_body {
         if (exists $content_props->{$prop}{default} and !exists $body->{$prop}) {
           $body->{$prop} = $content_props->{$prop}{default};
         }
-        $self->_coerce_input($content_props->{$prop}, $body->{$prop});
+        $self->_coerce_input($content_props->{$prop}{type}, $body->{$prop});
       }
     }
     return $self->_validate_request_value($content, body => $body);
