@@ -337,6 +337,17 @@ L</openapi_cors_default_exchange_callback> is used. Examples:
   $app->defaults(openapi_cors_allowed_origins => [qr{^https?://whatever.example.com}]);
   $c->stash(openapi_cors_allowed_origins => [qr{^https?://whatever.example.com}]);
 
+=head2 openapi_cors_allow_credentials
+
+This variable addes the "Access-Control-Allow-Credentials" header to responses
+allowing expose response to frontend javascript code when credentials are
+used(cookies, authorization headers or TLS certificates)
+
+Here's an example
+
+  $app->defaults(openapi_cors_allow_credentials => 1);
+  $c->stash(openapi_cors_allow_credentials => 1);
+
 =head2 openapi_cors_default_exchange_callback
 
 This value holds a default callback that will be used by
