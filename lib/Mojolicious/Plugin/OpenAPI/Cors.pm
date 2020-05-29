@@ -141,6 +141,10 @@ sub _set_default_headers {
     $res_h->access_control_allow_origin($req_h->origin);
   }
 
+  unless ($res_h->header('Access-Control-Allow-Credentials') || !$c->stash('openapi_cors_allow_credentials')) {
+    $res_h->header('Access-Control-Allow-Credentials' => 'true');
+  }
+
   return unless $c->stash('openapi_cors_type') eq 'preflighted';
 
   unless ($res_h->header('Access-Control-Allow-Headers')) {
