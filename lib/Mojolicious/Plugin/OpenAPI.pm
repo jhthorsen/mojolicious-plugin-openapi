@@ -177,16 +177,26 @@ sub _build_route {
   $self->route($route);
 }
 
+sub _getp {
+  my ($p, $obj, $method) = @_;
+  $method = "every_$method" if $p->{type} eq 'array';
+  warn "-----------$method <> $p->{name}\n";
+  return $obj->$method($p->{name});
+}
+
 sub _helper_get_req_value {
   my ($c, $p) = @_;
   my $req = $c->req;
 
-  return {value => $req->url->query->param($p->{name})} if $p->{in} eq 'query';
-  return {value => $c->match->stack->[-1]{$p->{name}}}  if $p->{in} eq 'path';
-  return {value => $req->body_params->param($p->{name}) || $req->upload($p->{name})}
-    if $p->{in} eq 'formData';
-  return {value => $req->cookie($p->{name})}          if $p->{in} eq 'cookie';
-  return {value => $req->headers->header($p->{name})} if $p->{in} eq 'header';
+  return {value => _getp($p, $req->url->query, 'param')} if $p->{in} eq 'query';
+  return {value => $c->match->stack->[-1]{$p->{name}}}   if $p->{in} eq 'path';
+  return {value => _getp($p, $req,          'cookie')} if $p->{in} eq 'cookie';
+  return {value => _getp($p, $req->headers, 'header')} if $p->{in} eq 'header';
+
+  if ($p->{in} eq 'formData') {
+    my $value = _getp($p, $req->body_params, 'param');
+    return {value => @$value ? $value : _getp($p, $req, 'upload')};
+  }
 
   if ($p->{in} eq 'body') {
     return {
@@ -203,7 +213,7 @@ sub _helper_get_res_value {
   my ($c, $p) = @_;
 
   if ($p->{in} eq 'header') {
-    return {value => $c->res->headers->header($p->{name})};
+    return {value => _getp($p, $c->res->headers, 'header')};
   }
 
   if ($p->{in} eq 'body') {
