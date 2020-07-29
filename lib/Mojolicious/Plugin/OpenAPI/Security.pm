@@ -35,8 +35,12 @@ sub _build_action {
 
         for my $name (sort keys %$security_and) {
           my $error_path = sprintf '/security/%s/%s', $i, _pointer_escape($name);
-          push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $error_path}
-            if defined $res{$name};
+          if (defined $res{$name}) {
+            if (ref $res{$name} eq 'HASH' and $res{$name}{status}) {
+              $status = $res{$name}{status};
+            }
+            push @e, ref $res{$name} ? $res{$name} : {message => $res{$name}, path => $error_path};
+          }
         }
 
         # Authenticated
