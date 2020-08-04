@@ -28,7 +28,7 @@ sub _build_action {
 
     my $security_completed = sub {
       my ($i, @errors) = (0);
-      $c->stash( status => 401 ) unless $c->stash( 'status' );
+      $c->stash(status => 401) unless $c->stash('status');
 
     SECURITY_AND:
       for my $security_and (@security_or) {
@@ -48,7 +48,7 @@ sub _build_action {
           chomp $@;
           $c->app->log->error($@);
           @errors = ({message => 'Internal Server Error.', path => '/'});
-          $c->stash( status => 500 );
+          $c->stash(status => 500);
           last SECURITY_AND;
         }
 
@@ -57,7 +57,7 @@ sub _build_action {
         $i++;
       }
 
-      $c->render(openapi => {errors => \@errors} );
+      $c->render(openapi => {errors => \@errors});
       $n_checks = -1;    # Make sure we don't render twice
     };
 
