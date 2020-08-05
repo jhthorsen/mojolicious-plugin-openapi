@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.34 2020-08-05T16:36:41+0900
+ - Can now set custom status code from a security callback #186
+   Contributor: Stephan Hradek
+
 3.33 2020-06-08T15:28:12+0900
  - Forgot to bump JSON::Validator to 4.00
 
