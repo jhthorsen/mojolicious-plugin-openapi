@@ -55,7 +55,7 @@ sub _build_action {
         push @errors, @e;
         $i++;
       }
-
+      $status = $c->stash('status') || $status if $status < 500;
       $c->render(openapi => {errors => \@errors}, status => $status);
       $n_checks = -1;    # Make sure we don't render twice
     };
