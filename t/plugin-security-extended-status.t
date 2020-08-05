@@ -10,7 +10,6 @@ get '/securitytest' => sub {
   },
   'securitytest';
 
-our %checks;
 plugin OpenAPI => {
   url      => 'data://main/sec.yaml',
   schema   => 'v3',
@@ -34,29 +33,13 @@ plugin OpenAPI => {
 
 my $t = Test::Mojo->new;
 
-{
-  local %checks;
+$t->get_ok('/api/securitytest' => {apikey => 'authorized', apiuser => 'authorized'})->status_is(200);
 
-  $t->get_ok('/api/securitytest' => {apikey => 'authorized', apiuser => 'authorized'})
-    ->status_is(200);
+$t->get_ok('/api/securitytest' => {apikey => 'authenticated', apiuser => 'authenticated'})->status_is(403);
 
-}
+$t->get_ok('/api/securitytest' => {apikey => 'unknown', apiuser => 'unknown'})->status_is(401);
 
-{
-  local %checks;
-  $t->get_ok('/api/securitytest' => {apikey => 'authenticated', apiuser => 'authenticated'})
-    ->status_is(403);
-}
-
-{
-  local %checks;
-  $t->get_ok('/api/securitytest' => {apikey => 'unknown', apiuser => 'unknown'})->status_is(401);
-}
-
-{
-  local %checks;
-  $t->get_ok('/api/securitytest')->status_is(401);
-}
+$t->get_ok('/api/securitytest')->status_is(401);
 
 
 done_testing;
@@ -83,8 +66,6 @@ paths:
       responses:
         200:
           $ref: "#/components/responses/200_OK_message"
-        401:
-          $ref: "#/components/responses/401_Unauthorized"
         403:
           $ref: "#/components/responses/403_Forbidden"
 components:
@@ -130,12 +111,6 @@ components:
                 type: string
               path:
                 type: string
-    401_Unauthorized:
-      description: Missing authorization
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
     403_Forbidden:
       description: Insufficient priviliges
       content:
