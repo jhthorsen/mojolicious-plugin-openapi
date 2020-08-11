@@ -121,7 +121,7 @@ sub validate_response {
   return JSON::Validator::E('/' => "No responses rules defined for status $status.")
     unless my $res_schema = $schema->{responses}{$status} || $schema->{responses}{default};
 
-  if ($self->version eq '3') {
+  if ($self->version eq '3' and $res_schema->{content}) {
     my $accept = $self->_negotiate_accept_header($c, $res_schema);
     return JSON::Validator::E('/' => "No responses rules defined for $accept.")
       unless $res_schema = $res_schema->{content}{$accept};
