@@ -2,6 +2,7 @@ package JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::Base 'JSON::Validator';
 
 use Carp 'confess';
+use Mojo::Parameters;
 use Mojo::Util;
 use Scalar::Util 'looks_like_number';
 use Time::Local ();
@@ -13,6 +14,21 @@ our %COLLECTION_RE = (pipes => qr{\|}, csv => qr{,}, ssv => qr{\s}, tsv => qr{\t
 our %VERSIONS      = (
   v2 => 'http://swagger.io/v2/schema.json',
   v3 => 'https://spec.openapis.org/oas/3.0/schema/2019-04-02'
+);
+my %OBJ_STYLE_RE = (
+# style              explode false/true
+  form           => {false => qr{,}                 },
+  simple         => {false => qr{,},  true => qr{,} },
+  matrix         => {false => qr{,},  true => qr{;} },
+  label          => {false => qr{\.}, true => qr{\.}},
+  spaceDelimited => {false => qr{\s}                },
+  pipeDelimited  => {false => qr{\|}                },
+);
+my %DEFAULT_SERIALIZATION = (
+  path   => {style => 'simple', explode => 0},
+  query  => {style => 'form',   explode => 1},
+  header => {style => 'simple', explode => 0},
+  cookie => {style => 'form',   explode => 1},
 );
 
 has version => 2;
@@ -87,6 +103,11 @@ sub validate_request {
 
     if (defined $value and $type eq 'array') {
       $value = $self->_coerce_by_collection_format($value, $p);
+    }
+
+    if ($type eq 'object') {
+      $value = $self->_coerce_object_by_style($c, $value, $p);
+      $exists = $value ? 1 : 0;
     }
 
     ($exists, $value) = (1, $p->{schema}{default})
@@ -223,6 +244,83 @@ sub _coerce_by_collection_format {
   }
 
   return $single ? $data->[0] : $data;
+}
+
+sub _coerce_object_by_style {
+  my ($self, $c, $data, $p) = @_;
+
+  my $def     = $DEFAULT_SERIALIZATION{$p->{in}} || {};
+  my $style   = $p->{style}   // $def->{style};
+  my $explode = $p->{explode} // $def->{explode};
+  return $data unless $style;
+
+  # Special serializations
+  if ($style eq 'form' && $explode) {
+    return $c->req->url->query->to_hash;
+  }
+  elsif ($style eq 'deepObject') {
+    return $self->_coerce_deep_object($c, $p);
+  }
+
+  return unless defined $data;
+
+  if ($explode) {
+    my $re = $OBJ_STYLE_RE{$style}->{true} or return $data;
+    return if $style eq 'matrix' && $data !~ s/^;//;
+    return if $style eq 'label'  && $data !~ s/^\.//;
+    my $params = Mojo::Parameters->new;
+    $params->append(Mojo::Parameters->new($_)) for split /$re/, $data;
+    return $params->to_hash;
+  }
+  else {
+    my $re = $OBJ_STYLE_RE{$style}->{false} or return $data;
+    return if $style eq 'matrix' && $data !~ s/^;\Q$p->{name}\E=//;
+    return if $style eq 'label'  && $data !~ s/^\.//;
+    return Mojo::Parameters->new->pairs([split /$re/, $data])->to_hash;
+  }
+}
+
+sub _coerce_deep_object {
+  my ($self, $c, $p) = @_;
+
+  my $result;
+
+  my @pairs = @{$c->req->params->pairs};
+  while (my ($k, $v) = splice(@pairs, 0, 2)) {
+    # Retrieve the list of the deep keys
+    my @deep_keys;
+    push @deep_keys, $2 while ($k =~ s/^(\Q$p->{name}\E)\[([^]]*)\]/$1/);
+    next unless @deep_keys;
+
+    # Build the deep object
+    my $last_ref = \$result;
+    foreach my $key (@deep_keys) {
+      if ($key eq '' || $key =~ /^\d+$/) {
+        $$last_ref //= [];
+        $key = ($#{$$last_ref} + 1) if $key eq '';
+        $$last_ref->[$key] //= undef;
+        $last_ref = \$$last_ref->[$key];
+      }
+      else {
+        $$last_ref //= {};
+        $$last_ref->{$key} //= undef;
+        $last_ref = \$$last_ref->{$key};
+      }
+    }
+
+    # Set the value into the last reference
+    if (! defined $$last_ref) {
+      $$last_ref = $v;
+    }
+    elsif (ref $$last_ref eq 'ARRAY') {
+      push @{$$last_ref}, $v;
+    }
+    else {
+      $$last_ref = [$$last_ref, $v];
+    }
+  }
+
+  return $result;
 }
 
 sub _confess_invalid_in {
