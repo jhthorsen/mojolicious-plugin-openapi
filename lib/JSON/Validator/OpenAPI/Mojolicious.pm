@@ -2,6 +2,7 @@ package JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::Base 'JSON::Validator';
 
 use Carp 'confess';
+use Mojo::JSON qw(false true);
 use Mojo::Parameters;
 use Mojo::Util;
 use Scalar::Util 'looks_like_number';
@@ -10,25 +11,9 @@ use Time::Local ();
 use constant DEBUG   => $ENV{JSON_VALIDATOR_DEBUG} || 0;
 use constant IV_SIZE => eval 'require Config;$Config::Config{ivsize}';
 
-our %COLLECTION_RE = (pipes => qr{\|}, csv => qr{,}, ssv => qr{\s}, tsv => qr{\t});
-our %VERSIONS      = (
+our %VERSIONS = (
   v2 => 'http://swagger.io/v2/schema.json',
   v3 => 'https://spec.openapis.org/oas/3.0/schema/2019-04-02'
-);
-my %OBJ_STYLE_RE = (
-# style              explode false/true
-  form           => {false => qr{,}                 },
-  simple         => {false => qr{,},  true => qr{,} },
-  matrix         => {false => qr{,},  true => qr{;} },
-  label          => {false => qr{\.}, true => qr{\.}},
-  spaceDelimited => {false => qr{\s}                },
-  pipeDelimited  => {false => qr{\|}                },
-);
-my %DEFAULT_SERIALIZATION = (
-  path   => {style => 'simple', explode => 0},
-  query  => {style => 'form',   explode => 1},
-  header => {style => 'simple', explode => 0},
-  cookie => {style => 'form',   explode => 1},
 );
 
 has version => 2;
@@ -106,8 +91,8 @@ sub validate_request {
     }
 
     if ($type eq 'object') {
-      $value = $self->_coerce_object_by_style($c, $value, $p);
-      $exists = $value ? 1 : 0;
+      $value  = $self->_coerce_object_by_style($c, $value, $p);
+      $exists = defined $value ? 1 : 0;
     }
 
     ($exists, $value) = (1, $p->{schema}{default})
@@ -185,10 +170,10 @@ sub _coerce_input {
   }
   elsif ($type eq 'boolean') {
     if (!$_[2] or $_[2] =~ /^(?:false)$/) {
-      $_[2] = Mojo::JSON->false;
+      $_[2] = false;
     }
     elsif ($_[2] =~ /^(?:1|true)$/) {
-      $_[2] = Mojo::JSON->true;
+      $_[2] = true;
     }
   }
 }
@@ -234,8 +219,8 @@ sub _coerce_by_collection_format {
     return $data;
   }
 
-  my $re = $collection_format eq 'custom' ? $custom_re : $COLLECTION_RE{$collection_format} || ',';
-
+  my $re
+    = $collection_format eq 'custom' ? $custom_re : $self->_re_for_collection($collection_format);
   my $single = ref $data eq 'ARRAY' ? 0 : ($data = [$data]);
 
   for my $i (0 .. @$data - 1) {
@@ -246,12 +231,23 @@ sub _coerce_by_collection_format {
   return $single ? $data->[0] : $data;
 }
 
+sub _coerce_object_default_explode {
+  my ($self, $in) = @_;
+  return $in eq 'cookie' || $in eq 'query' ? true : false;
+}
+
+sub _coerce_object_default_style {
+  my ($self, $in) = @_;
+  return 'form'   if $in eq 'cookie' or $in eq 'query';
+  return 'simple' if $in eq 'header' or $in eq 'path';
+  return undef;
+}
+
 sub _coerce_object_by_style {
   my ($self, $c, $data, $p) = @_;
 
-  my $def     = $DEFAULT_SERIALIZATION{$p->{in}} || {};
-  my $style   = $p->{style}   // $def->{style};
-  my $explode = $p->{explode} // $def->{explode};
+  my $style   = $p->{style}   // $self->_coerce_object_default_style($p->{in});
+  my $explode = $p->{explode} // $self->_coerce_object_default_explode($p->{in});
   return $data unless $style;
 
   # Special serializations
@@ -265,7 +261,7 @@ sub _coerce_object_by_style {
   return unless defined $data;
 
   if ($explode) {
-    my $re = $OBJ_STYLE_RE{$style}->{true} or return $data;
+    return $data unless my $re = $self->_re_for_object_explode_true($style);
     return if $style eq 'matrix' && $data !~ s/^;//;
     return if $style eq 'label'  && $data !~ s/^\.//;
     my $params = Mojo::Parameters->new;
@@ -273,7 +269,7 @@ sub _coerce_object_by_style {
     return $params->to_hash;
   }
   else {
-    my $re = $OBJ_STYLE_RE{$style}->{false} or return $data;
+    return $data unless my $re = $self->_re_for_object_explode_false($style);
     return if $style eq 'matrix' && $data !~ s/^;\Q$p->{name}\E=//;
     return if $style eq 'label'  && $data !~ s/^\.//;
     return Mojo::Parameters->new->pairs([split /$re/, $data])->to_hash;
@@ -283,10 +279,9 @@ sub _coerce_object_by_style {
 sub _coerce_deep_object {
   my ($self, $c, $p) = @_;
 
-  my $result;
-
-  my @pairs = @{$c->req->params->pairs};
+  my (@pairs, $result) = @{$c->req->params->pairs};
   while (my ($k, $v) = splice(@pairs, 0, 2)) {
+
     # Retrieve the list of the deep keys
     my @deep_keys;
     push @deep_keys, $2 while ($k =~ s/^(\Q$p->{name}\E)\[([^]]*)\]/$1/);
@@ -309,7 +304,7 @@ sub _coerce_deep_object {
     }
 
     # Set the value into the last reference
-    if (! defined $$last_ref) {
+    if (!defined $$last_ref) {
       $$last_ref = $v;
     }
     elsif (ref $$last_ref eq 'ARRAY') {
@@ -398,7 +393,7 @@ sub _match_number {
   my ($name, $val, $format) = @_;
   return 'Does not look like an integer' if $name =~ m!^int! and $val !~ /^-?\d+(\.\d+)?$/;
   return 'Does not look like a number.' unless looks_like_number $val;
-  return undef unless $format;
+  return undef                          unless $format;
   return undef if $val eq unpack $format, pack $format, $val;
   return "Does not match $name format.";
 }
@@ -432,6 +427,32 @@ sub _negotiate_accept_header {
 
   # Could not find any valid content type
   return $accept;
+}
+
+sub _re_for_collection {
+  my ($self, $style) = @_;
+  return qr{,}  if $style eq 'csv';
+  return qr{\s} if $style eq 'ssv';
+  return qr{\t} if $style eq 'tsv';
+  return qr{\|} if $style eq 'pipes';
+  return ',';
+}
+
+sub _re_for_object_explode_false {
+  my ($self, $style) = @_;
+  return qr{,}  if $style eq 'form' or $style eq 'matrix' or $style eq 'simple';
+  return qr{\.} if $style eq 'label';
+  return qr{\|} if $style eq 'pipeDelimited';
+  return qr{\s} if $style eq 'spaceDelimited';
+  return undef;
+}
+
+sub _re_for_object_explode_true {
+  my ($self, $style) = @_;
+  return qr{\.} if $style eq 'label';
+  return qr{;}  if $style eq 'matrix';
+  return qr{,}  if $style eq 'simple';
+  return undef;
 }
 
 sub _resolve_ref {
