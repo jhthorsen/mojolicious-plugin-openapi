@@ -98,9 +98,6 @@ Used to validate a request. `@errors` holds a list of
 Note that this helper is only for customization. You probably want
 ["openapi.valid\_input"](#openapi-valid_input) in most cases.
 
-IMPORTANT! Integration with `Mojolicious::Controller/validation` used to be
-supported, but it is now slowly being deprecated.
-
 ## openapi.valid\_input
 
     $c = $c->openapi->valid_input;
