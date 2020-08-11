@@ -3,6 +3,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator;
 use Mojo::JSON;
+use Mojo::Util 'deprecated';
 
 use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 use constant MARKDOWN => eval 'require Text::Markdown;1';
@@ -77,10 +78,14 @@ sub _markdown {
 }
 
 sub _render_partial_spec {
-  my ($self, $c, $path) = @_;
-  my $validator = $self->_validator($c);
-  my $method    = $c->param('method');
+  my ($self, $c, $path, $custom_spec) = @_;
 
+  my $validator
+    = $custom_spec        ? JSON::Validator->new->schema($custom_spec)
+    : $self->{standalone} ? JSON::Validator->new->schema($c->stash('openapi_spec'))
+    :                       Mojolicious::Plugin::OpenAPI::_self($c)->validator;
+
+  my $method  = $c->param('method');
   my $bundled = $validator->get([paths => $path]);
   $bundled = $validator->bundle({schema => $bundled}) if $bundled;
   my $definitions = $bundled->{definitions} || {} if $bundled;
@@ -107,14 +112,19 @@ sub _render_partial_spec {
 }
 
 sub _render_spec {
-  my ($self, $c, $path) = @_;
-  return $self->_render_partial_spec($c, $path) if $path;
+  my ($self, $c, $path, $custom_spec) = @_;
+  deprecated '"openapi_spec" in stash is DEPRECATED'          if $c->stash('openapi_spec');
+  return $self->_render_partial_spec($c, $path, $custom_spec) if $path;
 
-  my $openapi = $self->{standalone} ? undef : Mojolicious::Plugin::OpenAPI::_self($c);
-  my $format  = $c->stash('format') || 'json';
+  my $openapi
+    = $custom_spec || $self->{standalone} ? undef : Mojolicious::Plugin::OpenAPI::_self($c);
+  my $format = $c->stash('format') || 'json';
   my %spec;
 
-  if ($openapi) {
+  if ($custom_spec) {
+    %spec = %$custom_spec;
+  }
+  elsif ($openapi) {
     my $req_url = $c->req->url->to_abs;
     $openapi->{bundled} ||= $openapi->validator->bundle;
     %spec = %{$openapi->{bundled}};
@@ -177,12 +187,6 @@ sub _render_spec {
   );
 }
 
-sub _validator {
-  my ($self, $c) = @_;
-  return Mojolicious::Plugin::OpenAPI::_self($c)->validator unless $self->{standalone};
-  return JSON::Validator->new->schema($c->stash('openapi_spec'));
-}
-
 sub _serialize { Mojo::JSON::encode_json(@_) }
 
 1;
@@ -216,15 +220,10 @@ C<%openapi_parameters> might contain.
   my $petstore = app->home->child("petstore.json");
 
   get "/my-spec" => sub {
-    my $c = shift;
-
-    # "openapi_spec" can also be set in...
-    # - $app->defaults(openapi_spec => ...);
-    # - $route->to(openapi_spec => ...);
-    $c->stash(openapi_spec => JSON::Validator->new->schema($petstore->to_string)->bundle);
-
-    # render_spec() can be called with $openapi_path
-    $c->openapi->render_spec;
+    my $c    = shift;
+    my $path = $c->param('path') || '/';
+    state $custom_spec = JSON::Validator->new->schema($petstore->to_string)->bundle;
+    $c->openapi->render_spec($path, $custom_spec);
   };
 
 =head1 DESCRIPTION
@@ -249,7 +248,8 @@ See L<https://demo.convos.by/api.html> for a demo.
 =head2 openapi.render_spec
 
   $c = $c->openapi->render_spec;
-  $c = $c->openapi->render_spec($openapi_path);
+  $c = $c->openapi->render_spec($json_path);
+  $c = $c->openapi->render_spec($json_path, \%custom_spec);
   $c = $c->openapi->render_spec("/user/{id}");
 
 Used to render the specification as either "html" or "json". Set the
