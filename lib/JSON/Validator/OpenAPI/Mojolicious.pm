@@ -597,7 +597,8 @@ sub _validate_type_object {
   if ($self->version eq '3') {
     for my $key (keys %properties) {
       next unless $properties{$key}{nullable};
-      $properties{$key} = {%{$properties{$key}}};
+      my $tied = tied %{$properties{$key}};
+      $properties{$key} = $tied ? {%{$tied->schema}} : {%{$properties{$key}}};
       $properties{$key}{type} = ['null', _to_list($properties{$key}{type})];
     }
   }
