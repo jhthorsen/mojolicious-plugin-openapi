@@ -38,7 +38,7 @@ sub register {
 
   unless ($app->defaults->{'openapi.base_paths'}) {
     $app->helper('openapi.spec'        => \&_helper_get_spec);
-    $app->helper('openapi.valid_input' => sub { _helper_validate($_[0]) ? undef : $_[0] });
+    $app->helper('openapi.valid_input' => \&_helper_valid_input);
     $app->helper('openapi.validate'    => \&_helper_validate);
     $app->helper('reply.openapi'       => \&_helper_reply);
     $app->hook(before_render => \&_before_render);
@@ -268,28 +268,22 @@ sub _helper_reply {
   return $c->render(@args, openapi => $output);
 }
 
+sub _helper_valid_input {
+  my $c = shift;
+  return undef if $c->res->code;
+  return $c unless my @errors = _helper_validate($c);
+  $c->stash(status => 400)
+    ->render(data => _self($c)->_renderer->($c, {errors => \@errors, status => 400}));
+  return undef;
+}
+
 sub _helper_validate {
-  my ($c, $args) = @_;
-
-  # code() can be set by other methods such as $c->openapi->cors_simple()
-  return [{message => 'Already rendered.'}] if $c->res->code;
-
-  # TODO: Remove support for $c->validation->output (2020-03-03)
-  # Write validated data to $c->validation->output
+  my $c       = shift;
   my $self    = _self($c);
   my $op_spec = $c->openapi->spec;
   local $op_spec->{parameters}
     = $self->_parameters_for($c->req->method, $c->stash('openapi.path'),);
-  my @errors = $self->validator->validate_request($c, $op_spec, $c->validation->output);
-
-  if (@errors) {
-    $self->_log($c, '<<<', \@errors);
-    $c->stash(status => 400)
-      ->render(data => $self->_renderer->($c, {errors => \@errors, status => 400}))
-      if $args->{auto_render} // 1;
-  }
-
-  return @errors;
+  return $self->validator->validate_request($c, $op_spec, $c->validation->output);
 }
 
 sub _log {
@@ -457,9 +451,6 @@ L<JSON::Validator::Error> objects or empty list on valid input.
 
 Note that this helper is only for customization. You probably want
 L</openapi.valid_input> in most cases.
-
-IMPORTANT! Integration with C<Mojolicious::Controller/validation> used to be
-supported, but it is now slowly being deprecated.
 
 =head2 openapi.valid_input
 
