@@ -121,6 +121,8 @@ sub validate_response {
   return JSON::Validator::E('/' => "No responses rules defined for status $status.")
     unless my $res_schema = $schema->{responses}{$status} || $schema->{responses}{default};
 
+  local $self->{validate_response} = 1;
+
   if ($self->version eq '3' and $res_schema->{content}) {
     my $accept = $self->_negotiate_accept_header($c, $res_schema);
     return JSON::Validator::E('/' => "No responses rules defined for $accept.")
@@ -603,13 +605,20 @@ sub _validate_type_object {
     }
   }
 
-  return shift->SUPER::_validate_type_object(@_) unless $self->{validate_input};
+  return shift->_validate_type_object_input(@_)    if $self->{validate_input};
+  return shift->_validate_type_object_response(@_) if $self->{validate_response};
+  return shift->SUPER::_validate_type_object(@_);
+}
+
+sub _validate_type_object_input {
+  my ($self, $data, $path, $schema) = @_;
+  my $properties = $schema->{properties};  # OK to modify, since called from _validate_type_object()
 
   my (@e, %ro);
-  for my $p (keys %properties) {
-    next unless $properties{$p}{readOnly};
-    push @e, JSON::Validator::E("$path/$p", "Read-only.") if exists $data->{$p};
-    $ro{$p} = 1;
+  for my $name (keys %$properties) {
+    next unless $properties->{$name}{readOnly};
+    push @e, JSON::Validator::E("$path/$name", "Read-only.") if exists $data->{$name};
+    $ro{$name} = 1;
   }
 
   my $discriminator = $schema->{discriminator};
@@ -625,6 +634,23 @@ sub _validate_type_object {
   local $schema->{required} = [grep { !$ro{$_} } @{$schema->{required} || []}];
 
   return @e, $self->SUPER::_validate_type_object($data, $path, $schema);
+}
+
+sub _validate_type_object_response {
+  my ($self, $data, $path, $schema) = @_;
+  my $properties = $schema->{properties};  # OK to modify, since called from _validate_type_object()
+
+  my %wo;
+  for my $name (keys %$properties) {
+    next unless $properties->{$name}{writeOnly};
+    delete $properties->{$name};
+    $wo{$name} = 1;
+  }
+
+  local $schema->{required} = $schema->{required} || [];
+  $schema->{required} = [grep !$wo{$_}, @{$schema->{required}}];
+
+  return $self->SUPER::_validate_type_object($data, $path, $schema);
 }
 
 1;

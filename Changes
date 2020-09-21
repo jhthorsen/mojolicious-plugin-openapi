@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.36 Not Released
+ - Fix writeOnly handling OpenAPI v3 #191
+
 3.35 2020-08-11T11:32:59+0900
  - Add support for v3 object parameters #184
    Contributor: SebMourlhou
