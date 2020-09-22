@@ -22,6 +22,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 
     # Load specification and start web server
     # Use "v3" instead of "v2" for "schema" if you are using OpenAPI v3
+    # The plugin must be loaded *after* defining the routes in a Lite app
     plugin OpenAPI => {url => "data:///spec.json", schema => "v2"};
     app->start;
 

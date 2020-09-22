@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-3.36 Not Released
+3.36 2020-09-22T09:42:10+0900
  - Fix writeOnly handling OpenAPI v3 #191
 
 3.35 2020-08-11T11:32:59+0900
