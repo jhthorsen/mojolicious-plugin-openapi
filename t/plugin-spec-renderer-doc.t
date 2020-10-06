@@ -85,6 +85,11 @@ __DATA__
       }
     },
     "/pets": {
+      "$ref": "#/x-path/Pets"
+    }
+  },
+  "x-path": {
+    "Pets": {
       "post": {
         "operationId": "addPet",
         "parameters": [

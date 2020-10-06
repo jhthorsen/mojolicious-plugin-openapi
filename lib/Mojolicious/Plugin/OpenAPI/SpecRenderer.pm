@@ -151,9 +151,10 @@ sub _render_spec {
   if ($format eq 'html') {
     for my $path (keys %{$spec{paths}}) {
       next if $path =~ $x_re;
-      for my $method (keys %{$spec{paths}{$path}}) {
+      my $path_spec = $openapi ? $openapi->validator->get([paths => $path]) : $spec{paths}{$path};
+      for my $method (keys %$path_spec) {
         next if $method =~ $x_re;
-        my $op_spec = $spec{paths}{$path}{$method};
+        my $op_spec = $path_spec->{$method};
         next unless ref $op_spec eq 'HASH';
         push @operations,
           {
