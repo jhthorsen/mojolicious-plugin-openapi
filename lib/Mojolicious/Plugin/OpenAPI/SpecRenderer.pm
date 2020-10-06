@@ -12,6 +12,7 @@ sub register {
   my ($self, $app, $config) = @_;
 
   $self->{standalone} = $config->{openapi} ? 0 : 1;
+  $app->defaults(openapi_spec_renderer_logo => '/mojolicious/plugin/openapi/logo.png');
   $app->helper('openapi.render_spec' => sub { $self->_render_spec(@_) });
 
   # EXPERIMENTAL
@@ -330,11 +331,10 @@ Variables available in the templates:
   %= $slugify->(@str)
   %= $spec->{info}{title}
 
-In addition, there is a static image that you can override:
-
-  mojolicious/plugin/openapi/logo.png
-
-This image makes up the logo inside the default "header.html.ep" template.
+In addition, there is a logo in "header.html.ep" that can be overriden by
+either changing the static file "mojolicious/plugin/openapi/logo.png" or set
+"openapi_spec_renderer_logo" in L<stash|Mojolicious::Controller/stash> to a
+custom URL.
 
 =head1 SEE ALSO
 
@@ -351,7 +351,7 @@ __DATA__
 
 <nav class="openapi-nav">
   <a href="#top" class="openapi-logo">
-    %= image '/mojolicious/plugin/openapi/logo.png', alt => 'OpenAPI Logo'
+    %= image stash('openapi_spec_renderer_logo'), alt => 'OpenAPI Logo'
   </a>
   %= include 'mojolicious/plugin/openapi/toc'
 </nav>
@@ -923,6 +923,11 @@ SpecRenderer.prototype.setup = function() {
       margin-bottom: 1rem;
     }
 
+    .openapi-logo img {
+      max-height: 100px;
+      max-width 100%;
+    }
+
     .openapi-nav ol {
       list-style: none;
       padding: 0;
@@ -936,7 +941,7 @@ SpecRenderer.prototype.setup = function() {
     }
 
     .openapi-nav li a:hover {
-      background: #dbe4cd;
+      background: #e5e8df;
       text-decoration: none;
     }
 
@@ -948,7 +953,7 @@ SpecRenderer.prototype.setup = function() {
     }
 
     .openapi-nav li.is-active a {
-      background: #e3e8d4;
+      background: #e3e6de;
     }
 
     .openapi-nav .method {
