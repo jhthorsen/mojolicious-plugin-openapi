@@ -845,7 +845,8 @@ SpecRenderer.prototype.setup = function() {
     padding-left: 0.4rem;
   }
 
-  .json-array > .json-item > .json-key { display: none; }
+  .json-array > .json-item > .json-key,
+  .json-array > .json-item > .json-key + .json-type { display: none; }
   .json-array > .json-item > .json-string:before { content: '- '; color: #222; font-weight: bold; }
   .json-boolean, .json-number, .json-string { color: #356710; font-weight: 500; }
   .json-key:after { content: ': '; color: #222; }
