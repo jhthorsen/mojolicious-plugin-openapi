@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-3.37 Not Released
+3.37 2020-10-06T13:47:47+0900
  - Can also render doc for spec with $ref inside paths
  - Can specify SpecRenderer logo
  - Can specify SpecRenderer theme color
