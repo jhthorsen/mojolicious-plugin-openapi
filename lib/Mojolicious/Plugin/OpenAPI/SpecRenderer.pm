@@ -11,8 +11,10 @@ use constant MARKDOWN => eval 'require Text::Markdown;1';
 sub register {
   my ($self, $app, $config) = @_;
 
+  $app->defaults(openapi_spec_renderer_logo        => '/mojolicious/plugin/openapi/logo.png');
+  $app->defaults(openapi_spec_renderer_theme_color => '#508a25');
+
   $self->{standalone} = $config->{openapi} ? 0 : 1;
-  $app->defaults(openapi_spec_renderer_logo => '/mojolicious/plugin/openapi/logo.png');
   $app->helper('openapi.render_spec' => sub { $self->_render_spec(@_) });
 
   # EXPERIMENTAL
@@ -767,7 +769,7 @@ SpecRenderer.prototype.setup = function() {
   body {
     padding: 1rem;
   }
-  a { color: #508a25; text-decoration: underline; word-break: break-word; }
+  a { color: <%= $openapi_spec_renderer_theme_color %>; text-decoration: underline; word-break: break-word; }
   a:hover { text-decoration: none; }
   h1, h2, h3, h4 { font-family: Verdana; color: #403f41; font-weight: bold; line-height: 1.2em; margin: 1em 0; padding-top: 0.4rem; }
   h1 a, h2 a, h3 a, h4 a { text-decoration: none; color: inherit; }
@@ -814,7 +816,7 @@ SpecRenderer.prototype.setup = function() {
     font-size: 0.9rem;
     line-height: 1.4em;
     letter-spacing: -0.02em;
-    border-left: 4px solid #6cab3e;
+    border-left: 4px solid <%= $openapi_spec_renderer_theme_color %>;
     padding: 0.5em;
     margin: 1rem 0rem;
     overflow: auto;
@@ -848,7 +850,7 @@ SpecRenderer.prototype.setup = function() {
   .json-array > .json-item > .json-key,
   .json-array > .json-item > .json-key + .json-type { display: none; }
   .json-array > .json-item > .json-string:before { content: '- '; color: #222; font-weight: bold; }
-  .json-boolean, .json-number, .json-string { color: #356710; font-weight: 500; }
+  .json-boolean, .json-number, .json-string { color: <%= $openapi_spec_renderer_theme_color %>; font-weight: 500; }
   .json-key:after { content: ': '; color: #222; }
   .json-null { color: #222; }
   .json-type { color: #c5a138; display: none; }
@@ -859,7 +861,7 @@ SpecRenderer.prototype.setup = function() {
 
   @media only screen {
     .openapi-up-button {
-      background: #436d24;
+      background: <%= $openapi_spec_renderer_theme_color %>;
       color: #f2f3ed;
       font-weight: bold;
       font-size: 1.2rem;
