@@ -4,14 +4,16 @@ use Test::Mojo;
 use Test::More;
 
 my $coerced = t();
-$coerced->get_ok('/api/user')->status_is(200)->json_is('/age', 34);
+$coerced->post_ok('/api/user')->status_is(200)->json_is('/age', 34);
+$coerced->post_ok('/api/user', json => [{}])->status_is(400)
+  ->json_is('/errors/0/message', 'Expected object - got array.');
 
 my $strict = t(coerce => {});
-$strict->get_ok('/api/user')->status_is(500)->json_has('/errors');
+$strict->post_ok('/api/user')->status_is(500)->json_has('/errors');
 
 sub t {
   my $t = Test::Mojo->new(Mojolicious->new);
-  $t->app->routes->get(
+  $t->app->routes->post(
     '/user' => sub {
       my $c = shift->openapi->valid_input or return;
       $c->render(openapi => {age => '34'});    # '34' is not an integer
@@ -32,17 +34,15 @@ __DATA__
   "basePath" : "/api",
   "paths" : {
     "/user" : {
-      "get" : {
+      "post" : {
         "x-mojo-name" : "user",
+        "parameters": [
+          {"in": "body", "name": "body", "schema": {"type": "object"}}
+        ],
         "responses" : {
           "200": {
             "description": "User",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "age": { "type": "integer"}
-              }
-            }
+            "schema": { "properties": { "age": { "type": "integer"} } }
           }
         }
       }

@@ -87,11 +87,11 @@ sub validate_request {
       $value  = $value->{$key};
     }
 
-    if (defined $value and $type eq 'array') {
+    if ($in ne 'body' and $type eq 'array') {
       $value = $self->_coerce_by_collection_format($value, $p);
     }
 
-    if ($type eq 'object') {
+    if ($in ne 'body' and $type eq 'object') {
       $value  = $self->_coerce_object_by_style($c, $value, $p);
       $exists = defined $value ? 1 : 0;
     }
@@ -102,7 +102,7 @@ sub validate_request {
       and exists $p->{schema}{default};
     ($exists, $value) = (1, $p->{default}) if !$exists and exists $p->{default};
 
-    $self->_coerce_input($type, $value);
+    $self->_coerce_input($type, $value) unless $in eq 'body';
 
     if (my @e = $self->_validate_request_value($p, $name => $value)) {
       push @errors, @e;
@@ -183,6 +183,7 @@ sub _coerce_input {
 
 sub _coerce_by_collection_format {
   my ($self, $data, $p) = @_;
+  return $data unless defined $data;
 
   my $schema = $p->{schema}                                                  || $p;
   my $type   = ($schema->{items} ? $schema->{items}{type} : $schema->{type}) || '';
