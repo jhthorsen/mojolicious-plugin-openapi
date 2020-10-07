@@ -49,7 +49,6 @@ __DATA__
   "definitions": {
     "Body": {
       "required": ["str"],
-      "type": "object",
       "properties": {
         "str": {
           "type": "string",

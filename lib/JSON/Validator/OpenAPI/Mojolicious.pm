@@ -2,6 +2,7 @@ package JSON::Validator::OpenAPI::Mojolicious;
 use Mojo::Base 'JSON::Validator';
 
 use Carp 'confess';
+use JSON::Validator::Util qw(schema_type);
 use Mojo::JSON qw(false true);
 use Mojo::Parameters;
 use Mojo::Util;
@@ -32,7 +33,7 @@ sub load_and_validate_schema {
   my @errors;
   my $gather = sub {
     push @errors, E($_[1], 'Only one parameter can have "in":"body"')
-      if 1 < grep { $_->{in} eq 'body' } @{$_[0] || []};
+      if 1 < grep { $_->{in} and $_->{in} eq 'body' } @{$_[0] || []};
   };
 
   $self->_get($self->_resolve($spec), ['paths', undef, undef, 'parameters'], '', $gather);
@@ -68,8 +69,8 @@ sub validate_request {
 
   for my $p (@{$schema->{parameters} || []}) {
     my ($in, $name, $type) = @$p{qw(in name type)};
-    $type ||= $p->{schema}{type} if $p->{schema};    # v3
     my ($exists, $value) = (0, undef);
+    $type ||= schema_type($p->{schema} || $p);
 
     if ($in eq 'body') {
       $value  = $self->_get_request_data($c, $in);
