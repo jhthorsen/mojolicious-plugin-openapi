@@ -39,8 +39,8 @@ done_testing;
 
 __DATA__
 @@ v2.yaml
-swagger: 2.0
-info: {version: '0.8', title: v2}
+swagger: "2.0"
+info: {version: "0.8", title: v2}
 basePath: /v2
 paths:
   /user:

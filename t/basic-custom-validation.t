@@ -24,9 +24,9 @@ done_testing;
 __DATA__
 @@ custom.json
 ---
-swagger: 2.0
+swagger: "2.0"
 info:
-  version: 1.0
+  version: "1.0"
   title: Custom validation
 basePath: /api
 paths:
