@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-3.38 Not Released
+3.38 2020-10-07T12:39:18+0900
  - Fix failing CPAN testers tests
  - Fix uninitialized warnings
  - Fix not coercing body with array into object
