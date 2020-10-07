@@ -510,7 +510,8 @@ sub _validate_request_body {
   }
 
   return JSON::Validator::E('/' => "No requestBody rules defined for Content-Type $ct.") if $ct;
-  return JSON::Validator::E('/', 'Invalid Content-Type.');
+  return JSON::Validator::E('/', 'Invalid Content-Type.') if $body_schema->{required};
+  return;
 }
 
 sub _validate_request_value {
