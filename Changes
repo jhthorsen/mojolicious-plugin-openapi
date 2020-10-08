@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.39 2020-10-08T15:52:42+0900
+ - Add support optional requestBody in OpenAPIv3 #170 #194
+   Contributor: Ji-Hyeon Gim
+
 3.38 2020-10-07T12:39:18+0900
  - Fix failing CPAN testers tests
  - Fix uninitialized warnings
