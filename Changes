@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-3.40 Not Released
+3.40 2020-10-10T16:23:05+0900
  - Compatible with JSON::Validator 4.06
 
 3.39 2020-10-08T15:52:42+0900
