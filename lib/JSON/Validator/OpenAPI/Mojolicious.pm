@@ -460,9 +460,9 @@ sub _re_for_object_explode_true {
 }
 
 sub _resolve_ref {
-  my ($self, $topic, $url) = @_;
-  $topic->{'$ref'} = "#/definitions/$topic->{'$ref'}" if $topic->{'$ref'} =~ /^\w+$/;
-  return $self->SUPER::_resolve_ref($topic, $url);
+  my ($self, $ref, $base, $root) = @_;
+  $ref = "#/definitions/$ref" if $ref =~ /^\w+$/;
+  return $self->SUPER::_resolve_ref($ref, $base, $root);
 }
 
 sub _set_request_data {
