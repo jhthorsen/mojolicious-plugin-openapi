@@ -364,7 +364,7 @@ __DATA__
   %= include 'mojolicious/plugin/openapi/toc'
 </nav>
 @@ mojolicious/plugin/openapi/intro.html.ep
-<h2 id="about">About</h2>
+<h2 id="about"><a href="#about">About</a></h2>
 % if ($spec->{info}{description}) {
 <div class="description">
   %== $c->openapi->rich_text($spec->{info}{description})
@@ -373,14 +373,14 @@ __DATA__
 
 % my $contact = $spec->{info}{contact};
 % my $license = $spec->{info}{license};
-<h3 id="license"><a href="#top">License</a></h3>
+<h3 id="license"><a href="#license">License</a></h3>
 % if ($license->{name}) {
 <p class="license"><a href="<%= $license->{url} || '' %>"><%= $license->{name} %></a></p>
 % } else {
 <p class="no-license">No license specified.</p>
 % }
 
-<h3 id="contact"<a href="#top">Contact information</a></h3>
+<h3 id="contact"><a href="#contact">Contact information</a></h3>
 % if ($contact->{email}) {
 <p class="contact-email"><a href="mailto:<%= $contact->{email} %>"><%= $contact->{email} %></a></p>
 % }
@@ -389,7 +389,7 @@ __DATA__
 % }
 
 % if (exists $spec->{openapi}) {
-  <h3 id="servers"><a href="#top">Servers</a></h3>
+  <h3 id="servers"><a href="#servers">Servers</a></h3>
   <ul class="unstyled">
   % for my $server (@{$spec->{servers}}){
     <li><a href="<%= $server->{url} %>"><%= $server->{url} %></a><%= $server->{description} ? ' - '.$server->{description} : '' %></li>
@@ -398,7 +398,7 @@ __DATA__
 % } else {
   % my $schemes = $spec->{schemes} || ["http"];
   % my $url = Mojo::URL->new("http://$spec->{host}");
-  <h3 id="baseurl"><a href="#top">Base URL</a></h3>
+  <h3 id="baseurl"><a href="#baseurl">Base URL</a></h3>
   <ul class="unstyled">
   % for my $scheme (@$schemes) {
     % $url->scheme($scheme);
@@ -408,7 +408,7 @@ __DATA__
 % }
 
 % if ($spec->{info}{termsOfService}) {
-<h3 id="terms-of-service"><a href="#top">Terms of service</a></h3>
+<h3 id="terms-of-service"><a href="#terms-of-service">Terms of service</a></h3>
 <p class="terms-of-service">
   %= $spec->{info}{termsOfService}
 </p>
@@ -488,7 +488,10 @@ new SpecRenderer().setup();
   <pre class="op-response"><%= $serialize->($res->{schema} || $res->{content}) %></pre>
 % }
 @@ mojolicious/plugin/openapi/resource.html.ep
-<h3 id="<%= $slugify->(op => $method, $path) %>" class="op-path <%= $op_spec->{deprecated} ? "deprecated" : "" %>"><a href="#top"><%= $name %></a></h3>
+% my $id = $slugify->(op => $method, $path);
+<h3 id="<%= $id %>" class="op-path <%= $op_spec->{deprecated} ? "deprecated" : "" %>">
+  <a href="#<%= $id %>"><%= $name %></a>
+</h3>
 % if ($op_spec->{deprecated}) {
 <p class="op-deprecated">This resource is deprecated!</p>
 % }
@@ -503,16 +506,17 @@ new SpecRenderer().setup();
 %= include 'mojolicious/plugin/openapi/response', op_spec => $op_spec
 @@ mojolicious/plugin/openapi/references.html.ep
 % if ($spec->{parameters}) {
-  <h2 id="parameters"><a href="#top">Parameters</a></h2>
+  <h2 id="parameters"><a href="#parameters">Parameters</a></h2>
   % while (my ($key, $schema) = $c->openapi->spec_iterator($spec->{parameters})) {
-    <h3 id="<%= lc $slugify->(qw(ref parameters), $key) %>"><a href="#top"><%= $key %></a></h3>
+    % my $id = lc $slugify->(qw(ref parameters), $key);
+    <h3 id="<%= $id %>"><a href="#<%= $id %>"><%= $key %></a></h3>
     <pre class="ref"><%= $serialize->($schema) %></pre>
   % }
   </li>
 % }
 
 % if ($spec->{components}) {
-  <h2 id="components"><a href="#top">Components</a></h2>
+  <h2 id="components"><a href="#components">Components</a></h2>
   % while (my ($type, $comp_group) = $c->openapi->spec_iterator($spec->{components})) {
     % while (my ($key, $comp) = $c->openapi->spec_iterator($comp_group)) {
       <li><a href="#<%= lc $slugify->(qw(ref components), $key) %>"><%= $key %></a></li>
@@ -521,15 +525,16 @@ new SpecRenderer().setup();
 % }
 
 % if ($spec->{definitions}) {
-  <h2 id="definitions"><a href="#top">Parameters</a></h2>
+  <h2 id="definitions"><a href="#definitions">Definitions</a></h2>
   % while (my ($key, $schema) = $c->openapi->spec_iterator($spec->{definitions})) {
-    <h3 id="<%= lc $slugify->(qw(ref definitions), $key) %>"><a href="#top"><%= $key %></a></h3>
+    % my $id = lc $slugify->(qw(ref definitions), $key);
+    <h3 id="<%= $id %>"><a href="#<%= $id %>"><%= $key %></a></h3>
     <pre class="ref"><%= $serialize->($schema) %></pre>
   % }
   </li>
 % }
 @@ mojolicious/plugin/openapi/resources.html.ep
-<h2 id="resources"><a href="#top">Resources</a></h2>
+<h2 id="resources"><a href="#resources">Resources</a></h2>
 % for my $op (@$operations) {
   %= include 'mojolicious/plugin/openapi/resource', %$op;
 % }
