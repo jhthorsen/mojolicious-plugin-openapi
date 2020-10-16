@@ -16,6 +16,7 @@ sub register {
 
   $self->{standalone} = $config->{openapi} ? 0 : 1;
   $app->helper('openapi.render_spec' => sub { $self->_render_spec(@_) });
+  $app->helper('openapi.rich_text'   => \&_helper_rich_text);
 
   # EXPERIMENTAL
   $app->helper('openapi.spec_iterator' => \&_helper_iterator);
@@ -76,8 +77,8 @@ sub _add_documentation_routes {
   }
 }
 
-sub _markdown {
-  return Mojo::ByteStream->new(MARKDOWN ? Text::Markdown::markdown($_[0]) : $_[0]);
+sub _helper_rich_text {
+  return Mojo::ByteStream->new(MARKDOWN ? Text::Markdown::markdown($_[1]) : $_[1]);
 }
 
 sub _render_partial_spec {
@@ -181,7 +182,6 @@ sub _render_spec {
     base_url   => $base_url,
     handler    => 'ep',
     template   => 'mojolicious/plugin/openapi/layout',
-    markdown   => \&_markdown,
     operations => [sort { $a->{name} cmp $b->{name} } @operations],
     serialize  => \&_serialize,
     slugify    => sub {
@@ -262,6 +262,13 @@ L<Mojolicious/stash> variable "format" to change the format to render.
 Will render the whole specification by default, but can also render
 documentation for a given OpenAPI path.
 
+=head2 openapi.rich_text
+
+  $bytestream = $c->openapi->rich_text($text);
+
+Used to render the "description" in the specification with L<Text::Markdown> if
+it is installed. Will just return the text if the module is not available.
+
 =head1 METHODS
 
 =head2 register
@@ -328,7 +335,6 @@ L<https://github.com/jhthorsen/mojolicious-plugin-openapi/blob/master/lib/Mojoli
 
 Variables available in the templates:
 
-  %= $markdown->("# markdown\nstring\n")
   %= $serialize->($data_structure)
   %= $slugify->(@str)
   %= $spec->{info}{title}
@@ -361,7 +367,7 @@ __DATA__
 <h2 id="about">About</h2>
 % if ($spec->{info}{description}) {
 <div class="description">
-  %== $markdown->($spec->{info}{description})
+  %== $c->openapi->rich_text($spec->{info}{description})
 </div>
 % }
 
@@ -425,7 +431,7 @@ new SpecRenderer().setup();
 <p class="spec-summary"><%= $op_spec->{summary} %></p>
 % }
 % if ($op_spec->{description}) {
-<div class="spec-description"><%== $markdown->($op_spec->{description}) %></div>
+<div class="spec-description"><%== $c->openapi->rich_text($op_spec->{description}) %></div>
 % }
 % if (!$op_spec->{description} and !$op_spec->{summary}) {
 <p class="op-summary op-doc-missing">This resource is not documented.</p>
@@ -458,7 +464,7 @@ new SpecRenderer().setup();
     <td><%= $p->{in} %></td>
     <td><%= $p->{type} || $p->{schema}{type} %></td>
     <td><%= $p->{required} ? "Yes" : "No" %></td>
-    <td><%== $p->{description} ? $markdown->($p->{description}) : "" %></td>
+    <td><%== $p->{description} ? $c->openapi->rich_text($p->{description}) : "" %></td>
   </tr>
 % }
 % if ($has_parameters) {

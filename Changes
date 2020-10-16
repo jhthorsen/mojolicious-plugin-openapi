@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+3.41 Not Released
+ - Add missing documentation about Text::Markdown
+ - SpecRenderer adds openapi.rich_text helper
+
 3.40 2020-10-10T16:23:05+0900
  - Compatible with JSON::Validator 4.06
 
