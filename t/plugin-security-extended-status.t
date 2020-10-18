@@ -12,7 +12,6 @@ get '/securitytest' => sub {
 
 plugin OpenAPI => {
   url      => 'data://main/sec.yaml',
-  schema   => 'v3',
   security => {
     api_key => sub {
       my ($self, $definition, $scopes, $cb) = @_;
@@ -33,9 +32,11 @@ plugin OpenAPI => {
 
 my $t = Test::Mojo->new;
 
-$t->get_ok('/api/securitytest' => {apikey => 'authorized', apiuser => 'authorized'})->status_is(200);
+$t->get_ok('/api/securitytest' => {apikey => 'authorized', apiuser => 'authorized'})
+  ->status_is(200);
 
-$t->get_ok('/api/securitytest' => {apikey => 'authenticated', apiuser => 'authenticated'})->status_is(403);
+$t->get_ok('/api/securitytest' => {apikey => 'authenticated', apiuser => 'authenticated'})
+  ->status_is(403);
 
 $t->get_ok('/api/securitytest' => {apikey => 'unknown', apiuser => 'unknown'})->status_is(401);
 

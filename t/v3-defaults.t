@@ -9,7 +9,7 @@ get '/test' => sub {
   },
   'File';
 
-plugin OpenAPI => {schema => 'v3', url => 'data://main/file.yaml'};
+plugin OpenAPI => {url => 'data://main/file.yaml'};
 
 my $t = Test::Mojo->new;
 

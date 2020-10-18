@@ -24,7 +24,7 @@ post '/test/optional/implicitly' => sub {
   },
   'test3';
 
-plugin OpenAPI => {url => 'data:///api.yml', schema => 'v3'};
+plugin OpenAPI => {url => 'data:///api.yml'};
 
 my $t = Test::Mojo->new();
 
@@ -50,13 +50,13 @@ note 'empty requestBody with "required: false"';
 $t->post_ok('/test/optional/explicitly')->status_is(200);
 
 note 'requestBody with "required: false"';
-$t->post_ok('/test/optional/explicitly', json => { foo => 'bar' })->status_is(200);
+$t->post_ok('/test/optional/explicitly', json => {foo => 'bar'})->status_is(200);
 
 note 'empty requestBody without "required: false"';
 $t->post_ok('/test/optional/implicitly')->status_is(200);
 
 note 'requestBody without "required: false"';
-$t->post_ok('/test/optional/implicitly', json => { foo => 'bar' })->status_is(200);
+$t->post_ok('/test/optional/implicitly', json => {foo => 'bar'})->status_is(200);
 
 done_testing;
 

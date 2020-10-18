@@ -9,7 +9,7 @@ post '/required' => sub {
   },
   'with_required';
 
-plugin OpenAPI => {url => 'data:///schema.json', schema => 'v3'};
+plugin OpenAPI => {url => 'data:///schema.json'};
 
 my $t = Test::Mojo->new;
 $t->post_ok('/required' => json => {app_id => 1})->status_is(201);

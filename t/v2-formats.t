@@ -1,16 +1,15 @@
 use lib '.';
-use JSON::Validator::OpenAPI::Mojolicious;
+use JSON::Validator::Schema::OpenAPIv2;
+use JSON::Validator::Util qw(E);
 use Test::More;
 
-my $schema = {type => 'object', properties => {v => {type => 'string'}}};
-my $validator = JSON::Validator::OpenAPI::Mojolicious->new;
-
-sub E { goto &JSON::Validator::OpenAPI::Mojolicious::E; }
+my $schema    = {type => 'object', properties => {v => {type => 'string'}}};
+my $validator = JSON::Validator::Schema::OpenAPIv2->new;
 
 sub validate_ok {
   my ($data, $schema, @expected) = @_;
-  my $descr = @expected ? "errors: @expected" : "valid: " . Mojo::JSON::encode_json($data);
-  my @errors = $validator->schema($schema)->validate($data);
+  my $descr  = @expected ? "errors: @expected" : "valid: " . Mojo::JSON::encode_json($data);
+  my @errors = $validator->data($schema)->validate($data);
   is_deeply [map { $_->TO_JSON } sort { $a->path cmp $b->path } @errors],
     [map { $_->TO_JSON } sort { $a->path cmp $b->path } @expected], $descr
     or Test::More::diag(Mojo::JSON::encode_json(\@errors));
@@ -80,7 +79,7 @@ sub validate_ok {
   validate_ok {v => 2147483648},  $schema, E('/v', 'Does not match int32 format.');
 }
 
-if (JSON::Validator::OpenAPI::Mojolicious::IV_SIZE >= 8) {
+if (JSON::Validator::Formats::IV_SIZE >= 8) {
   local $schema->{properties}{v}{type}   = 'integer';
   local $schema->{properties}{v}{format} = 'int64';
   validate_ok {v => -9223372036854775808}, $schema;

@@ -19,7 +19,7 @@ sub make_app {
 
   sub startup {
     my $app = shift;
-    $app->plugin("OpenAPI" => {url => "data://main/myapi.json", schema => 'v3'});
+    $app->plugin("OpenAPI" => {url => "data://main/myapi.json"});
   }
 
   $ENV{"Myapp.pm"} = 1;

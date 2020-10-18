@@ -18,7 +18,7 @@ $t->post_ok('/api/user', json => {age => 42})->status_is(400)
   ->json_is('/errors/0', {message => 'Read-only.', path => '/body/age'});
 
 $t->post_ok('/api/user', json => {something => 'else'})->status_is(500)
-  ->json_is('/errors/0', {message => 'Missing property.', path => '/age'});
+  ->json_is('/errors/0', {message => 'Missing property.', path => '/body/age'});
 
 done_testing;
 

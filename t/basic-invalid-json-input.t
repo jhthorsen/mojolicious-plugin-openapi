@@ -12,7 +12,7 @@ post '/invalid' => sub {
 plugin OpenAPI => {url => 'data://main/spec.json', default_response => undef};
 
 my $t = Test::Mojo->new;
-$t->post_ok('/api/invalid')->status_is(400)->content_like(qr{got null});
+$t->post_ok('/api/invalid')->status_is(400)->json_is('/errors/0/message', 'Missing property.');
 
 done_testing;
 

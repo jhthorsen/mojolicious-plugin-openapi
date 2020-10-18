@@ -9,11 +9,11 @@ post '/upload' => sub {
   },
   'upload';
 
-plugin OpenAPI => {url => 'data://main/openapi.yaml', schema => 'v3'};
+plugin OpenAPI => {url => 'data://main/openapi.yaml'};
 
 my $t = Test::Mojo->new;
 
-$t->post_ok('/api/upload', form => {})->status_is(400)
+$t->post_ok('/api/upload', form => {foo => 42})->status_is(400)
   ->json_is('/errors/0', {message => 'Missing property.', path => '/body/image'});
 
 my $image = Mojo::Asset::Memory->new->add_chunk('smileyface');
