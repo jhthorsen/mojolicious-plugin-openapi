@@ -50,7 +50,7 @@ sub register {
 
   $self->{default_response_codes} = $config->{default_response_codes} || [400, 401, 404, 500, 501];
   $self->{default_response_name}  = $config->{default_response_name}  || 'DefaultResponse';
-  $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
+  $self->{log_level}              = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_renderer($config->{renderer}) if $config->{renderer};
   $self->_build_route($app, $config);
 
@@ -102,8 +102,8 @@ sub _add_routes {
     my ($http_method, $openapi_path) = @_;
     my $path_parameters = $self->validator->get([paths => $openapi_path => 'parameters']) || [];
     my $op_spec         = $self->validator->get([paths => $openapi_path => $http_method]);
-    my $name = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-    my $to   = $op_spec->{'x-mojo-to'};
+    my $name            = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+    my $to              = $op_spec->{'x-mojo-to'};
     my $r;
 
     $self->{parameters_for}{$openapi_path}{$http_method}
@@ -225,8 +225,8 @@ sub _each_route {
 
   my @sorted_paths
     = map { $_->[0] }
-    sort { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
-    map { [$_, /\{/ ? 1 : 0] } grep { !/$X_RE/ } keys %{$self->validator->get('/paths') || {}};
+    sort  { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
+    map   { [$_, /\{/ ? 1 : 0] } grep { !/$X_RE/ } keys %{$self->validator->get('/paths') || {}};
 
   my @routes;
   for my $path (@sorted_paths) {
@@ -416,6 +416,16 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 See L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2> or
 L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3> for tutorials on how to
 write a "full" app with application class and controllers.
+
+=head1 IMPORTANT ANNOUNCEMENT
+
+Next version of L<Mojolicious::Plugin::OpenAPI> will not be shipped with
+L<JSON::Validator::OpenAPI::Mojolicious>. Instead, it will depend on the new
+L<JSON::Validator::Schema::OpenAPIv2> and L<JSON::Validator::Schema::OpenAPIv3>
+modules.
+
+The next version is available at
+L<https://github.com/jhthorsen/mojolicious-plugin-openapi/pull/160>.
 
 =head1 DESCRIPTION
 
