@@ -55,6 +55,16 @@ See [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/M
 [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv3) for tutorials on how to
 write a "full" app with application class and controllers.
 
+# IMPORTANT ANNOUNCEMENT
+
+Next version of [Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI) will not be shipped with
+[JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3AOpenAPI%3A%3AMojolicious). Instead, it will depend on the new
+[JSON::Validator::Schema::OpenAPIv2](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3ASchema%3A%3AOpenAPIv2) and [JSON::Validator::Schema::OpenAPIv3](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3ASchema%3A%3AOpenAPIv3)
+modules.
+
+The next version is available at
+[https://github.com/jhthorsen/mojolicious-plugin-openapi/pull/160](https://github.com/jhthorsen/mojolicious-plugin-openapi/pull/160).
+
 # DESCRIPTION
 
 [Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI) is [Mojolicious::Plugin](https://metacpan.org/pod/Mojolicious%3A%3APlugin) that add routes and

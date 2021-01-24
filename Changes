@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-3.41 Not Released
+3.41 2021-01-24T16:44:53+0900
  - Add announcement about the new JSON::Validator based API
  - Add missing documentation about Text::Markdown
  - Add permalinks to headers in SpecRenderer
