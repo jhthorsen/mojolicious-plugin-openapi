@@ -4,6 +4,8 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
  - Add missing documentation about Text::Markdown
  - Add permalinks to headers in SpecRenderer
  - SpecRenderer adds openapi.rich_text helper
+ - Compatible with Mojolicious 8.67
+ - Bump JSON::Validator to 4.11
 
 3.40 2020-10-10T16:23:05+0900
  - Compatible with JSON::Validator 4.06

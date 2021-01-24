@@ -1,6 +1,9 @@
 package Mojolicious::Plugin::OpenAPI::Cors;
 use Mojo::Base -base;
 
+require Mojolicious::Routes::Route;
+my $methods = Mojolicious::Routes::Route->can('methods') ? 'methods' : 'via';
+
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our %SIMPLE_METHODS = map { ($_ => 1) } qw(GET HEAD POST);
@@ -50,7 +53,7 @@ sub _add_preflighted_routes {
     next if $match->find($c, {method => 'options', path => $route_path});
 
     # Make a given action also handle OPTIONS
-    push @{$route->via}, 'OPTIONS';
+    push @{$route->$methods}, 'OPTIONS';
     $route->to->{'openapi.cors_preflighted'} = 1;
     warn "[OpenAPI] Add route options $route_path (@{[$route->name // '']})\n" if DEBUG;
   }
@@ -165,7 +168,7 @@ sub _takeover_exchange_route {
 
   return 0 if $defaults->{controller};
   return 0 unless $defaults->{action} and $defaults->{action} eq 'openapi_plugin_cors_exchange';
-  return 0 unless grep { $_ eq 'OPTIONS' } @{$route->via};
+  return 0 unless grep { $_ eq 'OPTIONS' } @{$route->$methods};
 
   $defaults->{cb} = sub {
     my $c = shift;
