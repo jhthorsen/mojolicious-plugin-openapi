@@ -3,12 +3,11 @@ use Test::Mojo;
 use Test::More;
 
 our $cors_callback = 'main::cors_exchange';
-our $cors_method   = 'cors_exchange';
 
 use Mojolicious::Lite;
 get '/user' => sub {
-  my $c = shift->openapi->$cors_method($cors_callback)->openapi->valid_input or return;
-  $c->render(json => {cors => $cors_method, origin => $c->stash('origin')});
+  my $c = shift->openapi->cors_exchange($cors_callback)->openapi->valid_input or return;
+  $c->render(json => {cors => 'cors_exchange', origin => $c->stash('origin')});
   },
   'getUser';
 
@@ -32,19 +31,16 @@ plugin OpenAPI => {url => 'data://main/cors.json', add_preflighted_routes => 1};
 
 my $t = Test::Mojo->new;
 
-for (qw(cors_simple cors_exchange)) {
-  note 'Simple';
-  local $cors_method = $_;
-  $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
-    ->status_is(400)->json_is('/errors/0/message', 'Invalid Origin header.');
+note 'Simple';
+$t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})
+  ->status_is(400)->json_is('/errors/0/message', 'Invalid Origin header.');
 
-  $t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.example'})
-    ->status_is(200)->header_is('Access-Control-Allow-Origin' => 'http://foo.example')
-    ->json_is('/cors', $cors_method)->json_is('/origin', 'http://foo.example');
+$t->get_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://foo.example'})
+  ->status_is(200)->header_is('Access-Control-Allow-Origin' => 'http://foo.example')
+  ->json_is('/cors', 'cors_exchange')->json_is('/origin', 'http://foo.example');
 
-  $t->get_ok('/api/user', {Origin => 'http://foo.example'})->status_is(200)
-    ->header_is('Access-Control-Allow-Origin' => 'http://foo.example');
-}
+$t->get_ok('/api/user', {Origin => 'http://foo.example'})->status_is(200)
+  ->header_is('Access-Control-Allow-Origin' => 'http://foo.example');
 
 note 'Preflighted';
 $t->options_ok('/api/user', {'Content-Type' => 'text/plain', Origin => 'http://bar.example'})

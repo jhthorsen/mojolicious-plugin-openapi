@@ -33,13 +33,6 @@ sub register {
 
   $app->defaults($_ => $defaults{$_}) for grep { !$app->defaults($_) } keys %defaults;
   $app->helper('openapi.cors_exchange' => sub { $self->_exchange(@_) });
-
-  # TODO: Remove support for openapi.cors_simple
-  $app->helper(
-    'openapi.cors_simple' => sub {
-      $self->_exchange(shift->stash('openapi.cors_simple_deprecated' => 1), @_);
-    }
-  );
 }
 
 sub _add_preflighted_routes {
@@ -83,14 +76,6 @@ sub _exchange {
   $c->stash(openapi_cors_type => $type);
 
   my $errors = $c->$cb;
-
-  # TODO: Remove support for openapi.cors_simple
-  if ($c->stash('openapi.cors_simple_deprecated')) {
-    warn "\$c->openapi->cors_simple() has been replaced by \$c->openapi->cors_exchange()";
-    return _render_bad_request($c, '/Origin') unless $c->res->headers->access_control_allow_origin;
-    return $c;
-  }
-
   return _render_bad_request($c, $errors) if $errors;
 
   _set_default_headers($c);
