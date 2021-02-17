@@ -140,7 +140,7 @@ sub _before_render {
   my $status = $args->{status} || $c->stash('status') || '200';
   if ($handler eq 'openapi' and ($status eq '404' or $status eq '500')) {
     $args->{handler} = 'openapi';
-    $args->{status}  = ($status eq '404' and $c->stash('openapi.path')) ? 501 : $status;
+    $args->{status}  = $status;
     $c->stash(
       status  => $args->{status},
       openapi => {
@@ -578,7 +578,7 @@ The default response code list is the following:
   401 | Unauthorized          | Used by Mojolicious::Plugin::OpenAPI::Security
   404 | Not Found             | Route is not defined
   500 | Internal Server Error | Internal error or failed output validation
-  501 | Not Implemented       | Route exists, but the action is not implemented
+  501 | Not Implemented       | Route exists, but specification is not defined
 
 Note that more default codes might be added in the future if required by the
 plugin.

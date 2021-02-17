@@ -23,8 +23,6 @@ $t->get_ok('/api/die')->status_is(500)->json_is('/errors/0/message', 'Internal S
 
 # Not implemented
 $t->get_ok('/api/todo')->status_is(404)->json_is('/errors/0/message', 'Not Found.');
-$t->post_ok('/api/todo' => json => ['invalid'])->status_is(501)
-  ->json_is('/errors/0/message', 'Not Implemented.');
 
 # Implemented, but Not Found
 define_controller();

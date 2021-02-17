@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+4.00 Not Released
+ - Using JSON::Validator::Schema::OpenAPIv2 and OpenAPIv2 schema API #160
+ - Compatible with Mojolicious 9.0
+ - Depends on JSON::Validator 4.13
+
 3.41 2021-01-24T16:44:53+0900
  - Add announcement about the new JSON::Validator based API
  - Add missing documentation about Text::Markdown

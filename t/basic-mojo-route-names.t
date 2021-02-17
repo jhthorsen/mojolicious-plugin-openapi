@@ -5,7 +5,7 @@ use Test::More;
 use Mojolicious::Lite;
 app->routes->namespaces(['MyApp::Controller']);
 get '/whatever' => sub { die 'Oh noes!' }, 'Whatever';
-plugin OpenAPI  => {url => 'data://main/lite.json'};
+plugin OpenAPI => {url => 'data://main/lite.json'};
 my $t = Test::Mojo->new;
 my $r = $t->app->routes;
 ok $r->find('Whatever'), 'Whatever is defined';
@@ -27,7 +27,6 @@ $t->app->plugin(OpenAPI => {spec_route_name => 'my_api', url => 'data://main/ful
 ok $r->lookup('my_api'), 'my_api is defined';
 $r = $r->lookup('my_api')->parent;
 ok $r->find('my_api.Whatever'), 'my_api.Whatever is defined';
-$t->get_ok('/api/no-endpoint')->status_is(501)->json_is('/errors/0/message', 'Not Implemented.');
 
 done_testing;
 
