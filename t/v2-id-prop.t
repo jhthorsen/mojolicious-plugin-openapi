@@ -15,7 +15,7 @@ plugin OpenAPI => {url => 'data://main/schema.json'};
 my $t = Test::Mojo->new;
 
 $t->get_ok('/api/user')->status_is(500)
-  ->json_is('/errors/0', {message => 'Expected integer - got string.', path => '/id'});
+  ->json_is('/errors/0', {message => 'Expected integer - got string.', path => '/body/id'});
 
 $id = 42;
 $t->get_ok('/api/user')->status_is(200)->json_is('/email', 'jhthorsen@cpan.org')

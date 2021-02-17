@@ -64,7 +64,6 @@ post '/die' => sub {
 our %checks;
 plugin OpenAPI => {
   url      => 'data://main/sec.json',
-  schema   => 'v3',
   security => {
     pass1 => sub {
       my ($c, $def, $scopes, $cb) = @_;
@@ -151,41 +150,43 @@ my $t = Test::Mojo->new;
 {
   local %checks;
   $t->post_ok('/api/fail_and_pass' => json => {})->status_is(401)
-    ->json_is({errors => [{message => 'Failed fail1', path => '/security/0/fail1'}]});
+    ->json_is(
+    {errors => [{message => 'Failed fail1', path => '/security/0/fail1'}], status => 401});
   is_deeply \%checks, {fail1 => 1, pass1 => 1}, 'expected checks occurred';
 }
 
 {
   local %checks;
-  $t->post_ok('/api/multiple_fail' => json => {})->status_is(401)->json_is(
-    {
-      errors => [
-        {message => 'Failed fail1', path => '/security/0/fail1'},
-        {message => 'Failed fail2', %security_definition},
-      ]
-    }
-  );
+  $t->post_ok('/api/multiple_fail' => json => {})->status_is(401)->json_is({
+    status => 401,
+    errors => [
+      {message => 'Failed fail1', path => '/security/0/fail1'},
+      {message => 'Failed fail2', %security_definition},
+    ]
+  });
   is_deeply \%checks, {fail1 => 1, fail2 => 1}, 'expected checks occurred';
 }
 
 {
   local %checks;
-  $t->post_ok('/api/multiple_and_fail' => json => {})->status_is(401)->json_is(
-    {
-      errors => [
-        {message => 'Failed fail1', path => '/security/0/fail1'},
-        {message => 'Failed fail2', %security_definition}
-      ]
-    }
-  );
+  $t->post_ok('/api/multiple_and_fail' => json => {})->status_is(401)->json_is({
+    status => 401,
+    errors => [
+      {message => 'Failed fail1', path => '/security/0/fail1'},
+      {message => 'Failed fail2', %security_definition}
+    ]
+  });
   is_deeply \%checks, {fail1 => 1, fail2 => 1}, 'expected checks occurred';
 }
 
 {
   local %checks;
-  $t->post_ok('/api/fail_escape' => json => {})->status_is(401)
-    ->json_is(
-    {errors => [{message => 'Failed ~fail/escape', path => '/security/0/~0fail~1escape'}]});
+  $t->post_ok('/api/fail_escape' => json => {})->status_is(401)->json_is(
+    {
+      errors => [{message => 'Failed ~fail/escape', path => '/security/0/~0fail~1escape'}],
+      status => 401
+    }
+  );
   is_deeply \%checks, {'~fail/escape' => 1}, 'expected checks occurred';
 }
 

@@ -3,7 +3,8 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator;
 use Mojo::JSON;
-use Mojo::Util 'deprecated';
+use Mojo::Util qw(deprecated);
+use Scalar::Util qw(blessed);
 
 use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 use constant MARKDOWN => eval 'require Text::Markdown;1';
@@ -92,6 +93,7 @@ sub _render_partial_spec {
   my $method  = $c->param('method');
   my $bundled = $validator->get([paths => $path]);
   $bundled = $validator->bundle({schema => $bundled}) if $bundled;
+  $bundled = $bundled->data                           if blessed $bundled;
   my $definitions = $bundled->{definitions} || {} if $bundled;
   my $parameters  = $bundled->{parameters}  || [];
 
@@ -130,10 +132,10 @@ sub _render_spec {
   }
   elsif ($openapi) {
     my $req_url = $c->req->url->to_abs;
-    $openapi->{bundled} ||= $openapi->validator->bundle;
+    $openapi->{bundled} ||= $openapi->validator->bundle->data;
     %spec = %{$openapi->{bundled}};
 
-    if ($openapi->validator->version ge '3') {
+    if ($openapi->validator->moniker eq 'openapiv3') {
       $spec{servers}[0]{url} = $req_url->to_string;
       $spec{servers}[0]{url} =~ s!\.(html|json)$!!;
       delete $spec{basePath};    # Added by Plugin::OpenAPI

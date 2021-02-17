@@ -8,7 +8,7 @@ use Mojo::Base 'Mojolicious';
 sub startup {
   my $app = shift;
   $app->plugin(OpenAPI => {url => 'data://main/v2.yaml'});
-  $app->plugin(OpenAPI => {url => 'data://main/v3.yaml', schema => 'v3'});
+  $app->plugin(OpenAPI => {url => 'data://main/v3.yaml'});
 }
 
 package MyApp::Controller::User;

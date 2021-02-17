@@ -1,40 +1,29 @@
 package Mojolicious::Plugin::OpenAPI;
 use Mojo::Base 'Mojolicious::Plugin';
 
-use JSON::Validator::OpenAPI::Mojolicious;
-use JSON::Validator::Ref;
+use JSON::Validator;
 use Mojo::JSON;
 use Mojo::Util;
+use Mojolicious::Plugin::OpenAPI::Parameters;
+
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '3.41';
 my $X_RE = qr{^x-};
 
 has route     => sub {undef};
-has validator => sub { JSON::Validator::OpenAPI::Mojolicious->new; };
-
-has _renderer => sub {
-  return sub {
-    my $c = shift;
-    return $_[0]->slurp if UNIVERSAL::isa($_[0], 'Mojo::Asset');
-    $c->res->headers->content_type('application/json;charset=UTF-8')
-      unless $c->res->headers->content_type;
-    return Mojo::JSON::encode_json($_[0]);
-  };
-};
+has validator => sub { JSON::Validator::Schema->new; };
 
 sub register {
   my ($self, $app, $config) = @_;
 
-  $self->validator->coerce($config->{coerce} // 'booleans,numbers,strings');
-  $self->validator->load_and_validate_schema(
-    $config->{url} || $config->{spec},
-    {
-      allow_invalid_ref  => $config->{allow_invalid_ref},
-      schema             => $config->{schema},
-      version_from_class => $config->{version_from_class} // ref $app,
-    }
-  );
+  $self->validator(JSON::Validator->new->schema($config->{url} || $config->{spec})->schema);
+  $self->validator->coerce($config->{coerce})               if defined $config->{coerce};
+  $self->validator->allow_invalid_ref(1)                    if $config->{allow_invalid_ref};
+  $self->_set_schema_version($config->{version_from_class}) if $config->{version_from_class};
+
+  my $errors = $self->validator->errors;
+  die @$errors if @$errors;
 
   unless ($app->defaults->{'openapi.base_paths'}) {
     $app->helper('openapi.spec'        => \&_helper_get_spec);
@@ -51,10 +40,11 @@ sub register {
   $self->{default_response_codes} = $config->{default_response_codes} || [400, 401, 404, 500, 501];
   $self->{default_response_name}  = $config->{default_response_name}  || 'DefaultResponse';
   $self->{log_level}              = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
-  $self->_renderer($config->{renderer}) if $config->{renderer};
   $self->_build_route($app, $config);
 
-  my @plugins;
+  # This plugin is required
+  my @plugins = (Mojolicious::Plugin::OpenAPI::Parameters->new->register($app, $config));
+
   for my $plugin (@{$config->{plugins} || [qw(+Cors +SpecRenderer +Security)]}) {
     $plugin = "Mojolicious::Plugin::OpenAPI::$plugin" if $plugin =~ s!^\+!!;
     eval "require $plugin;1" or Carp::confess("require $plugin: $@");
@@ -67,25 +57,25 @@ sub register {
 
 sub _add_default_response {
   my ($self, $op_spec) = @_;
-  my $name        = $self->{default_response_name};
-  my $schema_data = $self->validator->schema->data;
+  my $name   = $self->{default_response_name};
+  my $schema = $self->validator;
 
   # turn off with config { default_response_codes => [] }
   return unless @{$self->{default_response_codes}};
 
   my $ref
-    = $self->validator->version ge '3'
-    ? ($schema_data->{components}{schemas}{$name} ||= $self->_default_schema)
-    : ($schema_data->{definitions}{$name} ||= $self->_default_schema);
+    = $schema->moniker eq 'openapiv3'
+    ? ($schema->data->{components}{schemas}{$name} ||= $self->_default_schema)
+    : ($schema->data->{definitions}{$name} ||= $self->_default_schema);
 
   my %schema
-    = $self->validator->version ge '3'
+    = $schema->moniker eq 'openapiv3'
     ? ('$ref' => "#/components/schemas/$name")
     : ('$ref' => "#/definitions/$name");
 
   tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
   for my $code (@{$self->{default_response_codes}}) {
-    if ($self->validator->version ge '3') {
+    if ($schema->moniker eq 'openapiv3') {
       $op_spec->{responses}{$code} ||= $self->_default_schema_v3(\%schema);
     }
     else {
@@ -100,14 +90,10 @@ sub _add_routes {
 
   $self->_each_route(sub {
     my ($http_method, $openapi_path) = @_;
-    my $path_parameters = $self->validator->get([paths => $openapi_path => 'parameters']) || [];
-    my $op_spec         = $self->validator->get([paths => $openapi_path => $http_method]);
-    my $name            = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-    my $to              = $op_spec->{'x-mojo-to'};
+    my $op_spec = $self->validator->get([paths => $openapi_path => $http_method]);
+    my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
+    my $to      = $op_spec->{'x-mojo-to'};
     my $r;
-
-    $self->{parameters_for}{$openapi_path}{$http_method}
-      = [@$path_parameters, @{$op_spec->{parameters} || []}];
 
     die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
       if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
@@ -170,13 +156,13 @@ sub _build_route {
   my $route = $config->{route};
 
   my $base_path
-    = $self->validator->version eq '3'
+    = $self->validator->moniker eq 'openapiv3'
     ? Mojo::URL->new($self->validator->get('/servers/0/url') || '/')->path->to_string
     : $self->validator->get('/basePath') || '/';
 
   $route     = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route     = $app->routes->any($base_path) unless $route;
-  $base_path = $self->validator->schema->data->{basePath} = $route->to_string;
+  $base_path = $self->validator->data->{basePath} = $route->to_string;
   $base_path =~ s!/$!!;
 
   push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
@@ -281,17 +267,18 @@ sub _helper_valid_input {
   return undef if $c->res->code;
   return $c unless my @errors = _helper_validate($c);
   $c->stash(status => 400)
-    ->render(data => _self($c)->_renderer->($c, {errors => \@errors, status => 400}));
+    ->render(data => $c->openapi->build_response_body({errors => \@errors, status => 400}));
   return undef;
 }
 
 sub _helper_validate {
-  my $c       = shift;
-  my $self    = _self($c);
-  my $op_spec = $c->openapi->spec;
-  local $op_spec->{parameters}
-    = $self->_parameters_for($c->req->method, $c->stash('openapi.path'),);
-  return $self->validator->validate_request($c, $op_spec, $c->validation->output);
+  my $c      = shift;
+  my $self   = _self($c);
+  my @errors = $self->validator->validate_request([@{$c->stash}{qw(openapi.method openapi.path)}],
+    $c->openapi->build_schema_request);
+  $c->openapi->coerce_request_parameters(
+    delete $c->stash->{'openapi.evaluated_request_parameters'});
+  return @errors;
 }
 
 sub _log {
@@ -306,24 +293,32 @@ sub _log {
   );
 }
 
-sub _parameters_for { $_[0]->{parameters_for}{$_[2]}{lc($_[1])} || [] }
-
 sub _render {
   my ($renderer, $c, $output, $args) = @_;
-  return unless exists $c->stash->{openapi};
+  my $stash = $c->stash;
+  return unless exists $stash->{openapi};
   return unless my $self = _self($c);
 
-  my $res     = $c->stash('openapi');
-  my $status  = $args->{status} ||= ($c->stash('status') || 200);
-  my $op_spec = $c->openapi->spec || {responses => {$status => {schema => $self->_default_schema}}};
+  my $status             = $args->{status} || $stash->{status} || 200;
+  my $method_path_status = [@$stash{qw(openapi.method openapi.path)}, $status];
+  my $op_spec
+    = $method_path_status->[0] && $self->validator->parameters_for_response($method_path_status);
   my @errors;
 
   delete $args->{encoding};
-  $c->stash->{format} ||= 'json';
+  $args->{status} = $status;
+  $stash->{format} ||= 'json';
 
-  if ($op_spec->{responses}{$status} or $op_spec->{responses}{default}) {
-    @errors = $self->validator->validate_response($c, $op_spec, $status, $res);
-    $args->{status} = 500 if @errors;
+  if ($op_spec) {
+    @errors = $self->validator->validate_response($method_path_status,
+      $c->openapi->build_schema_response);
+    $c->openapi->coerce_response_parameters(
+      delete $stash->{'openapi.evaluated_response_parameters'});
+    $args->{status} = $errors[0]->path eq '/header/Accept' ? 400 : 500 if @errors;
+  }
+  elsif (ref $stash->{openapi} eq 'HASH' and ref $stash->{openapi}{errors} eq 'ARRAY') {
+    $args->{status} ||= $stash->{openapi}{status};
+    @errors = @{$stash->{openapi}{errors}};
   }
   else {
     $args->{status} = 501;
@@ -331,21 +326,23 @@ sub _render {
   }
 
   $self->_log($c, '>>>', \@errors) if @errors;
-  $c->stash(status => $args->{status});
-  $$output = $self->_renderer->($c, @errors ? {errors => \@errors, status => $status} : $res);
+  $stash->{status} = $args->{status};
+  $$output = $c->openapi->build_response_body(
+    @errors ? {errors => \@errors, status => $args->{status}} : $stash->{openapi});
 }
 
 sub _openapi_path_to_route_path {
-  my ($self, $http_method, $openapi_path) = @_;
-  my %params = map { ($_->{name}, $_) } @{$self->_parameters_for($http_method, $openapi_path)};
+  my ($self, $http_method, $path) = @_;
+  my %params = map { ($_->{name}, $_) }
+    grep { $_->{in} eq 'path' } @{$self->validator->parameters_for_request([$http_method, $path])};
 
-  $openapi_path =~ s/{([^}]+)}/{
+  $path =~ s/{([^}]+)}/{
     my $name = $1;
     my $type = $params{$name}{'x-mojo-placeholder'} || ':';
     "<$type$name>";
   }/ge;
 
-  return $openapi_path;
+  return $path;
 }
 
 sub _self {
@@ -354,6 +351,11 @@ sub _self {
   return $self if $self;
   my $path = $c->req->url->path->to_string;
   return +(map { $_->[1] } grep { $path =~ /^$_->[0]/ } @{$c->stash('openapi.base_paths')})[0];
+}
+
+sub _set_schema_version {
+  my ($self, $class) = @_;
+  $self->validator->data->{info}{version} = $class->VERSION;
 }
 
 1;
@@ -531,7 +533,8 @@ The parent L<Mojolicious::Routes::Route> object for all the OpenAPI endpoints.
 
   $jv = $openapi->validator;
 
-Holds a L<JSON::Validator::OpenAPI::Mojolicious> object.
+Holds either a L<JSON::Validator::Schema::OpenAPIv2> or a
+L<JSON::Validator::Schema::OpenAPIv3> object.
 
 =head1 METHODS
 
@@ -618,14 +621,6 @@ C<route> can be specified in case you want to have a protected API. Example:
     route => $app->routes->under("/api")->to("user#auth"),
     url   => $app->home->rel_file("cool.api"),
   });
-
-=head3 schema
-
-Can be used to set a different schema, than the default OpenAPI 2.0 spec.
-Example values: "http://swagger.io/v2/schema.json", "v2" or "v3".
-
-See also L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2> and
-L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3>.
 
 =head3 spec_route_name
 

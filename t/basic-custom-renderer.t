@@ -25,7 +25,8 @@ $t->get_ok('/api/user')->status_is(200)->json_is('/age', 43)->json_is('/t', $^T)
 
 $age = 'invalid output!';
 note "age = $age";
-$t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/path', '/age')->json_is('/t', $^T);
+$t->get_ok('/api/user')->status_is(500)->json_is('/messages/0/path', '/body/age')
+  ->json_is('/t', $^T);
 $t->post_ok('/api/user', form => {age => 'invalid input'})->status_is(400)
   ->json_is('/messages/0/path', '/age')->json_is('/t', $^T);
 
