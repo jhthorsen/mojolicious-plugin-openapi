@@ -8,7 +8,7 @@ use Mojolicious::Plugin::OpenAPI::Parameters;
 
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '3.41';
+our $VERSION = '4.00';
 my $X_RE = qr{^x-};
 
 has route     => sub {undef};

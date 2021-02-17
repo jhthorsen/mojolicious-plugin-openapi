@@ -169,7 +169,8 @@ The parent [Mojolicious::Routes::Route](https://metacpan.org/pod/Mojolicious%3A%
 
     $jv = $openapi->validator;
 
-Holds a [JSON::Validator::OpenAPI::Mojolicious](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3AOpenAPI%3A%3AMojolicious) object.
+Holds either a [JSON::Validator::Schema::OpenAPIv2](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3ASchema%3A%3AOpenAPIv2) or a
+[JSON::Validator::Schema::OpenAPIv3](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3ASchema%3A%3AOpenAPIv3) object.
 
 # METHODS
 
@@ -213,7 +214,7 @@ The default response code list is the following:
     401 | Unauthorized          | Used by Mojolicious::Plugin::OpenAPI::Security
     404 | Not Found             | Route is not defined
     500 | Internal Server Error | Internal error or failed output validation
-    501 | Not Implemented       | Route exists, but the action is not implemented
+    501 | Not Implemented       | Route exists, but specification is not defined
 
 Note that more default codes might be added in the future if required by the
 plugin.
@@ -256,14 +257,6 @@ See ["RENDERER"](#renderer).
       route => $app->routes->under("/api")->to("user#auth"),
       url   => $app->home->rel_file("cool.api"),
     });
-
-### schema
-
-Can be used to set a different schema, than the default OpenAPI 2.0 spec.
-Example values: "http://swagger.io/v2/schema.json", "v2" or "v3".
-
-See also [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2) and
-[Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv3).
 
 ### spec\_route\_name
 
