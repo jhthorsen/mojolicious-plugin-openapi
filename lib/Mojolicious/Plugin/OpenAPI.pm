@@ -9,7 +9,6 @@ use Mojolicious::Plugin::OpenAPI::Parameters;
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
 our $VERSION = '4.00';
-my $X_RE = qr{^x-};
 
 has route     => sub {undef};
 has validator => sub { JSON::Validator::Schema->new; };
@@ -88,9 +87,8 @@ sub _add_routes {
   my ($self, $app, $config) = @_;
   my (@routes, %uniq);
 
-  $self->_each_route(sub {
-    my ($http_method, $openapi_path) = @_;
-    my $op_spec = $self->validator->get([paths => $openapi_path => $http_method]);
+  for my $route ($self->validator->routes->each) {
+    my $op_spec = $self->validator->get([paths => @$route{qw(path method)}]);
     my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
     my $to      = $op_spec->{'x-mojo-to'};
     my $r;
@@ -102,10 +100,11 @@ sub _add_routes {
     if (!$to and $name) {
       $r = $self->route->root->find($name);
       warn "[OpenAPI] Found existing route by name '$name'.\n" if DEBUG and $r;
-      $self->route->add_child($r) if $r;
+      $self->route->add_child($r)                              if $r;
     }
     if (!$r) {
-      my $route_path = $self->_openapi_path_to_route_path($http_method, $openapi_path);
+      my $http_method = $route->{method};
+      my $route_path  = $self->_openapi_path_to_route_path(@$route{qw(method path)});
       $name ||= $op_spec->{operationId};
       warn "[OpenAPI] Creating new route for '$route_path'.\n" if DEBUG;
       $r = $self->route->$http_method($route_path);
@@ -115,12 +114,12 @@ sub _add_routes {
     $self->_add_default_response($op_spec);
 
     $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-    $r->to({'openapi.method' => $http_method});
-    $r->to({'openapi.path'   => $openapi_path});
-    warn "[OpenAPI] Add route $http_method @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
+    $r->to({'openapi.method' => $route->{method}});
+    $r->to({'openapi.path'   => $route->{path}});
+    warn "[OpenAPI] Add route $route->{method} @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
     push @routes, $r;
-  });
+  }
 
   $app->plugins->emit_hook(openapi_routes_added => $self, \@routes);
 }
@@ -204,22 +203,6 @@ sub _default_schema_v3 {
     description => 'default Mojolicious::Plugin::OpenAPI response',
     content     => {'application/json' => {schema => $schema}},
   };
-}
-
-sub _each_route {
-  my ($self, $cb) = @_;
-
-  my @sorted_paths
-    = map { $_->[0] }
-    sort  { $a->[1] <=> $b->[1] || length $a->[0] <=> length $b->[0] }
-    map   { [$_, /\{/ ? 1 : 0] } grep { !/$X_RE/ } keys %{$self->validator->get('/paths') || {}};
-
-  my @routes;
-  for my $path (@sorted_paths) {
-    for my $http_method (sort keys %{$self->validator->get([paths => $path]) || {}}) {
-      $cb->($http_method => $path) unless $http_method =~ $X_RE or $http_method eq 'parameters';
-    }
-  }
 }
 
 sub _helper_get_spec {
