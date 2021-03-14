@@ -26,6 +26,7 @@ sub register {
   }
 
   my %defaults = (
+    openapi_cors_allow_credentials         => undef,
     openapi_cors_allowed_origins           => [],
     openapi_cors_default_exchange_callback => \&_default_cors_exchange_callback,
     openapi_cors_default_max_age           => 1800,
@@ -127,6 +128,13 @@ sub _set_default_headers {
 
   unless ($res_h->access_control_allow_origin) {
     $res_h->access_control_allow_origin($req_h->origin);
+  }
+
+  unless ($res_h->header('Access-Control-Allow-Credentials')) {
+    if ($c->stash('openapi_cors_allow_credentials')) {
+      $res_h->header(
+        'Access-Control-Allow-Credentials' => $c->stash('openapi_cors_allow_credentials'));
+    }
   }
 
   return unless $c->stash('openapi_cors_type') eq 'preflighted';
@@ -286,6 +294,7 @@ L</openapi.cors_exchange>:
 
     # Set Preflighted response headers, instead of using the default
     if ($c->stash("openapi_cors_type") eq "preflighted") {
+      $c->res->headers->header("Access-Control-Allow-Credentials" => "true");
       $c->res->headers->header("Access-Control-Allow-Headers" => "X-Whatever, X-Something");
       $c->res->headers->header("Access-Control-Allow-Methods" => "POST, GET, OPTIONS");
       $c->res->headers->header("Access-Control-Max-Age" => 86400);
@@ -320,6 +329,17 @@ L</openapi_cors_default_exchange_callback> is used. Examples:
 
   $app->defaults(openapi_cors_allowed_origins => [qr{^https?://whatever.example.com}]);
   $c->stash(openapi_cors_allowed_origins => [qr{^https?://whatever.example.com}]);
+
+=head2 openapi_cors_allow_credentials
+
+This variable holds the default value for the "Access-Control-Allow-Credentials" response header
+against L</openapi_cors_allow_credentials>.
+It will be either "true" or "false". Examples:
+
+  $app->defaults(openapi_cors_allow_credentials => 'true');
+  $c->stash(openapi_cors_allow_credentials => 'true');
+
+Default value is C<undef>.
 
 =head2 openapi_cors_default_exchange_callback
 
