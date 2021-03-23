@@ -16,7 +16,9 @@ $app->plugin('Mojolicious::Plugin::OpenAPI::SpecRenderer' =>
 my $custom_spec = JSON::Validator->new->schema($petstore->to_string)->bundle;
 $app->routes->get('/my-unknown-doc' => sub { shift->openapi->render_spec });
 $app->routes->get(
-  '/my-cool-doc' => sub { $_[0]->openapi->render_spec($_[0]->param('path'), $custom_spec) });
+  '/my-cool-doc' => [format => [qw(html json)]],
+  {format => undef}, sub { $_[0]->openapi->render_spec($_[0]->param('path'), $custom_spec) }
+);
 
 my $t = Test::Mojo->new($app);
 $t->get_ok('/my-cool-doc.json')->status_is(200)->json_is('/basePath', '/v1')

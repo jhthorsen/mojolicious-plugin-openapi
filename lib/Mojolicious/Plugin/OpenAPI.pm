@@ -114,8 +114,8 @@ sub _add_routes {
     $self->_add_default_response($op_spec);
 
     $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-    $r->to({'openapi.method' => $route->{method}});
-    $r->to({'openapi.path'   => $route->{path}});
+    $r->to(
+      {'openapi.method' => $route->{method}, 'openapi.path' => $route->{path}, format => undef});
     warn "[OpenAPI] Add route $route->{method} @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
     push @routes, $r;
@@ -165,7 +165,7 @@ sub _build_route {
   $base_path =~ s!/$!!;
 
   push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
-  $route->to({handler => 'openapi', 'openapi.object' => $self});
+  $route->to({format => undef, handler => 'openapi', 'openapi.object' => $self});
 
   if (my $spec_route_name = $config->{spec_route_name} || $self->validator->get('/x-mojo-name')) {
     $self->{route_prefix} = "$spec_route_name.";

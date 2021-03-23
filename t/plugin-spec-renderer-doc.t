@@ -54,8 +54,13 @@ SKIP: {
 sub add_routes {
   my ($app, $name) = @_;
   $app->routes->get('/url' => sub { $_[0]->render(text => $_[0]->url_for($name)) });
-  $app->routes->get('/docs')->to(cb => sub { shift->openapi->render_spec })->name('docs');
-  $app->routes->post('/pets')->to(cb => sub { shift->render(openapi => {}) })->name('addPet');
+  $app->routes->get(
+    '/docs',
+    [format => [qw(html json)]],
+    {format => undef},
+    sub { shift->openapi->render_spec }
+  )->name('docs');
+  $app->routes->post('/pets', sub { shift->render(openapi => {}) })->name('addPet');
   return $app;
 }
 

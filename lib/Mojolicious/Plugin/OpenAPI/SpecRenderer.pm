@@ -51,8 +51,13 @@ sub _register_with_openapi {
   my $openapi = $config->{openapi};
 
   if ($config->{render_specification} // 1) {
-    my $spec_route = $openapi->route->get('/')->to(cb => sub { shift->openapi->render_spec(@_) });
-    my $name       = $config->{spec_route_name} || $openapi->validator->get('/x-mojo-name');
+    my $spec_route = $openapi->route->get(
+      '/',
+      [format => [qw(html json)]],
+      {format => undef},
+      sub { shift->openapi->render_spec(@_) }
+    );
+    my $name = $config->{spec_route_name} || $openapi->validator->get('/x-mojo-name');
     $spec_route->name($name) if $name;
   }
 
@@ -108,7 +113,7 @@ sub _render_partial_spec {
   return $c->render(
     json => {
       '$schema'   => 'http://json-schema.org/draft-04/schema#',
-      title       => $validator->get([qw(info title)]) || '',
+      title       => $validator->get([qw(info title)])       || '',
       description => $validator->get([qw(info description)]) || '',
       definitions => $definitions,
       parameters  => $parameters,
