@@ -1,7 +1,6 @@
 use Mojo::Base -strict;
 use Test::Mojo;
 use Test::More;
-use JSON::Validator 'validate_json';
 use JSON::Validator::Schema::OpenAPIv2;
 
 my $data = {};
@@ -9,8 +8,8 @@ $data->{rec} = $data;
 
 $SIG{ALRM} = sub { die 'Recursion!' };
 alarm 2;
-my @errors = ('i_will_be_removed');
-eval { @errors = validate_json {top => $data}, 'data://main/spec.json' };
+my @errors
+  = JSON::Validator::Schema::Draft4->new('data://main/spec.json')->validate({top => $data});
 is $@, '', 'no error';
 is_deeply(\@errors, [], 'avoided recursion');
 
