@@ -144,8 +144,9 @@ ref will be flatten. Examples:
   "x-mojo-to": {"controller": "pet", "action": "list", "foo": 123}
   $route->to({controller => "pet", action => "list", foo => 123);
 
-  "x-mojo-to": ["pet#list", {"foo": 123}]
+  "x-mojo-to": ["pet#list", {"foo": 123}, ["format": ["json"]]]
   $route->to("pet#list", {foo => 123});
+  $route->pattern->constraints->{format} = ["json"];
 
 =back
 

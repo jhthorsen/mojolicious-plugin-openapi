@@ -91,14 +91,13 @@ sub _add_routes {
   for my $route ($self->validator->routes->each) {
     my $op_spec = $self->validator->get([paths => @$route{qw(path method)}]);
     my $name    = $op_spec->{'x-mojo-name'} || $op_spec->{operationId};
-    my $to      = $op_spec->{'x-mojo-to'};
     my $r;
 
     die qq([OpenAPI] operationId "$op_spec->{operationId}" is not unique)
       if $op_spec->{operationId} and $uniq{o}{$op_spec->{operationId}}++;
     die qq([OpenAPI] Route name "$name" is not unique.) if $name and $uniq{r}{$name}++;
 
-    if (!$to and $name) {
+    if (!$op_spec->{'x-mojo-to'} and $name) {
       $r = $self->route->root->find($name);
       warn "[OpenAPI] Found existing route by name '$name'.\n" if DEBUG and $r;
       $self->route->add_child($r)                              if $r;
@@ -113,10 +112,7 @@ sub _add_routes {
     }
 
     $self->_add_default_response($op_spec);
-
-    $r->to(ref $to eq 'ARRAY' ? @$to : $to) if $to;
-    $r->to(
-      {'openapi.method' => $route->{method}, 'openapi.path' => $route->{path}, format => undef});
+    $self->_modify_route($r, $route, $config, $op_spec);
     warn "[OpenAPI] Add route $route->{method} @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
     push @routes, $r;
@@ -279,6 +275,27 @@ sub _log {
   );
 }
 
+sub _modify_route {
+  my ($self, $r, $route, $config, $op_spec) = @_;
+  my $op_to = $op_spec->{'x-mojo-to'} // [];
+  my @args
+    = ref $op_to eq 'ARRAY' ? @$op_to : ref $op_to eq 'HASH' ? %$op_to : $op_to ? ($op_to) : ();
+
+  # x-mojo-to: controller#action
+  $r->to(shift @args) if @args and $args[0] =~ m!#!;
+
+  my ($constraints, @to) = ($r->pattern->constraints);
+  $constraints->{format} //= $config->{format} if $config->{format};
+  while (my $arg = shift @args) {
+    if    (ref $arg eq 'ARRAY') { %$constraints = (%$constraints, @$arg) }
+    elsif (ref $arg eq 'HASH')  { push @to, %$arg }
+    elsif (!ref $arg and @args) { push @to, $arg, shift @args }
+  }
+
+  $r->to(@to) if @to;
+  $r->to(format => undef, 'openapi.method' => $route->{method}, 'openapi.path' => $route->{path});
+}
+
 sub _render {
   my ($renderer, $c, $output, $args) = @_;
   my $stash = $c->stash;
@@ -404,6 +421,11 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
 See L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2> or
 L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3> for tutorials on how to
 write a "full" app with application class and controllers.
+
+Looking at the documentation for
+L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2/x-mojo-to> can be especially
+useful if you are using extensions (formats) such as ".json". The logic is the
+same for OpenAPIv2 and OpenAPIv3.
 
 =head1 DESCRIPTION
 
@@ -565,6 +587,14 @@ The name of the "definition" in the spec that will be used for
 L</default_response_codes>. The default value is "DefaultResponse". See
 L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2/"Default response schema">
 for more details.
+
+=head3 format
+
+Set this to a default list of file extensions that your API accepts. This value
+can be overwritten by
+L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2/x-mojo-to>.
+
+This config parameter is EXPERIMENTAL and subject for change.
 
 =head3 log_level
 

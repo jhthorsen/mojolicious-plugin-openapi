@@ -15,8 +15,15 @@ sub any {
 
   $c->render(
     openapi => {
-      days       => {controller => $c->param('days'), url => $c->req->query_params->param('days')},
-      name       => $name,
+      days   => {controller => $c->param('days'), url => $c->req->query_params->param('days')},
+      format => $c->stash('format'),
+      name   => $name,
+      route  => {
+        bar         => $c->stash('bar'),
+        constraints => $c->match->endpoint->pattern->constraints,
+        foo         => $c->stash('foo'),
+        namespace   => $c->stash('namespace')
+      },
       x_foo      => {header => $c->req->headers->header('X-Foo')},
       validation => $c->validation->output,
     }
@@ -56,10 +63,17 @@ $t->get_ok('/api/echo/something')->status_is(200)->json_is('/this_stack/whatever
 
 $t->get_ok('/api/param-has-ref?x=42')->status_is(200)->content_is('"10.1.0"');
 
-$t->post_ok('/api/echo-controller')->status_is(200)
-  ->json_is('/days' => {controller => 42, url => 42})
-  ->json_is('/name',  {controller => 'batman', form => 'batman'})
-  ->json_is('/x_foo', {header     => 'yikes'})
+$t->post_ok('/api/echo-controller.js')->status_is(200)
+  ->json_is('/days' => {controller => 42, url => 42})->json_is('/format', 'js')
+  ->json_is('/name', {controller => 'batman', form => 'batman'})->json_is(
+  '/route',
+  {
+    bar         => 42,
+    constraints => {format => [qw(js txt)]},
+    foo         => [42],
+    namespace   => 'Test::Controller'
+  }
+)->json_is('/x_foo', {header => 'yikes'})
   ->json_is('/validation',
   {days => 42, name => 'batman', 'X-Foo' => 'yikes', enumParam => '10.1.0'});
 
@@ -118,7 +132,7 @@ __DATA__
     },
     "/echo-controller": {
       "post": {
-        "x-mojo-to": ["namespace", "Test::Controller", "controller", "echo", "action", "any"],
+        "x-mojo-to": ["echo#any", {"foo": [42]}, "bar", "42", ["format", ["js", "txt"]], "namespace", "Test::Controller"],
         "parameters": [
           { "in": "query", "name": "days", "type": "number", "default": 42 },
           { "in": "formData", "name": "name", "type": "string", "default": "batman" },

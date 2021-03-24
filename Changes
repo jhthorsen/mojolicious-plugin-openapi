@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+4.02 Not Released
+ - Add support for passing in constraints (such as format) using x-mojo-to
+
 4.01 2021-03-24T09:14:22+0900
  - Using routes() from JSON::Validator::Schema::OpenAPIv2 and ::OpenAPIv3
  - Fix generating correct OpenAPIv2 spec #199
