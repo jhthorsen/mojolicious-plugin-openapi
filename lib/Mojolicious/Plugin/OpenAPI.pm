@@ -402,16 +402,6 @@ See L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2> or
 L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3> for tutorials on how to
 write a "full" app with application class and controllers.
 
-=head1 IMPORTANT ANNOUNCEMENT
-
-Next version of L<Mojolicious::Plugin::OpenAPI> will not be shipped with
-L<JSON::Validator::OpenAPI::Mojolicious>. Instead, it will depend on the new
-L<JSON::Validator::Schema::OpenAPIv2> and L<JSON::Validator::Schema::OpenAPIv3>
-modules.
-
-The next version is available at
-L<https://github.com/jhthorsen/mojolicious-plugin-openapi/pull/160>.
-
 =head1 DESCRIPTION
 
 L<Mojolicious::Plugin::OpenAPI> is L<Mojolicious::Plugin> that add routes and
