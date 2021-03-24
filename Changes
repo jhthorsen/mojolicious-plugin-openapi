@@ -1,7 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-4.01 Not Released
+4.01 2021-03-24T09:14:22+0900
  - Using routes() from JSON::Validator::Schema::OpenAPIv2 and ::OpenAPIv3
+ - Fix generating correct OpenAPIv2 spec #199
+ - Fix not adding basePath to OpenAPIv3 spec #200
  - Fix compatibility with Mojolicious 9.11 #204
 
 4.00 2021-02-17T09:23:35+0900
