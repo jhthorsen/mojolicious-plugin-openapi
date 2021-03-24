@@ -51,7 +51,8 @@ sub register {
   }
 
   $self->_add_routes($app, $config);
-  $self;
+
+  return $self;
 }
 
 sub _add_default_response {
@@ -152,22 +153,24 @@ sub _before_render {
 
 sub _build_route {
   my ($self, $app, $config) = @_;
-  my $route = $config->{route};
+  my $validator = $self->validator;
+  my $route     = $config->{route};
 
   my $base_path
-    = $self->validator->moniker eq 'openapiv3'
-    ? Mojo::URL->new($self->validator->get('/servers/0/url') || '/')->path->to_string
-    : $self->validator->get('/basePath') || '/';
+    = $validator->moniker eq 'openapiv3'
+    ? Mojo::URL->new($validator->get('/servers/0/url') || '/')->path->to_string
+    : $validator->get('/basePath') || '/';
 
   $route     = $route->any($base_path) if $route and !$route->pattern->unparsed;
   $route     = $app->routes->any($base_path) unless $route;
-  $base_path = $self->validator->data->{basePath} = $route->to_string;
+  $base_path = $route->to_string;
   $base_path =~ s!/$!!;
 
   push @{$app->defaults->{'openapi.base_paths'}}, [$base_path, $self];
   $route->to({format => undef, handler => 'openapi', 'openapi.object' => $self});
+  $validator->data->{basePath} = $route->to_string if $validator->moniker eq 'openapiv2';
 
-  if (my $spec_route_name = $config->{spec_route_name} || $self->validator->get('/x-mojo-name')) {
+  if (my $spec_route_name = $config->{spec_route_name} || $validator->get('/x-mojo-name')) {
     $self->{route_prefix} = "$spec_route_name.";
   }
 

@@ -26,7 +26,7 @@ post '/pets' => sub {
   },
   'createPets';
 
-plugin OpenAPI => {
+my $openapi_plugin = plugin OpenAPI => {
   url      => path(__FILE__)->dirname->child(qw(spec v3-petstore.json)),
   renderer => sub {
     my ($c, $data) = @_;
@@ -39,7 +39,10 @@ plugin OpenAPI => {
 };
 
 my $t = Test::Mojo->new;
-$t->get_ok('/v1.json')->status_is(200)->json_like('/servers/0/url', qr{^http://[^/]+/v1$});
+$t->get_ok('/v1.json')->status_is(200)->json_like('/servers/0/url', qr{^http://[^/]+/v1$})
+  ->json_hasnt('/basePath');
+
+ok !$openapi_plugin->validator->data->{basePath}, 'basePath was not added';
 
 $t->get_ok('/v1/pets?limit=invalid', {Accept => 'application/json'})->status_is(400)
   ->json_is('/errors/0/message', 'Expected integer - got string.');
