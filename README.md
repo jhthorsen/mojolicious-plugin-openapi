@@ -55,6 +55,11 @@ See [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/M
 [Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv3) for tutorials on how to
 write a "full" app with application class and controllers.
 
+Looking at the documentation for
+["x-mojo-to" in Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2#x-mojo-to) can be especially
+useful if you are using extensions (formats) such as ".json". The logic is the
+same for OpenAPIv2 and OpenAPIv3.
+
 # DESCRIPTION
 
 [Mojolicious::Plugin::OpenAPI](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI) is [Mojolicious::Plugin](https://metacpan.org/pod/Mojolicious%3A%3APlugin) that add routes and
@@ -215,6 +220,14 @@ The name of the "definition" in the spec that will be used for
 ["default\_response\_codes"](#default_response_codes). The default value is "DefaultResponse". See
 ["Default response schema" in Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2#Default-response-schema)
 for more details.
+
+### format
+
+Set this to a default list of file extensions that your API accepts. This value
+can be overwritten by
+["x-mojo-to" in Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2#x-mojo-to).
+
+This config parameter is EXPERIMENTAL and subject for change.
 
 ### log\_level
 
