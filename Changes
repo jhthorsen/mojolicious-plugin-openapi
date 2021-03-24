@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+4.03 Not Released
+ - Improved documentation: "schema" is no longer needed
+
 4.02 2021-03-24T11:37:27+0900
  - Add support for passing in constraints (such as format) using x-mojo-to
 
