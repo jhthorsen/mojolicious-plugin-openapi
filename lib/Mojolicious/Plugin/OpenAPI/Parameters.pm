@@ -41,7 +41,9 @@ sub _helper_build_schema_request {
     formData => sub {
       my $name  = shift;
       my $value = $req->body_params->every_param($name);
-      return $evaluated[@evaluated] = {exists => 1, value => $value} if @$value;
+      my $n     = @$value;
+      return $evaluated[@evaluated] = {exists => 1, value => $n > 1 ? $value : $value->[0]}
+        if $n > 0;
 
       $value = $req->upload($name);
       return $evaluated[@evaluated] = {exists => !!$value, value => $value && $value->size};
@@ -60,7 +62,8 @@ sub _helper_build_schema_request {
       return $evaluated[@evaluated] = {exists => 1, value => $req->url->query->to_hash}
         unless my $name = shift;
       my $value = $req->url->query->every_param($name);
-      return $evaluated[@evaluated] = {exists => !!@$value, value => $value};
+      my $n     = @$value;
+      return $evaluated[@evaluated] = {exists => !!$n, value => $n > 1 ? $value : $value->[0]};
     },
   };
 }
