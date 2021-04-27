@@ -43,7 +43,7 @@ plugin OpenAPI => {
   spec => {
     openapi => '3.0.0',
     info    => {
-      title => 'Sample API',
+      title       => 'Sample API',
       description =>
         'Optional multiline or single-line description in [CommonMark](http://commonmark.org/help/) or HTML.',
       version => '0.1.9'
@@ -67,7 +67,7 @@ plugin OpenAPI => {
           responses   => {
             '200' => {
               description => 'A JSON array of user names',
-              content =>
+              content     =>
                 {'application/json' => {schema => {type => 'array', items => {type => 'string'}}}}
             }
           }
@@ -100,13 +100,13 @@ $t->get_ok('/one')->status_is(200)
 
 $t->options_ok('/oa3/users?method=get')->status_is(200)
   ->json_is('/responses/200/description', 'A JSON array of user names')
-  ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
+  ->json_is('/responses/400/description', 'Default response.')
   ->json_is('/responses/400/content/application~1json/schema/$ref',
   '#/components/schemas/DefaultResponse');
 
 $t->options_ok('/oa3/jobs?method=get')->status_is(200)
-  ->json_is('/responses/200/description', 'A JSON array of job types')
-  ->json_is('/responses/400/description', 'default Mojolicious::Plugin::OpenAPI response')
+  ->json_is('/responses/200/description',                           'A JSON array of job types')
+  ->json_is('/responses/400/description',                           'Default response.')
   ->json_is('/responses/200/content/application~1json/schema/$ref', '#/components/schemas/jobs');
 
 $t->options_ok('/one/user?method=post')->status_is(200)
@@ -117,7 +117,7 @@ $t->options_ok('/one/user?method=post')->status_is(200)
 
 $t->get_ok('/two')->status_is(200)->json_is('/definitions/DefaultResponse', undef)
   ->json_is('/definitions/DefErr/required', [qw(errors something_else)])
-  ->json_is('/info/title', 'Test schema two');
+  ->json_is('/info/title',                  'Test schema two');
 $t->options_ok('/two/user?method=post')->status_is(200)
   ->json_is('/responses/400/schema/$ref',     '#/definitions/DefErr')
   ->json_is('/responses/default/description', 'whatever');

@@ -33,12 +33,7 @@ sub register {
     $app->renderer->add_handler(openapi => \&_render);
   }
 
-  # Removed in 2.00
-  die "[OpenAPI] default_response is no longer supported in config" if $config->{default_response};
-
-  $self->{default_response_codes} = $config->{default_response_codes} || [400, 401, 404, 500, 501];
-  $self->{default_response_name}  = $config->{default_response_name}  || 'DefaultResponse';
-  $self->{log_level}              = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
+  $self->{log_level} = $ENV{MOJO_OPENAPI_LOG_LEVEL} || $config->{log_level} || 'warn';
   $self->_build_route($app, $config);
 
   # This plugin is required
@@ -50,38 +45,15 @@ sub register {
     push @plugins, $plugin->new->register($app, {%$config, openapi => $self});
   }
 
+  my %default_response = %{$config->{default_response} || {}};
+  $default_response{name}   ||= $config->{default_response_name}  || 'DefaultResponse';
+  $default_response{status} ||= $config->{default_response_codes} || [400, 401, 404, 500, 501];
+  $default_response{location} = 'definitions';
+  $self->validator->add_default_response(\%default_response) if @{$default_response{status}};
+
   $self->_add_routes($app, $config);
 
   return $self;
-}
-
-sub _add_default_response {
-  my ($self, $op_spec) = @_;
-  my $name   = $self->{default_response_name};
-  my $schema = $self->validator;
-
-  # turn off with config { default_response_codes => [] }
-  return unless @{$self->{default_response_codes}};
-
-  my $ref
-    = $schema->moniker eq 'openapiv3'
-    ? ($schema->data->{components}{schemas}{$name} ||= $self->_default_schema)
-    : ($schema->data->{definitions}{$name} ||= $self->_default_schema);
-
-  my %schema
-    = $schema->moniker eq 'openapiv3'
-    ? ('$ref' => "#/components/schemas/$name")
-    : ('$ref' => "#/definitions/$name");
-
-  tie %schema, 'JSON::Validator::Ref', $ref, $schema{'$ref'}, $schema{'$ref'};
-  for my $code (@{$self->{default_response_codes}}) {
-    if ($schema->moniker eq 'openapiv3') {
-      $op_spec->{responses}{$code} ||= $self->_default_schema_v3(\%schema);
-    }
-    else {
-      $op_spec->{responses}{$code} ||= $self->_default_schema_v2(\%schema);
-    }
-  }
 }
 
 sub _add_routes {
@@ -111,7 +83,6 @@ sub _add_routes {
       $r->name("$self->{route_prefix}$name") if $name;
     }
 
-    $self->_add_default_response($op_spec);
     $self->_modify_route($r, $route, $config, $op_spec);
     warn "[OpenAPI] Add route $route->{method} @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
@@ -172,36 +143,6 @@ sub _build_route {
 
   $self->{route_prefix} //= '';
   $self->route($route);
-}
-
-sub _default_schema {
-  +{
-    type       => 'object',
-    required   => ['errors'],
-    properties => {
-      errors => {
-        type  => 'array',
-        items => {
-          type       => 'object',
-          required   => ['message'],
-          properties => {message => {type => 'string'}, path => {type => 'string'}}
-        }
-      }
-    }
-  };
-}
-
-sub _default_schema_v2 {
-  my ($self, $schema) = @_;
-  +{description => 'Default response.', schema => $schema};
-}
-
-sub _default_schema_v3 {
-  my ($self, $schema) = @_;
-  +{
-    description => 'default Mojolicious::Plugin::OpenAPI response',
-    content     => {'application/json' => {schema => $schema}},
-  };
 }
 
 sub _helper_get_spec {
@@ -562,29 +503,11 @@ Default: booleans,numbers,strings
 
 The default value will include "defaults" in the future, once that is stable enough.
 
-=head3 default_response_codes
+=head3 default_response
 
-A list of response codes that will get a C<"$ref"> pointing to
-"#/definitions/DefaultResponse", unless already defined in the spec.
-"DefaultResponse" can be altered by setting L</default_response_name>.
-
-The default response code list is the following:
-
-  400 | Bad Request           | Invalid input from client / user agent
-  401 | Unauthorized          | Used by Mojolicious::Plugin::OpenAPI::Security
-  404 | Not Found             | Route is not defined
-  500 | Internal Server Error | Internal error or failed output validation
-  501 | Not Implemented       | Route exists, but specification is not defined
-
-Note that more default codes might be added in the future if required by the
-plugin.
-
-=head3 default_response_name
-
-The name of the "definition" in the spec that will be used for
-L</default_response_codes>. The default value is "DefaultResponse". See
-L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2/"Default response schema">
-for more details.
+Instructions for
+L<JSON::Validator::Schema::OpenAPIv2/add_default_response_schema>. (Also used
+for OpenAPIv3)
 
 =head3 format
 
