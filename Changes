@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 4.03 Not Released
+ - Depending on JSON::Validator 4.17
  - Add support for "skip_validating_specification"
  - Reverted back to supporting "default_response"
  - Moved "DefaultResponse" for v2 from "definitions" to "responses"
