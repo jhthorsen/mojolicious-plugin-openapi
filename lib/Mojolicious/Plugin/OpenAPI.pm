@@ -21,7 +21,7 @@ sub register {
   $self->validator->allow_invalid_ref(1)                    if $config->{allow_invalid_ref};
   $self->_set_schema_version($config->{version_from_class}) if $config->{version_from_class};
 
-  my $errors = $self->validator->errors;
+  my $errors = $config->{skip_validating_specification} ? [] : $self->validator->errors;
   die @$errors if @$errors;
 
   unless ($app->defaults->{'openapi.base_paths'}) {
@@ -544,6 +544,11 @@ C<route> can be specified in case you want to have a protected API. Example:
     route => $app->routes->under("/api")->to("user#auth"),
     url   => $app->home->rel_file("cool.api"),
   });
+
+=head3 skip_validating_specification
+
+Used to prevent calling L<JSON::Validator::Schema::OpenAPIv2/errors> for the
+specification.
 
 =head3 spec_route_name
 

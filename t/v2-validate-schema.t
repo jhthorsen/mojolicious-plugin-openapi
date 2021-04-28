@@ -11,6 +11,9 @@ like $@, qr{/definitions/\$ref}si, 'ref in the wrong place';
 eval { plugin OpenAPI => {allow_invalid_ref => 1, url => 'data://main/swagger2/issues/89.json'} };
 ok !$@, 'allow_invalid_ref=1' or diag $@;
 
+eval { plugin OpenAPI => {skip_validating_specification => 1, url => 'data://main/invalid.json'} };
+ok !$@, 'skip_validating_specification=1' or diag $@;
+
 done_testing;
 
 __DATA__
