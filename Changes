@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-4.03 Not Released
+4.03 2021-04-28T11:32:17+0900
  - Depending on JSON::Validator 4.17
  - Add support for "skip_validating_specification"
  - Reverted back to supporting "default_response"

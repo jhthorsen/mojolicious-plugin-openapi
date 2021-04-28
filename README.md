@@ -21,9 +21,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     }, "echo";
 
     # Load specification and start web server
-    # Use "v3" instead of "v2" for "schema" if you are using OpenAPI v3
-    # The plugin must be loaded *after* defining the routes in a Lite app
-    plugin OpenAPI => {url => "data:///spec.json", schema => "v2"};
+    plugin OpenAPI => {url => "data:///spec.json"};
     app->start;
 
     __DATA__
@@ -197,29 +195,11 @@ Default: booleans,numbers,strings
 
 The default value will include "defaults" in the future, once that is stable enough.
 
-### default\_response\_codes
+### default\_response
 
-A list of response codes that will get a `"$ref"` pointing to
-"#/definitions/DefaultResponse", unless already defined in the spec.
-"DefaultResponse" can be altered by setting ["default\_response\_name"](#default_response_name).
-
-The default response code list is the following:
-
-    400 | Bad Request           | Invalid input from client / user agent
-    401 | Unauthorized          | Used by Mojolicious::Plugin::OpenAPI::Security
-    404 | Not Found             | Route is not defined
-    500 | Internal Server Error | Internal error or failed output validation
-    501 | Not Implemented       | Route exists, but specification is not defined
-
-Note that more default codes might be added in the future if required by the
-plugin.
-
-### default\_response\_name
-
-The name of the "definition" in the spec that will be used for
-["default\_response\_codes"](#default_response_codes). The default value is "DefaultResponse". See
-["Default response schema" in Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3AGuides%3A%3AOpenAPIv2#Default-response-schema)
-for more details.
+Instructions for
+["add\_default\_response\_schema" in JSON::Validator::Schema::OpenAPIv2](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3ASchema%3A%3AOpenAPIv2#add_default_response_schema). (Also used
+for OpenAPIv3)
 
 ### format
 
@@ -260,6 +240,11 @@ See ["RENDERER"](#renderer).
       route => $app->routes->under("/api")->to("user#auth"),
       url   => $app->home->rel_file("cool.api"),
     });
+
+### skip\_validating\_specification
+
+Used to prevent calling ["errors" in JSON::Validator::Schema::OpenAPIv2](https://metacpan.org/pod/JSON%3A%3AValidator%3A%3ASchema%3A%3AOpenAPIv2#errors) for the
+specification.
 
 ### spec\_route\_name
 
