@@ -354,8 +354,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
   }
 
 See L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2> or
-L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3> for tutorials on how to
-write a "full" app with application class and controllers.
+L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv3> for more information about.
 
 Looking at the documentation for
 L<Mojolicious::Plugin::OpenAPI::Guides::OpenAPIv2/x-mojo-to> can be especially
