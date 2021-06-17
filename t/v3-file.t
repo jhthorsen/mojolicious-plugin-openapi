@@ -21,7 +21,7 @@ $t->post_ok(
   '/api/upload',
   {Accept => 'application/json'},
   form => {id => 1, image => {file => $image}}
-)->status_is(200);
+)->content_like(qr{"size"})->status_is(200);
 
 done_testing;
 
