@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-4.05 Not Released
+4.05 2021-07-10T15:56:19+0900
  - Allow string in OpenAPIv2 request body #219
 
 4.04 2021-06-17T11:16:04+0900
