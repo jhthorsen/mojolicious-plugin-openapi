@@ -1,7 +1,7 @@
 package Mojolicious::Plugin::OpenAPI::Parameters;
 use Mojo::Base 'Mojolicious::Plugin';
 
-use JSON::Validator::Util qw(is_type);
+use JSON::Validator::Util qw(is_bool);
 use Mojo::JSON qw(encode_json);
 
 sub register {
@@ -17,7 +17,7 @@ sub register {
 }
 
 sub _bool {
-  return map { !is_type($_, 'BOOL') ? $_ : $_ ? 'true' : 'false' } @_;
+  return map { !is_bool($_) ? $_ : $_ ? 'true' : 'false' } @_;
 }
 
 sub _helper_build_response_body {

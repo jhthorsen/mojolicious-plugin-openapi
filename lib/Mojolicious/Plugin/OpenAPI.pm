@@ -18,7 +18,6 @@ sub register {
 
   $self->validator(JSON::Validator->new->schema($config->{url} || $config->{spec})->schema);
   $self->validator->coerce($config->{coerce})               if defined $config->{coerce};
-  $self->validator->allow_invalid_ref(1)                    if $config->{allow_invalid_ref};
   $self->_set_schema_version($config->{version_from_class}) if $config->{version_from_class};
 
   my $errors = $config->{skip_validating_specification} ? [] : $self->validator->errors;
@@ -296,7 +295,7 @@ sub _self {
 
 sub _set_schema_version {
   my ($self, $class) = @_;
-  $self->validator->data->{info}{version} = $class->VERSION;
+  $self->validator->data->{info}{version} = sprintf '%s', $class->VERSION;
 }
 
 1;
@@ -483,13 +482,6 @@ documents. The return value is the object instance, which allow you to access
 the L</ATTRIBUTES> after you load the plugin.
 
 C<%config> can have:
-
-=head3 allow_invalid_ref
-
-The OpenAPI specification does not allow "$ref" at every level, but setting
-this flag to a true value will ignore the $ref check.
-
-Note that setting this attribute is discourage.
 
 =head3 coerce
 

@@ -9,15 +9,13 @@ get '/test' => sub {
   },
   'File';
 
-plugin OpenAPI => {url => app->home->rel_file("spec/v3-invalid_file_refs.yaml")};
+plugin OpenAPI => {url => app->home->rel_file('spec/v3-invalid_file_refs.yaml')};
 
 my $t = Test::Mojo->new;
+$t->get_ok('/api')->status_is(200)->json_hasnt('/PCVersion/name')->json_has('/components/schemas')
+  ->content_like(qr/v3-invalid_include_yaml-PCVersion/);
 
-$t->get_ok('/api')->status_is(200)->json_hasnt('/PCVersion/name')->json_has('/definitions')
-  ->content_like(qr/v3-invalid_include_yaml-PCVersion-/);
-
-eval { die JSON::Validator::Schema::OpenAPIv3->new($t->get_ok('/api')->tx->res->body)->errors->[0] };
-like $@, qr/Properties not allowed: definitions/,
-  'load_and_validate_schema fails, wrong placement of data';
+my $validator = JSON::Validator::Schema::OpenAPIv3->new($t->get_ok('/api')->tx->res->body);
+like $validator->errors->[0], qr/Properties not allowed/, 'invalid bundled spec';
 
 done_testing;
