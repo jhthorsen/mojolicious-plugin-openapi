@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.00 Not Released
+ - Compatible with JSON::Validator 5.00
+ - Removed support for "allow_invalid_ref"
+ - Changed render_spec() to require a JSON::Validator::Schema::OpenAPIv2 object
+
 4.06 2021-09-14T14:08:26+0200
  - Add support for adding $route->to(...) programmatically
  - Fix link to Convos example spec #222

@@ -3,7 +3,6 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator;
 use Mojo::JSON;
-use Mojo::Util qw(deprecated);
 use Scalar::Util qw(blessed);
 
 use constant DEBUG    => $ENV{MOJO_OPENAPI_DEBUG} || 0;
@@ -88,113 +87,58 @@ sub _helper_rich_text {
 }
 
 sub _render_partial_spec {
-  my ($self, $c, $path, $custom_spec) = @_;
-
-  my $validator
-    = $custom_spec        ? JSON::Validator->new->schema($custom_spec)
-    : $self->{standalone} ? JSON::Validator->new->schema($c->stash('openapi_spec'))
-    :                       Mojolicious::Plugin::OpenAPI::_self($c)->validator;
-
-  my $method  = $c->param('method');
-  my $bundled = $validator->get([paths => $path]);
-  $bundled = $validator->bundle({schema => $bundled}) if $bundled;
-  $bundled = $bundled->data                           if blessed $bundled;
-  my $definitions = $bundled->{definitions} || {} if $bundled;
-  my $parameters  = $bundled->{parameters}  || [];
-
-  if ($method and $bundled = $bundled->{$method}) {
-    push @$parameters, @{$bundled->{parameters} || []};
-  }
+  my ($self, $c, $path, $custom) = @_;
+  my $method    = $c->param('method');
+  my $validator = $custom || Mojolicious::Plugin::OpenAPI::_self($c)->validator;
 
   return $c->render(json => {errors => [{message => 'No spec defined.'}]}, status => 404)
-    unless $bundled;
+    unless my $schema = $validator->get([paths => $path, $method ? ($method) : ()]);
 
-  delete $bundled->{$_} for qw(definitions parameters);
   return $c->render(
     json => {
       '$schema'   => 'http://json-schema.org/draft-04/schema#',
       title       => $validator->get([qw(info title)])       || '',
       description => $validator->get([qw(info description)]) || '',
-      definitions => $definitions,
-      parameters  => $parameters,
-      %$bundled,
+      %{$validator->bundle({schema => $schema})->data},
+      $method ? (parameters => $validator->parameters_for_request([$method, $path])) : (),
     }
   );
 }
 
 sub _render_spec {
-  my ($self, $c, $path, $custom_spec) = @_;
-  deprecated '"openapi_spec" in stash is DEPRECATED'          if $c->stash('openapi_spec');
-  return $self->_render_partial_spec($c, $path, $custom_spec) if $path;
+  my ($self, $c, $path, $custom) = @_;
+  return $self->_render_partial_spec($c, $path, $custom) if $path;
 
-  my $openapi
-    = $custom_spec || $self->{standalone} ? undef : Mojolicious::Plugin::OpenAPI::_self($c);
-  my $format = $c->stash('format') || 'json';
-  my %spec;
+  my $openapi   = $custom || $self->{standalone} ? undef : Mojolicious::Plugin::OpenAPI::_self($c);
+  my $format    = $c->stash('format') || 'json';
+  my $validator = $custom;
 
-  if ($custom_spec) {
-    %spec = %$custom_spec;
-  }
-  elsif ($openapi) {
-    my $req_url = $c->req->url->to_abs;
-    $openapi->{bundled} ||= $openapi->validator->bundle->data;
-    %spec = %{$openapi->{bundled}};
-
-    if ($openapi->validator->moniker eq 'openapiv3') {
-      $spec{servers}[0]{url} = $req_url->to_string;
-      $spec{servers}[0]{url} =~ s!\.(html|json)$!!;
-      delete $spec{basePath};    # Added by Plugin::OpenAPI
-    }
-    else {
-      $spec{basePath}   = $c->url_for($spec{basePath});
-      $spec{host}       = $req_url->host_port;
-      $spec{schemes}[0] = $req_url->scheme;
-    }
-  }
-  elsif ($c->stash('openapi_spec')) {
-    %spec = %{$c->stash('openapi_spec') || {}};
+  if (!$validator and $openapi) {
+    $validator = $openapi->{bundled} ||= $openapi->validator->bundle;
+    $validator->base_url($c->req->url->to_abs->path($c->url_for($validator->base_url->path)));
   }
 
   return $c->render(json => {errors => [{message => 'No specification to render.'}]}, status => 500)
-    unless %spec;
+    unless $validator;
 
-  my ($x_re, $base_url, @operations) = (qr{^x-});
-  if ($format eq 'html') {
-    for my $path (keys %{$spec{paths}}) {
-      next if $path =~ $x_re;
-      my $path_spec = $openapi ? $openapi->validator->get([paths => $path]) : $spec{paths}{$path};
-      for my $method (keys %$path_spec) {
-        next if $method =~ $x_re;
-        my $op_spec = $path_spec->{$method};
-        next unless ref $op_spec eq 'HASH';
-        push @operations,
-          {
-          method  => $method,
-          name    => $op_spec->{operationId} ? $op_spec->{operationId} : join(' ', $method, $path),
-          path    => $path,
-          op_spec => $op_spec,
-          };
-      }
-    }
+  my $operations = $validator->routes->each(sub {
+    my $path_item = $_;
+    $path_item->{op_spec} = $validator->get([paths => @$path_item{qw(path method)}]);
+    $path_item->{operation_id} //= '';
+    $path_item;
+  });
 
-    $base_url
-      = exists $spec{openapi}
-      ? Mojo::URL->new($spec{servers}[0]{url})
-      : Mojo::URL->new->host($spec{host} || 'localhost')->path($spec{basePath})
-      ->scheme($spec{schemes}[0]);
-  }
-
-  return $c->render(json => \%spec) unless $format eq 'html';
+  return $c->render(json => $validator->data) unless $format eq 'html';
   return $c->render(
-    base_url   => $base_url,
+    base_url   => $validator->base_url,
     handler    => 'ep',
     template   => 'mojolicious/plugin/openapi/layout',
-    operations => [sort { $a->{name} cmp $b->{name} } @operations],
+    operations => [sort { $a->{operation_id} cmp $b->{operation_id} } @$operations],
     serialize  => \&_serialize,
     slugify    => sub {
       join '-', map { s/\W/-/g; lc } map {"$_"} @_;
     },
-    spec => \%spec,
+    spec => $validator->data,
   );
 }
 
@@ -233,8 +177,8 @@ C<%openapi_parameters> might contain.
   get "/my-spec" => sub {
     my $c    = shift;
     my $path = $c->param('path') || '/';
-    state $custom_spec = JSON::Validator->new->schema($petstore->to_string)->bundle;
-    $c->openapi->render_spec($path, $custom_spec);
+    state $custom = JSON::Validator->new->schema($petstore->to_string)->schema->bundle;
+    $c->openapi->render_spec($path, $custom);
   };
 
 =head1 DESCRIPTION
@@ -260,7 +204,7 @@ See L<https://demo.convos.chat/api.html> for a demo.
 
   $c = $c->openapi->render_spec;
   $c = $c->openapi->render_spec($json_path);
-  $c = $c->openapi->render_spec($json_path, \%custom_spec);
+  $c = $c->openapi->render_spec($json_path, $openapi_v2_schema_object);
   $c = $c->openapi->render_spec("/user/{id}");
 
 Used to render the specification as either "html" or "json". Set the
@@ -497,7 +441,7 @@ new SpecRenderer().setup();
 @@ mojolicious/plugin/openapi/resource.html.ep
 % my $id = $slugify->(op => $method, $path);
 <h3 id="<%= $id %>" class="op-path <%= $op_spec->{deprecated} ? "deprecated" : "" %>">
-  <a href="#<%= $id %>"><%= $name %></a>
+  <a href="#<%= $id %>"><%= $operation_id %></a>
 </h3>
 % if ($op_spec->{deprecated}) {
 <p class="op-deprecated">This resource is deprecated!</p>
@@ -564,7 +508,7 @@ new SpecRenderer().setup();
     <a href="#resources">Resources</a>
     <ol>
       % for my $op (@$operations) {
-        <li><a href="#<%= $slugify->(op => @$op{qw(method path)}) %>"><%= $op->{name} %></a></li>
+        <li><a href="#<%= $slugify->(op => @$op{qw(method path)}) %>"><%= $op->{operation_id} %></a></li>
       % }
     </ol>
   </li>

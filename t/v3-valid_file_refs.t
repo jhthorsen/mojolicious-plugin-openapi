@@ -12,10 +12,9 @@ get '/test' => sub {
 plugin OpenAPI => {url => app->home->rel_file('spec/v3-valid_file_refs.yaml')};
 
 my $t = Test::Mojo->new;
-
 $t->get_ok('/api')->status_is(200)->json_is('/components/parameters/PCVersion/name', 'pcversion');
 
 my $validator = JSON::Validator::Schema::OpenAPIv3->new($t->get_ok('/api')->tx->res->body);
-is $validator->errors->[0], undef, 'load_and_validate_schema; prove we get a valid spec';
+is $validator->errors->[0], undef, 'valid bundled spec';
 
 done_testing;

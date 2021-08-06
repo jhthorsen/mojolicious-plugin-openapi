@@ -13,7 +13,7 @@ my $app      = Mojolicious->new;
 $app->plugin('Mojolicious::Plugin::OpenAPI::SpecRenderer' =>
     {url => $petstore->to_string, spec_route_name => 'my.cool.api', version_from_class => 'main'});
 
-my $custom_spec = JSON::Validator->new->schema($petstore->to_string)->bundle;
+my $custom_spec = JSON::Validator->new->schema($petstore->to_string)->schema->bundle;
 $app->routes->get('/my-unknown-doc' => sub { shift->openapi->render_spec });
 $app->routes->get(
   '/my-cool-doc' => [format => [qw(html json)]],
