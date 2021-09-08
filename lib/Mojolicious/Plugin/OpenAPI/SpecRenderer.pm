@@ -252,7 +252,7 @@ is too basic or has missing information, then please
 L<report in|https://github.com/jhthorsen/mojolicious-plugin-openapi/issues>
 suggestions for enhancements.
 
-See L<https://demo.convos.by/api.html> for a demo.
+See L<https://demo.convos.chat/api.html> for a demo.
 
 =head1 HELPERS
 
