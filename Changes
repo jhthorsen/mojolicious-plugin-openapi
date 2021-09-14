@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+4.06 Not Released
+ - Add support for adding $route->to(...) programmatically
+
 4.05 2021-07-10T15:56:19+0900
  - Allow string in OpenAPIv2 request body #219
 

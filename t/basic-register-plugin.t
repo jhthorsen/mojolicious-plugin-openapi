@@ -89,6 +89,9 @@ plugin OpenAPI => {
   }
 };
 
+plugin OpenAPI =>
+  {url => 'data://main/programmatically.json', op_spec_to_route => \&op_spec_to_route};
+
 ok $obj->route->find('cool_api'), 'found api endpoint';
 isa_ok($obj->route,     'Mojolicious::Routes::Route');
 isa_ok($obj->validator, 'JSON::Validator::Schema::OpenAPIv2');
@@ -130,7 +133,18 @@ note 'Override options';
 $t->get_ok('/perl/no-default-options/42')->status_is(200)->json_is('/id', 42);
 $t->options_ok('/perl/no-default-options/42')->status_is(200)->json_is('/options', 42);
 
+note 'programmatically';
+$t->get_ok('/api/programmatically')->status_is(200)->json_is('/operationId', 'getStuff')
+  ->json_is('/responses/200/schema/type', 'array');
+$t->post_ok('/api/programmatically')->status_is(200)->json_is('/operationId', 'postStuff')
+  ->json_is('/responses/200/schema/type', 'boolean');
+
 done_testing;
+
+sub op_spec_to_route {
+  my ($plugin, $op_spec, $route) = @_;
+  $route->to(cb => sub { shift->render(json => $op_spec) });
+}
 
 __DATA__
 @@ one.json
@@ -173,6 +187,28 @@ __DATA__
     "DefErr": {
       "type": "object",
       "required": ["errors", "something_else"]
+    }
+  }
+}
+@@ programmatically.json
+{
+  "swagger" : "2.0",
+  "info" : { "version": "0.8", "title" : "Test unique route names" },
+  "basePath" : "/api",
+  "paths" : {
+    "/programmatically" : {
+      "get" : {
+        "operationId" : "getStuff",
+        "responses": {
+          "200": { "description": "response", "schema": { "type": "array" } }
+        }
+      },
+      "post" : {
+        "operationId" : "postStuff",
+        "responses": {
+          "200": { "description": "response", "schema": { "type": "boolean" } }
+        }
+      }
     }
   }
 }

@@ -58,6 +58,7 @@ sub register {
 
 sub _add_routes {
   my ($self, $app, $config) = @_;
+  my $op_spec_to_route = $config->{op_spec_to_route} || '_op_spec_to_route';
   my (@routes, %uniq);
 
   for my $route ($self->validator->routes->each) {
@@ -83,7 +84,8 @@ sub _add_routes {
       $r->name("$self->{route_prefix}$name") if $name;
     }
 
-    $self->_modify_route($r, $route, $config, $op_spec);
+    $r->to(format => undef, 'openapi.method' => $route->{method}, 'openapi.path' => $route->{path});
+    $self->$op_spec_to_route($op_spec, $r, $config);
     warn "[OpenAPI] Add route $route->{method} @{[$r->to_string]} (@{[$r->name // '']})\n" if DEBUG;
 
     push @routes, $r;
@@ -212,8 +214,8 @@ sub _log {
   );
 }
 
-sub _modify_route {
-  my ($self, $r, $route, $config, $op_spec) = @_;
+sub _op_spec_to_route {
+  my ($self, $op_spec, $r, $config) = @_;
   my $op_to = $op_spec->{'x-mojo-to'} // [];
   my @args
     = ref $op_to eq 'ARRAY' ? @$op_to : ref $op_to eq 'HASH' ? %$op_to : $op_to ? ($op_to) : ();
@@ -230,7 +232,6 @@ sub _modify_route {
   }
 
   $r->to(@to) if @to;
-  $r->to(format => undef, 'openapi.method' => $route->{method}, 'openapi.path' => $route->{path});
 }
 
 sub _render {
@@ -517,6 +518,21 @@ This config parameter is EXPERIMENTAL and subject for change.
 C<log_level> is used when logging invalid request/response error messages.
 
 Default: "warn".
+
+=head2 op_spec_to_route
+
+C<op_spec_to_route> can be provided if you want to add route definitions
+without using "x-mojo-to". Example:
+
+  $app->plugin(OpenAPI => {op_spec_to_route => sub {
+    my ($plugin, $op_spec, $route) = @_;
+
+    # Here are two ways to customize where to dispatch the request
+    $route->to(cb => sub { shift->render(openapi => ...) });
+    $route->to(ucfirst "$op_spec->{operationId}#handle_request");
+  }});
+
+This feature is EXPERIMENTAL and might be altered and/or removed.
 
 =head3 plugins
 
