@@ -214,6 +214,21 @@ This config parameter is EXPERIMENTAL and subject for change.
 
 Default: "warn".
 
+## op\_spec\_to\_route
+
+`op_spec_to_route` can be provided if you want to add route definitions
+without using "x-mojo-to". Example:
+
+    $app->plugin(OpenAPI => {op_spec_to_route => sub {
+      my ($plugin, $op_spec, $route) = @_;
+
+      # Here are two ways to customize where to dispatch the request
+      $route->to(cb => sub { shift->render(openapi => ...) });
+      $route->to(ucfirst "$op_spec->{operationId}#handle_request");
+    }});
+
+This feature is EXPERIMENTAL and might be altered and/or removed.
+
 ### plugins
 
 A list of OpenAPI classes to extend the functionality. Default is:

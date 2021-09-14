@@ -14,7 +14,8 @@ my %WriteMakefileArgs = (
   PREREQ_PM      => {'JSON::Validator' => '4.18', 'Mojolicious' => '9.00'},
   META_MERGE     => {
     'dynamic_config' => 0,
-    'meta-spec'      => {version => 2},
+    'meta-spec'      => {version   => 2},
+    'prereqs'        => {'runtime' => {'recommends' => {'Text::Markdown' => 'v1.0.31'}}},
     'resources'      => {
       bugtracker => {web => 'https://github.com/jhthorsen/mojolicious-plugin-openapi/issues'},
       homepage   => 'https://github.com/jhthorsen/mojolicious-plugin-openapi',

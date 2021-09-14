@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-4.06 Not Released
+4.06 2021-09-14T14:08:26+0200
  - Add support for adding $route->to(...) programmatically
  - Fix link to Convos example spec #222
    Contributor: Roy Storey
