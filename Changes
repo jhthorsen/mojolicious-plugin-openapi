@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 5.00 Not Released
+ - Fix "version_from_class" uses the VERSION from $app by default
  - Compatible with JSON::Validator 5.00
  - Removed support for "allow_invalid_ref"
  - Changed render_spec() to require a JSON::Validator::Schema::OpenAPIv2 object
