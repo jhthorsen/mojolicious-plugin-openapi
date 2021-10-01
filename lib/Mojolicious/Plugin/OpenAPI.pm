@@ -17,8 +17,11 @@ sub register {
   my ($self, $app, $config) = @_;
 
   $self->validator(JSON::Validator->new->schema($config->{url} || $config->{spec})->schema);
-  $self->validator->coerce($config->{coerce})               if defined $config->{coerce};
-  $self->_set_schema_version($config->{version_from_class}) if $config->{version_from_class};
+  $self->validator->coerce($config->{coerce}) if defined $config->{coerce};
+
+  if (my $class = $config->{version_from_class} // ref $app) {
+    $self->validator->data->{info}{version} = sprintf '%s', $class->VERSION if $class->VERSION;
+  }
 
   my $errors = $config->{skip_validating_specification} ? [] : $self->validator->errors;
   die @$errors if @$errors;
@@ -291,11 +294,6 @@ sub _self {
   return $self if $self;
   my $path = $c->req->url->path->to_string;
   return +(map { $_->[1] } grep { $path =~ /^$_->[0]/ } @{$c->stash('openapi.base_paths')})[0];
-}
-
-sub _set_schema_version {
-  my ($self, $class) = @_;
-  $self->validator->data->{info}{version} = sprintf '%s', $class->VERSION;
 }
 
 1;
@@ -576,9 +574,8 @@ specification is written in perl, instead of JSON or YAML.
 Can be used to overridden C</info/version> in the API specification, from the
 return value from the C<VERSION()> method in C<version_from_class>.
 
-This will only have an effect if "version" is "0".
-
-Defaults to the current C<$app>.
+Defaults to the current C<$app>. This can be disabled by setting the
+"version_from_class" to zero (0).
 
 =head1 AUTHORS
 
