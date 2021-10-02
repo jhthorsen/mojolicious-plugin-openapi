@@ -179,13 +179,6 @@ the ["ATTRIBUTES"](#attributes) after you load the plugin.
 
 `%config` can have:
 
-### allow\_invalid\_ref
-
-The OpenAPI specification does not allow "$ref" at every level, but setting
-this flag to a true value will ignore the $ref check.
-
-Note that setting this attribute is discourage.
-
 ### coerce
 
 See ["coerce" in JSON::Validator](https://metacpan.org/pod/JSON%3A%3AValidator#coerce) for possible values that `coerce` can take.
@@ -279,9 +272,8 @@ specification is written in perl, instead of JSON or YAML.
 Can be used to overridden `/info/version` in the API specification, from the
 return value from the `VERSION()` method in `version_from_class`.
 
-This will only have an effect if "version" is "0".
-
-Defaults to the current `$app`.
+Defaults to the current `$app`. This can be disabled by setting the
+"version\_from\_class" to zero (0).
 
 # AUTHORS
 
