@@ -1,7 +1,7 @@
 package Mojolicious::Plugin::OpenAPI::Parameters;
 use Mojo::Base 'Mojolicious::Plugin';
 
-use JSON::Validator::Util qw(is_bool);
+use JSON::Validator::Util qw(is_bool schema_type);
 use Mojo::JSON qw(encode_json);
 
 sub register {
@@ -128,7 +128,7 @@ sub _helper_parse_request_body {
   if (grep { $content_type eq $_ } qw(application/x-www-form-urlencoded multipart/form-data)) {
     $res->{value} = $c->req->body_params->to_hash;
   }
-  elsif (ref $param->{schema} eq 'HASH' and $param->{schema}{type} eq 'string') {
+  elsif (ref $param->{schema} eq 'HASH' and schema_type($param->{schema}) eq 'string') {
     $res->{value} = $c->req->body;
   }
   else {
