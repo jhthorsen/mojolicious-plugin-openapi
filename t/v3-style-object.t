@@ -50,64 +50,75 @@ plugin OpenAPI => {url => 'data:///parameters.json'};
 
 my $t = Test::Mojo->new;
 
-# style: deepObject
-$t->get_ok('/api/pets')->status_is(200)->json_is('/do', undef);
-$t->get_ok('/api/pets?do[name]=birdy&do[birth-date][gte]=1970-01-01&do[numbers][0]=5')
-  ->status_is(200)
-  ->json_is('/do', {name => 'birdy', 'birth-date' => {gte => '1970-01-01'}, numbers => [5]});
-$t->get_ok('/api/pets?do[numbers][0]=5&do[numbers][1]=10')->status_is(200)
-  ->json_is('/do', {numbers => [5, 10]});
-$t->get_ok('/api/pets?do[numbers][]=5&do[numbers][]=10')->status_is(200)
-  ->json_is('/do', {numbers => [5, 10]});
-$t->get_ok('/api/pets?do[numbers]=5&do[numbers]=10')->status_is(200)
-  ->json_is('/do', {numbers => [5, 10]});
+subtest 'style: deepObject' => sub {
+  $t->get_ok('/api/pets')->status_is(200)->json_is('/do', undef);
+  $t->get_ok('/api/pets?do[name]=birdy&do[birth-date][gte]=1970-01-01&do[numbers][0]=5')
+    ->status_is(200)
+    ->json_is('/do', {name => 'birdy', 'birth-date' => {gte => '1970-01-01'}, numbers => [5]});
+  $t->get_ok('/api/pets?do[numbers][0]=5&do[numbers][1]=10')->status_is(200)
+    ->json_is('/do', {numbers => [5, 10]});
+  $t->get_ok('/api/pets?do[numbers][]=5&do[numbers][]=10')->status_is(200)
+    ->json_is('/do', {numbers => [5, 10]});
+  $t->get_ok('/api/pets?do[numbers]=5&do[numbers]=10')->status_is(200)
+    ->json_is('/do', {numbers => [5, 10]});
+};
 
-# style: form, explode: false
-$t->get_ok('/api/pets')->status_is(200)->json_is('/ff', undef);
-$t->get_ok('/api/pets?ff=')->status_is(200)->json_is('/ff', {});
-$t->get_ok('/api/pets?ff=name,birdy,age,3')->status_is(200)
-  ->json_is('/ff', {name => 'birdy', age => 3});
+subtest 'style: form, explode: false' => sub {
+  $t->get_ok('/api/pets')->status_is(200)->json_is('/ff', undef);
+  $t->get_ok('/api/pets?ff=')->status_is(200)->json_is('/ff', {});
+  $t->get_ok('/api/pets?ff=name,birdy,age,3')->status_is(200)
+    ->json_is('/ff', {name => 'birdy', age => 3});
+};
 
-# style: form, explode: true
-$t->get_ok('/api/pets')->status_is(200)->json_is('/ft', {});
-$t->get_ok('/api/pets?name=birdy&age=3')->status_is(200)
-  ->json_is('/ft', {name => 'birdy', age => 3});
+subtest 'style: form, explode: true' => sub {
+  $t->get_ok('/api/pets')->status_is(200)->json_is('/ft', {});
+  $t->get_ok('/api/pets?name=birdy&age=3')->status_is(200)
+    ->json_is('/ft', {name => 'birdy', age => 3});
+};
 
-# style: spaceDelimited
-$t->get_ok('/api/pets')->status_is(200)->json_is('/sf', undef);
-$t->get_ok('/api/pets?sf=')->status_is(200)->json_is('/sf', {});
-$t->get_ok('/api/pets?sf=name%20birdy%20age%203')->status_is(200)
-  ->json_is('/sf', {name => 'birdy', age => 3});
+subtest 'style: spaceDelimited' => sub {
+  $t->get_ok('/api/pets')->status_is(200)->json_is('/sf', undef);
+  $t->get_ok('/api/pets?sf=')->status_is(200)->json_is('/sf', {});
+  $t->get_ok('/api/pets?sf=name%20birdy%20age%203')->status_is(200)
+    ->json_is('/sf', {name => 'birdy', age => 3});
+};
 
-# style: pipeDelimited
-$t->get_ok('/api/pets')->status_is(200)->json_is('/pf', undef);
-$t->get_ok('/api/pets?pf=')->status_is(200)->json_is('/pf', {});
-$t->get_ok('/api/pets?pf=name|birdy|age|3')->status_is(200)
-  ->json_is('/pf', {name => 'birdy', age => 3});
+subtest 'style: pipeDelimited' => sub {
+  $t->get_ok('/api/pets')->status_is(200)->json_is('/pf', undef);
+  $t->get_ok('/api/pets?pf=')->status_is(200)->json_is('/pf', {});
+  $t->get_ok('/api/pets?pf=name|birdy|age|3')->status_is(200)
+    ->json_is('/pf', {name => 'birdy', age => 3});
+};
 
-# style: simple, explode: false
-$t->get_ok('/api/petsBySimpleId/category,bird,name,birdy')->status_is(200)
-  ->json_is('/id', {category => 'bird', name => 'birdy'});
+subtest 'style: simple, explode: false' => sub {
+  $t->get_ok('/api/petsBySimpleId/category,bird,name,birdy')->status_is(200)
+    ->json_is('/id', {category => 'bird', name => 'birdy'});
+};
 
-# style: simple, explode: true
-$t->get_ok('/api/petsByExplodedSimpleId/category=bird,name=birdy')->status_is(200)
-  ->json_is('/id', {category => 'bird', name => 'birdy'});
+subtest 'style: simple, explode: true' => sub {
+  $t->get_ok('/api/petsByExplodedSimpleId/category=bird,name=birdy')->status_is(200)
+    ->json_is('/id', {category => 'bird', name => 'birdy'});
+};
 
-# style: matrix, explode: false
-$t->get_ok('/api/petsByMatrixId;id=category,bird,name,birdy')->status_is(200)
-  ->json_is('/id', {category => 'bird', name => 'birdy'});
+subtest 'style: matrix, explode: false' => sub {
+  $t->get_ok('/api/petsByMatrixId;id=category,bird,name,birdy')->status_is(200)
+    ->json_is('/id', {category => 'bird', name => 'birdy'});
+};
 
-# style: matrix, explode: true
-$t->get_ok('/api/petsByExplodedMatrixId;category=bird;name=birdy')->status_is(200)
-  ->json_is('/id', {category => 'bird', name => 'birdy'});
+subtest 'style: matrix, explode: true' => sub {
+  $t->get_ok('/api/petsByExplodedMatrixId;category=bird;name=birdy')->status_is(200)
+    ->json_is('/id', {category => 'bird', name => 'birdy'});
+};
 
-# style: label, explode: false
-$t->get_ok('/api/petsByLabelId.category.bird.name.birdy')->status_is(200)
-  ->json_is('/id', {category => 'bird', name => 'birdy'});
+subtest 'style: label, explode: false' => sub {
+  $t->get_ok('/api/petsByLabelId.category.bird.name.birdy')->status_is(200)
+    ->json_is('/id', {category => 'bird', name => 'birdy'});
+};
 
-# style: label, explode: true
-$t->get_ok('/api/petsByExplodedLabelId.category=bird.name=birdy')->status_is(200)
-  ->json_is('/id', {category => 'bird', name => 'birdy'});
+subtest 'style: label, explode: true' => sub {
+  $t->get_ok('/api/petsByExplodedLabelId.category=bird.name=birdy')->status_is(200)
+    ->json_is('/id', {category => 'bird', name => 'birdy'});
+};
 
 done_testing;
 

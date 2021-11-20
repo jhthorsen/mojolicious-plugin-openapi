@@ -45,33 +45,38 @@ plugin OpenAPI => {url => 'data:///parameters.json'};
 
 my $t = Test::Mojo->new;
 
-# Expected array - got null
-$t->get_ok('/api/pets')->status_is(400)->json_is('/errors/0/path', '/ri');
+subtest 'Expected array - got null' => sub {
+  $t->get_ok('/api/pets')->status_is(400)->json_is('/errors/0/path', '/ri');
+};
 
-# Expected integer - got number.
-$t->get_ok('/api/pets?ri=1.3')->status_is(400)->json_is('/errors/0/path', '/ri/0');
+subtest 'Expected integer - got number.' => sub {
+  $t->get_ok('/api/pets?ri=1.3')->status_is(400)->json_is('/errors/0/path', '/ri/0');
+};
 
-# Not enough items: 1\/2
-$t->get_ok('/api/pets?ri=3&ml=5')->status_is(400)->json_is('/errors/0/path', '/ml');
+subtest 'Not enough items: 1\/2' => sub {
+  $t->get_ok('/api/pets?ri=3&ml=5')->status_is(400)->json_is('/errors/0/path', '/ml');
+};
 
-# Valid, in path
-$t->get_ok('/api/pets/10,11,12')->status_is(200)->json_is('/id', [qw(10 11 12)]);
-$t->get_ok('/api/pets/10')->status_is(200)->content_like(qr{"id":\[10\]});
-$t->get_ok('/api/petsByLabelId.3,4,5')->status_is(200)->json_is('/id',         [qw(3 4 5)]);
-$t->get_ok('/api/petsByLabelId.5')->status_is(200)->json_is('/id',             [5]);
-$t->get_ok('/api/petsByExplodedLabelId.3.4.5')->status_is(200)->json_is('/id', [qw(3 4 5)]);
-$t->get_ok('/api/petsByExplodedLabelId.5')->status_is(200)->json_is('/id',     [5]);
-$t->get_ok('/api/petsByMatrixId;id=3,4,5')->status_is(200)->json_is('/id',     [qw(3 4 5)]);
-$t->get_ok('/api/petsByMatrixId;id=5')->status_is(200)->json_is('/id',         [5]);
-$t->get_ok('/api/petsByExplodedMatrixId;id=3;id=4;id=5')->status_is(200)
-  ->json_is('/id', [qw(3 4 5)]);
-$t->get_ok('/api/petsByExplodedMatrixId;id=5')->status_is(200)->json_is('/id', [5]);
+subtest 'Valid, in path' => sub {
+  $t->get_ok('/api/pets/10,11,12')->status_is(200)->json_is('/id', [qw(10 11 12)]);
+  $t->get_ok('/api/pets/10')->status_is(200)->content_like(qr{"id":\[10\]});
+  $t->get_ok('/api/petsByLabelId.3,4,5')->status_is(200)->json_is('/id', [qw(3 4 5)]);
+  $t->get_ok('/api/petsByLabelId.5')->status_is(200)->json_is('/id', [5]);
+  $t->get_ok('/api/petsByExplodedLabelId.3.4.5')->status_is(200)->json_is('/id', [qw(3 4 5)]);
+  $t->get_ok('/api/petsByExplodedLabelId.5')->status_is(200)->json_is('/id', [5]);
+  $t->get_ok('/api/petsByMatrixId;id=3,4,5')->status_is(200)->json_is('/id', [qw(3 4 5)]);
+  $t->get_ok('/api/petsByMatrixId;id=5')->status_is(200)->json_is('/id', [5]);
+  $t->get_ok('/api/petsByExplodedMatrixId;id=3;id=4;id=5')->status_is(200)
+    ->json_is('/id', [qw(3 4 5)]);
+  $t->get_ok('/api/petsByExplodedMatrixId;id=5')->status_is(200)->json_is('/id', [5]);
+};
 
-# Valid, in query
-$t->get_ok('/api/pets?ri=3&ml=4&ml=2&no=5')->status_is(200)->json_is('/ri', [3])
-  ->content_like(qr{"ml":\["4","2"\]})->content_like(qr{"no":\[5\]});
-$t->get_ok('/api/pets?ri=3&no=5,6&sp=7 8 9&pi=10|11')->status_is(200)->json_is('/no', [5, 6])
-  ->json_is('/sp', [7, 8, 9])->json_is('/pi', [10, 11]);
+subtest 'Valid, in query' => sub {
+  $t->get_ok('/api/pets?ri=3&ml=4&ml=2&no=5')->status_is(200)->json_is('/ri', [3])
+    ->content_like(qr{"ml":\["4","2"\]})->content_like(qr{"no":\[5\]});
+  $t->get_ok('/api/pets?ri=3&no=5,6&sp=7 8 9&pi=10|11')->status_is(200)->json_is('/no', [5, 6])
+    ->json_is('/sp', [7, 8, 9])->json_is('/pi', [10, 11]);
+};
 
 done_testing;
 
