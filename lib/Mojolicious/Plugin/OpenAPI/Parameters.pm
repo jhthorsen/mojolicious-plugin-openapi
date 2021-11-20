@@ -128,7 +128,7 @@ sub _helper_parse_request_body {
   if (grep { $content_type eq $_ } qw(application/x-www-form-urlencoded multipart/form-data)) {
     $res->{value} = $c->req->body_params->to_hash;
   }
-  elsif (ref $param->{schema} eq 'HASH' and schema_type($param->{schema}) eq 'string') {
+  elsif (ref $param->{schema} eq 'HASH' and schema_type($param->{schema}, '') eq 'string') {
     $res->{value} = $c->req->body;
   }
   else {
