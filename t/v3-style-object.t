@@ -73,7 +73,9 @@ subtest 'style: form, explode: false' => sub {
 subtest 'style: form, explode: true' => sub {
   $t->get_ok('/api/pets')->status_is(200)->json_is('/ft', {});
   $t->get_ok('/api/pets?name=birdy&age=3')->status_is(200)
-    ->json_is('/ft', {name => 'birdy', age => 3});
+    ->json_is('/ft', {name => ['birdy'], age => 3});
+  $t->get_ok('/api/pets?name=birdy&age=3&name=birdy2')->status_is(200)
+    ->json_is('/ft', {name => ['birdy', 'birdy2'], age => 3});
 };
 
 subtest 'style: spaceDelimited' => sub {
@@ -167,7 +169,10 @@ __DATA__
             "style": "form",
             "explode": true,
             "schema": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "name": {"type": "array", "items": {"type": "string"}}
+              }
             }
           },
           {
