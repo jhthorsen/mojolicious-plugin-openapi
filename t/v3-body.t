@@ -10,6 +10,13 @@ post '/test' => sub {
   },
   'test';
 
+post '/test/string' => sub {
+  my $c = shift;
+  $c->openapi->valid_input or return;
+  $c->render(text => $c->req->body, status => 200);
+  },
+  'string';
+
 post '/test/optional/explicitly' => sub {
   my $c = shift;
   $c->openapi->valid_input or return;
@@ -44,7 +51,7 @@ $t->post_ok('/test', json => undef)->status_is(400)
 
 note 'Invalid JSON should fail';
 $t->post_ok('/test', {'Content-Type' => 'application/json'} => 'invalid_json')->status_is(400)
-  ->json_is('/errors/0/message', 'Expected object - got null.');
+  ->json_is('/errors/0/message', 'Expected object - got string.');
 
 note 'Invalid Content-Type should fail';
 $t->post_ok('/test', {'Content-Type' => 'application/xml'} => '<?xml version = "1.0"?>')
@@ -62,6 +69,13 @@ $t->post_ok('/test/optional/implicitly')->status_is(200);
 
 note 'requestBody without "required: false"';
 $t->post_ok('/test/optional/implicitly', json => {foo => 'bar'})->status_is(200);
+
+note 'requestBody as plain string';
+$t->post_ok('/test/string', {'Content-Type' => 'text/plain'}, 'cool beans')->status_is(200)
+  ->content_is('cool beans');
+
+note 'not really the first, since "content" is an object, but predictable when there is only one';
+$t->post_ok('/test/string', 'first content-type')->status_is(200)->content_is('first content-type');
 
 done_testing;
 
@@ -86,6 +100,19 @@ paths:
                   type: string
               required:
                 - foo
+      responses:
+        '200':
+          description: ok
+
+  /test/string:
+    post:
+      x-mojo-name: string
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
       responses:
         '200':
           description: ok

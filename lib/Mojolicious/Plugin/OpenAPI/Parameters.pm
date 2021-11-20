@@ -2,7 +2,7 @@ package Mojolicious::Plugin::OpenAPI::Parameters;
 use Mojo::Base 'Mojolicious::Plugin';
 
 use JSON::Validator::Util qw(is_bool schema_type);
-use Mojo::JSON qw(encode_json);
+use Mojo::JSON qw(encode_json decode_json);
 
 sub register {
   my ($self, $app, $config) = @_;
@@ -125,15 +125,17 @@ sub _helper_parse_request_body {
   my $content_type = $c->req->headers->content_type || '';
   my $res          = {content_type => $content_type, exists => !!$c->req->body_size};
 
-  if (grep { $content_type eq $_ } qw(application/x-www-form-urlencoded multipart/form-data)) {
-    $res->{value} = $c->req->body_params->to_hash;
-  }
-  elsif (ref $param->{schema} eq 'HASH' and schema_type($param->{schema}, '') eq 'string') {
+  eval {
+    $res->{value} //= $c->req->body_params->to_hash
+      if grep { $content_type eq $_ } qw(application/x-www-form-urlencoded multipart/form-data);
+
+    # Trying to use the already parsed json() or fallback to manually decoding the request
+    # since it will make the eval {} fail on invalid json.
+    $res->{value} //= $c->req->json // decode_json $c->req->body;
+    1;
+  } or do {
     $res->{value} = $c->req->body;
-  }
-  else {
-    $res->{value} = $c->req->json;
-  }
+  };
 
   return $res;
 }

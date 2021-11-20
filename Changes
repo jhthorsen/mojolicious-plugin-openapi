@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.02 Not Released
+ - Fix reading request body as string if not form data or JSON #227
+
 5.01 2021-11-20T13:39:28+0900
  - Avoid uninitialized warnings #224
  - Bump JSON::Validator to 5.03
