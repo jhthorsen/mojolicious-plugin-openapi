@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-5.02 Not Released
+5.02 2021-11-21T09:22:33+0900
  - Fix reading request body as string if not form data or JSON #227
 
 5.01 2021-11-20T13:39:28+0900
