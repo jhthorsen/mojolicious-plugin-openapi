@@ -509,7 +509,7 @@ C<log_level> is used when logging invalid request/response error messages.
 
 Default: "warn".
 
-=head2 op_spec_to_route
+=head3 op_spec_to_route
 
 C<op_spec_to_route> can be provided if you want to add route definitions
 without using "x-mojo-to". Example:
