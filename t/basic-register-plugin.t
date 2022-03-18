@@ -92,6 +92,16 @@ plugin OpenAPI => {
 plugin OpenAPI =>
   {url => 'data://main/programmatically.json', op_spec_to_route => \&op_spec_to_route};
 
+get('/injected' => {text => 'injected'}, 'injected');
+my $schema = JSON::Validator::Schema::OpenAPIv2->new('data://main/schema-object.json');
+$schema->data->{paths}{'/injected'} = {
+  get => {
+    operationId => 'injected',
+    responses   => {200 => {description => 'response', schema => {type => 'array'}}},
+  }
+};
+plugin OpenAPI => {spec => $schema};
+
 ok $obj->route->find('cool_api'), 'found api endpoint';
 isa_ok($obj->route,     'Mojolicious::Routes::Route');
 isa_ok($obj->validator, 'JSON::Validator::Schema::OpenAPIv2');
@@ -138,6 +148,8 @@ $t->get_ok('/api/programmatically')->status_is(200)->json_is('/operationId', 'ge
   ->json_is('/responses/200/schema/type', 'array');
 $t->post_ok('/api/programmatically')->status_is(200)->json_is('/operationId', 'postStuff')
   ->json_is('/responses/200/schema/type', 'boolean');
+
+$t->get_ok('/schema-object/injected')->status_is(200)->content_is('injected');
 
 done_testing;
 
@@ -189,6 +201,13 @@ __DATA__
       "required": ["errors", "something_else"]
     }
   }
+}
+@@ schema-object.json
+{
+  "swagger" : "2.0",
+  "info" : { "version": "0.8", "title" : "Object" },
+  "basePath" : "/schema-object",
+  "paths" : {}
 }
 @@ programmatically.json
 {

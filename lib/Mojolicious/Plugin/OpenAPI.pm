@@ -561,13 +561,20 @@ Name of the route that handles the "basePath" part of the specification and
 serves the specification. Defaults to "x-mojo-name" in the specification at
 the top level.
 
-=head3 url
+=head3 spec, url
 
 See L<JSON::Validator/schema> for the different C<url> formats that is
 accepted.
 
 C<spec> is an alias for "url", which might make more sense if your
 specification is written in perl, instead of JSON or YAML.
+
+Here are some common uses:
+
+  $app->plugin(OpenAPI => {url  => $app->home->rel_file('openapi.yaml'));
+  $app->plugin(OpenAPI => {url  => 'https://example.com/swagger.json'});
+  $app->plugin(OpenAPI => {spec => JSON::Validator::Schema::OpenAPIv3->new(...)});
+  $app->plugin(OpenAPI => {spec => {swagger => "2.0", paths => {...}, ...}});
 
 =head3 version_from_class
 
