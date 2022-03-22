@@ -2,6 +2,7 @@ Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 5.03 Not Released
  - Updated documentation to make it more obvious that you can pass in a schema
+ - Updated the SYNOPSIS making it more obvious to read the guides
 
 5.02 2021-11-21T09:22:33+0900
  - Fix reading request body as string if not form data or JSON #227
