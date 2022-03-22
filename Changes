@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.04 Not Released
+ - Depends on JSON::Validator 5.07
+
 5.03 2022-03-23T07:44:41+0900
  - Updated documentation to make it more obvious that you can pass in a schema
  - Updated the SYNOPSIS making it more obvious to read the guides
