@@ -326,7 +326,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
   }, "echo";
 
   # Load specification and start web server
-  plugin OpenAPI => {url => "data:///swagger.json"};
+  plugin OpenAPI => {url => "data:///swagger.yaml"};
   app->start;
 
   __DATA__
