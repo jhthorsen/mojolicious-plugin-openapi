@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.05 Not Released
+ - Fix collectionFormat in header
+
 5.04 2022-03-23T07:58:50+0900
  - Depends on JSON::Validator 5.07
 
