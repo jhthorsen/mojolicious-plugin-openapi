@@ -290,7 +290,7 @@ Variables available in the templates:
   %= $slugify->(@str)
   %= $spec->{info}{title}
 
-In addition, there is a logo in "header.html.ep" that can be overriden by
+In addition, there is a logo in "header.html.ep" that can be overridden by
 either changing the static file "mojolicious/plugin/openapi/logo.png" or set
 "openapi_spec_renderer_logo" in L<stash|Mojolicious::Controller/stash> to a
 custom URL.
