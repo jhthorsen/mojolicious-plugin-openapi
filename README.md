@@ -24,7 +24,7 @@ Mojolicious::Plugin::OpenAPI - OpenAPI / Swagger plugin for Mojolicious
     }, "echo";
 
     # Load specification and start web server
-    plugin OpenAPI => {url => "data:///swagger.json"};
+    plugin OpenAPI => {url => "data:///swagger.yaml"};
     app->start;
 
     __DATA__
@@ -316,7 +316,7 @@ the terms of the Artistic License version 2.0.
 
 - [Mojolicious::Plugin::OpenAPI::SpecRenderer](https://metacpan.org/pod/Mojolicious%3A%3APlugin%3A%3AOpenAPI%3A%3ASpecRenderer)
 
-    Plugin for exposing your spec in human readble or JSON format.
+    Plugin for exposing your spec in human readable or JSON format.
 
 - [https://www.openapis.org/](https://www.openapis.org/)
 
