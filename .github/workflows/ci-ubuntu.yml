@@ -28,5 +28,5 @@ jobs:
       - name: Run tests
         run: prove -l t/*.t
         env:
+          AUTHOR_TESTING: 1
           HARNESS_OPTIONS: j6
-          TEST_POD: 1

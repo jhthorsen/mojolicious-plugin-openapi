@@ -620,7 +620,7 @@ Plugin for handling security definitions in your schema.
 
 =item * L<Mojolicious::Plugin::OpenAPI::SpecRenderer>
 
-Plugin for exposing your spec in human readble or JSON format.
+Plugin for exposing your spec in human readable or JSON format.
 
 =item * L<https://www.openapis.org/>
 
