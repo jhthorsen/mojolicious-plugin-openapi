@@ -25,8 +25,8 @@ $t->get_ok('/api/headers' => {'x-number' => 42.3, 'x-string' => '123'})->status_
   ->json_is('/x-number', 42.3)->header_is('what-ever', '123');
 
 $what_ever = [qw(1 2 3)];
-$t->get_ok('/api/headers' => {'x-array' => [42, 24]})->status_is(200)
-  ->json_is('/x-array', [42, 24])->header_is('what-ever', '1, 2, 3');
+$t->get_ok('/api/headers' => {'x-array' => '42,24'})->status_is(200)->json_is('/x-array', [42, 24])
+  ->header_is('what-ever', '1, 2, 3');
 
 for my $bool (qw(true false 1 0)) {
   my $s = $bool =~ /true|1/ ? 'true' : 'false';
