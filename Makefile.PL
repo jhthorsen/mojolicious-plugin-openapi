@@ -3,7 +3,7 @@ use utf8;
 use ExtUtils::MakeMaker;
 my %WriteMakefileArgs = (
   NAME           => 'Mojolicious::Plugin::OpenAPI',
-  AUTHOR         => 'Jan Henning Thorsen <jhthorsen@cpan.org>',
+  AUTHOR         => 'Jan Henning Thorsen <jan.henning@thorsen.pm>',
   LICENSE        => 'artistic_2',
   ABSTRACT_FROM  => 'lib/Mojolicious/Plugin/OpenAPI.pm',
   VERSION_FROM   => 'lib/Mojolicious/Plugin/OpenAPI.pm',
@@ -11,7 +11,7 @@ my %WriteMakefileArgs = (
   OBJECT         => '',
   BUILD_REQUIRES => {},
   TEST_REQUIRES  => {'Test::More'      => '0.88'},
-  PREREQ_PM      => {'JSON::Validator' => '5.08', 'Mojolicious' => '9.00'},
+  PREREQ_PM      => {'JSON::Validator' => '5.09', 'Mojolicious' => '9.00'},
   META_MERGE     => {
     'dynamic_config' => 0,
     'meta-spec'      => {version   => 2},

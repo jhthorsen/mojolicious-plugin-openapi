@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-5.06 2022-03-25T10:00:49+0900
+5.06 2022-08-17T20:15:46+0900
  - Fix incompatability with OpenAPIv2 spec regarding default "collectionFormat"
 
 5.05 2022-03-25T10:00:49+0900
