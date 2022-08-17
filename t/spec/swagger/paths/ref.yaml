@@ -1,0 +1,5 @@
+get:
+  responses:
+    200:
+      description: "Ref response"
+      schema: "../responses/ok.yaml"
