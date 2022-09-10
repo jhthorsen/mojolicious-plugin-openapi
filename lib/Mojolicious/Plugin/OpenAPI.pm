@@ -583,13 +583,68 @@ Defaults to the current C<$app>. This can be disabled by setting the
 
 =head1 AUTHORS
 
-Henrik Andersen
+=head2 Project Founder
 
-Ilya Rassadin
+Jan Henning Thorsen - C<jhthorsen@cpan.org>
 
-Jan Henning Thorsen
+=head2 Contributors
 
-Joel Berger
+=over 2
+
+
+=item * Bernhard Graf <augensalat@gmail.com>
+
+=item * Doug Bell <doug@preaction.me>
+
+=item * Ed J <mohawk2@users.noreply.github.com>
+
+=item * Henrik Andersen <hem@fibia.dk>
+
+=item * Henrik Andersen <hem@hamster.dk>
+
+=item * Ilya Rassadin <elcamlost@gmail.com>
+
+=item * Jan Henning Thorsen <jan.henning@thorsen.pm>
+
+=item * Jan Henning Thorsen <jhthorsen@cpan.org>
+
+=item * Ji-Hyeon Gim <potatogim@gluesys.com>
+
+=item * Joel Berger <joel.a.berger@gmail.com>
+
+=item * Krasimir Berov <k.berov@gmail.com>
+
+=item * Lars Thegler <lth@fibia.dk>
+
+=item * Lee Johnson <lee@givengain.ch>
+
+=item * Linn-Hege Kristensen <linn-hege@stix.no>
+
+=item * Manuel <manuel@mausz.at>
+
+=item * Martin Renvoize <martin.renvoize@ptfs-europe.com>
+
+=item * Mohammad S Anwar <mohammad.anwar@yahoo.com>
+
+=item * Nick Morrott <knowledgejunkie@gmail.com>
+
+=item * Renee <reb@perl-services.de>
+
+=item * Roy Storey <kiwiroy@users.noreply.github.com>
+
+=item * SebMourlhou <35918953+SebMourlhou@users.noreply.github.com>
+
+=item * SebMourlhou <sebastien.mourlhou@justice.ge.ch>
+
+=item * SebMourlhou <sebmourlhou@yahoo.fr>
+
+=item * Søren Lund <sl@keycore.dk>
+
+=item * Stephan Hradek <github@hradek.net>
+
+=item * Stephan Hradek <stephan.hradek@eco.de>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 

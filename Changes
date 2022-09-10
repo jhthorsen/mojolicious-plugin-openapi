@@ -1,5 +1,10 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.08 Not Released
+ - Specified Perl version
+ - Updated basic repository files
+ - Updated contributors list
+
 5.07 2022-08-18T07:41:35+0900
  - Bumped J::V version to support DefaultResponse in $ref path object #236
 
