@@ -281,13 +281,38 @@ Defaults to the current `$app`. This can be disabled by setting the
 
 # AUTHORS
 
-Henrik Andersen
+## Project Founder
 
-Ilya Rassadin
+Jan Henning Thorsen - `jhthorsen@cpan.org`
 
-Jan Henning Thorsen
+## Contributors
 
-Joel Berger
+- Bernhard Graf <augensalat@gmail.com>
+- Doug Bell <doug@preaction.me>
+- Ed J <mohawk2@users.noreply.github.com>
+- Henrik Andersen <hem@fibia.dk>
+- Henrik Andersen <hem@hamster.dk>
+- Ilya Rassadin <elcamlost@gmail.com>
+- Jan Henning Thorsen <jan.henning@thorsen.pm>
+- Jan Henning Thorsen <jhthorsen@cpan.org>
+- Ji-Hyeon Gim <potatogim@gluesys.com>
+- Joel Berger <joel.a.berger@gmail.com>
+- Krasimir Berov <k.berov@gmail.com>
+- Lars Thegler <lth@fibia.dk>
+- Lee Johnson <lee@givengain.ch>
+- Linn-Hege Kristensen <linn-hege@stix.no>
+- Manuel <manuel@mausz.at>
+- Martin Renvoize <martin.renvoize@ptfs-europe.com>
+- Mohammad S Anwar <mohammad.anwar@yahoo.com>
+- Nick Morrott <knowledgejunkie@gmail.com>
+- Renee <reb@perl-services.de>
+- Roy Storey <kiwiroy@users.noreply.github.com>
+- SebMourlhou <35918953+SebMourlhou@users.noreply.github.com>
+- SebMourlhou <sebastien.mourlhou@justice.ge.ch>
+- SebMourlhou <sebmourlhou@yahoo.fr>
+- Søren Lund <sl@keycore.dk>
+- Stephan Hradek <github@hradek.net>
+- Stephan Hradek <stephan.hradek@eco.de>
 
 # COPYRIGHT AND LICENSE
 
