@@ -1,6 +1,7 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
 5.08 Not Released
+ - Fix not coercing body parameter for OpenAPIv2 in JSON::Validator v5.13
  - Specified Perl version
  - Updated basic repository files
  - Updated contributors list
