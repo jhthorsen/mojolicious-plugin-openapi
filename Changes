@@ -1,6 +1,6 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
-5.09 Not Released
+5.09 2023-02-20T16:34:43
  - Will only run t/00-project.t when developing #241
 
 5.08 2022-12-09T09:58:39
