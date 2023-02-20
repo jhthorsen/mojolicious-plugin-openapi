@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.09 Not Released
+ - Will only run t/00-project.t when developing #241
+
 5.08 2022-12-09T09:58:39
  - Fix not coercing body parameter for OpenAPIv2 in JSON::Validator v5.13
  - Specified Perl version
