@@ -14,6 +14,23 @@ get '/headers' => sub {
   },
   'dummy';
 
+get '/validate_twice' => sub {
+
+  my $c = shift;
+
+  my $res = {before => $c->req->headers->header('x-array')};
+
+  $c->openapi->valid_input or return;
+
+  $res->{first} = $c->req->headers->header('x-array');
+
+  $c->openapi->valid_input;
+  $res->{second} = $c->req->headers->header('x-array');
+
+  $c->render(openapi => $res);
+  },
+  'twice';
+
 plugin OpenAPI => {url => 'data://main/headers.json'};
 
 my $t = Test::Mojo->new;
@@ -27,6 +44,13 @@ $t->get_ok('/api/headers' => {'x-number' => 42.3, 'x-string' => '123'})->status_
 $what_ever = [qw(1 2 3)];
 $t->get_ok('/api/headers' => {'x-array' => '42,24'})->status_is(200)->json_is('/x-array', [42, 24])
   ->header_is('what-ever', '1, 2, 3');
+
+my $header_value = '42,24, 44';
+
+$t->get_ok('/api/validate_twice' => {'x-array' => $header_value })->status_is(200)
+  ->json_is( '/before'  => $header_value )
+  ->json_is( '/first'   => $header_value )
+  ->json_is( '/second'  => $header_value );
 
 for my $bool (qw(true false 1 0)) {
   my $s = $bool =~ /true|1/ ? 'true' : 'false';
@@ -67,6 +91,20 @@ __DATA__
                 "minItems": 1
               }
             },
+            "schema": { "type" : "object" }
+          }
+        }
+      }
+    },
+    "/twice" : {
+      "get" : {
+        "x-mojo-name": "twice",
+        "parameters" : [
+          { "in": "header", "name": "x-array", "items": { "type": "string" }, "type": "array", "description": "desc..." }
+        ],
+        "responses" : {
+          "200" : {
+            "description": "this is required",
             "schema": { "type" : "object" }
           }
         }
