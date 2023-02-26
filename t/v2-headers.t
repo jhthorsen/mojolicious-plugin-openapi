@@ -5,12 +5,15 @@ use Test::More;
 use Mojolicious::Lite;
 my $what_ever;
 get '/headers' => sub {
-  my $c    = shift->openapi->valid_input or return;
-  my $args = $c->validation->output;
+  my $c              = shift;
+  my $x_array_before = $c->req->headers->header('x-array');
+  return unless $c->openapi->valid_input;
 
+  my $args = $c->validation->output;
   $c->res->headers->header('what-ever' => ref $what_ever ? @$what_ever : $what_ever);
   $c->res->headers->header('x-bool'    => $args->{'x-bool'}) if exists $args->{'x-bool'};
-  $c->render(openapi => $args);
+  $c->render(
+    openapi => {args => $args, x_array => [$x_array_before, $c->req->headers->header('x-array')]});
   },
   'dummy';
 
@@ -22,11 +25,16 @@ $t->get_ok('/api/headers' => {'x-number' => 'x', 'x-string' => '123'})->status_i
 
 $what_ever = '123';
 $t->get_ok('/api/headers' => {'x-number' => 42.3, 'x-string' => '123'})->status_is(200)
-  ->json_is('/x-number', 42.3)->header_is('what-ever', '123');
+  ->header_is('what-ever', '123')
+  ->json_is('', {args => {'x-number' => 42.3, 'x-string' => 123}, x_array => [undef, undef]});
 
+# header() returns join(', ', @$headers), resulting in "42, 24" instead of "42,24",
+# since Mojolicious::Plugin::OpenAPI turns 42,24 into an array. every_header() on the
+# other hand will return [42, 24]. See perldoc -m Mojo::Headers
 $what_ever = [qw(1 2 3)];
-$t->get_ok('/api/headers' => {'x-array' => '42,24'})->status_is(200)->json_is('/x-array', [42, 24])
-  ->header_is('what-ever', '1, 2, 3');
+$t->get_ok('/api/headers' => {'x-array' => '42,24'})->status_is(200)
+  ->header_is('what-ever', '1, 2, 3')
+  ->json_is('', {args => {'x-array' => [42, 24]}, x_array => ['42,24', '42, 24']});
 
 for my $bool (qw(true false 1 0)) {
   my $s = $bool =~ /true|1/ ? 'true' : 'false';
