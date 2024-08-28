@@ -115,7 +115,7 @@ sub _render_spec {
 
   if (!$validator and $openapi) {
     $validator = $openapi->{bundled} ||= $openapi->validator->bundle;
-    $validator->base_url($c->req->url->to_abs->path($c->url_for($validator->base_url->path)));
+    $validator->base_url($c->req->url->to_abs->path($c->url_for($openapi->validator->base_url->path)));
   }
 
   return $c->render(json => {errors => [{message => 'No specification to render.'}]}, status => 500)
