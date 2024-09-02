@@ -67,6 +67,7 @@ sub _build_action {
 
         if (!$security_cb) {
           $res{$name} = {message => "No security callback for $name."} unless exists $res{$name};
+          $security_completed->(); # missing handler is always an error
         }
         elsif (!exists $res{$name}) {
           $res{$name} = undef;
