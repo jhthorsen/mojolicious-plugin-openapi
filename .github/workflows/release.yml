@@ -1,0 +1,25 @@
+name: release
+on:
+  pull_request:
+  push:
+    branches: ["release"]
+    tags: ["*"]
+jobs:
+  release:
+    name: "Upload to CPAN"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install cpan-upload
+        run: sudo apt-get install -y libcpan-uploader-perl
+      - name: Fix $VERSION
+        run: |
+          v="$(grep -o "^[0-9]\+\.[0-9]\+[^ ]*" ./Changes | head -n1)";
+          [ -n "$v" ] || exit 1;
+          echo "# Building ${{ github.repository }} $v ((${{ github.ref }}))";
+          find ./lib -type f -name '*pm' -exec sed -i "s/our[ ].*\$VERSION[ ]*=.*/our \$VERSION = '$v';/" '{}' \;
+          grep -r VERSION ./lib;
+      - name: Build
+        run: "perl Makefile.PL && make && make manifest && make dist"
+      - name: Upload
+        run: cpan-upload --user "${{ secrets.PAUSE_LOGIN }}" --password "${{ secrets.PAUSE_PASSWORD }}" *.tar.gz;
