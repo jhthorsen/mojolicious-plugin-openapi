@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.11 2025-03-18T23:24:00
+ - Fix bad commit from Github
+
 5.10 2025-03-18T23:17:00
  - Fix for multiple sub paths in haproxy #250
  - Fix missing handler defaults to authorize #254 #255
