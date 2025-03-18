@@ -1,5 +1,8 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.10 2025-03-18T23:17:00
+ - Fix for multiple sub paths in haproxy #250
+
 5.09 2023-02-20T16:34:43
  - Will only run t/00-project.t when developing #241
 
