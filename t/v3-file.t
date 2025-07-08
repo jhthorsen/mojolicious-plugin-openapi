@@ -23,6 +23,14 @@ $t->post_ok(
   form => {id => 1, image => {file => $image}}
 )->content_like(qr{"size"})->status_is(200);
 
+$image = Mojo::Asset::Memory->new->add_chunk('smileyface');
+$t->post_ok(
+  '/api/upload',
+  {Accept => 'application/json'},
+  form => {id => 1, image => [{file => $image}, 'unhappy face']}
+)->status_is(400)
+  ->json_is('/errors/0', {message => 'Expected string - got array.', path => '/body/image'});
+
 done_testing;
 
 __DATA__

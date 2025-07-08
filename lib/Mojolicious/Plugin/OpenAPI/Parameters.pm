@@ -1,6 +1,7 @@
 package Mojolicious::Plugin::OpenAPI::Parameters;
 use Mojo::Base 'Mojolicious::Plugin';
 
+use JSON::Validator::FilePlaceholder;
 use JSON::Validator::Util qw(is_bool schema_type);
 use Mojo::JSON qw(encode_json decode_json);
 
@@ -127,9 +128,28 @@ sub _helper_parse_request_body {
 
   eval {
     $res->{value} //= $c->req->body_params->to_hash
-      if grep { $content_type eq $_ } qw(application/x-www-form-urlencoded multipart/form-data);
+      if $content_type =~ /^application\/x-www-form-urlencoded\s*(;|$)/i;
 
-    # Trying to use the already parsed json() or fallback to manually decoding the request
+    if ($content_type =~ /^multipart\/form-data\s*(;|$)/i) {
+      # body_params only includes non-file parameters, so we need to fetch the
+      # uploads separately and append them with a file placeholder.
+      my $params = $c->req->body_params->clone;
+
+      for my $upload (@{$c->req->uploads}) {
+        my $name = $upload->name;
+
+        my $placeholder = JSON::Validator::FilePlaceholder->new({
+          filename => $upload->filename,
+          size     => $upload->size,
+        });
+
+        $params->append($name => $placeholder);
+      }
+
+      $res->{value} = $params->to_hash;
+    }
+
+    # Try to use the already parsed json() or fallback to manually decoding the request
     # since it will make the eval {} fail on invalid json.
     $res->{value} //= $c->req->json // decode_json $c->req->body;
     1;
