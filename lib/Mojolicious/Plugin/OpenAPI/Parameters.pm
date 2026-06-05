@@ -127,9 +127,21 @@ sub _helper_parse_request_body {
 
   eval {
     $res->{value} //= $c->req->body_params->to_hash
-      if grep { $content_type eq $_ } qw(application/x-www-form-urlencoded multipart/form-data);
+      if $content_type =~ /^application\/x-www-form-urlencoded\s*(;|$)/i;
 
-    # Trying to use the already parsed json() or fallback to manually decoding the request
+    if ($content_type =~ /^multipart\/form-data\s*(;|$)/i) {
+      # body_params only includes non-file parameters, so we need to fetch the
+      # uploads separately and append them as Mojo::Upload objects.
+      #
+      # we also have to clone body_params before we merge in the file uploads
+      # because it's used as a cache by other helpers that expect it to
+      # only contain body parameters
+      my $params = $c->req->body_params->clone;
+      $params->append($_->name => $_) for @{$c->req->uploads};
+      $res->{value} = $params->to_hash;
+    }
+
+    # Try to use the already parsed json() or fallback to manually decoding the request
     # since it will make the eval {} fail on invalid json.
     $res->{value} //= $c->req->json // decode_json $c->req->body;
     1;
