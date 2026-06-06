@@ -1,5 +1,9 @@
 Revision history for perl distribution Mojolicious-Plugin-OpenAPI
 
+5.12 2026-06-06T21:34:00
+ - Combine body_params and uploads on multipart/form-data requests #267
+   Contributor: Archey Barrell
+
 5.11 2025-03-18T23:24:00
  - Fix bad commit from Github
 
