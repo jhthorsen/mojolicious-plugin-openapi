@@ -8,7 +8,7 @@ use Mojolicious::Plugin::OpenAPI::Parameters;
 
 use constant DEBUG => $ENV{MOJO_OPENAPI_DEBUG} || 0;
 
-our $VERSION = '5.09';
+our $VERSION = '5.12';
 
 has route     => sub {undef};
 has validator => sub { JSON::Validator::Schema->new; };
